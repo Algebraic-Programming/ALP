@@ -37,7 +37,7 @@
 
 namespace grb {
 
-	// forward-declare internal getters
+	// forward-declare internal getters and global modifiers
 	namespace internal {
 
 		template< typename D, typename RIT, typename CIT, typename NIT >
@@ -49,6 +49,12 @@ namespace grb {
 		const Matrix< D, _GRB_BSP1D_BACKEND, RIT, CIT, NIT > & getLocal(
 			const Matrix< D, BSP1D, RIT, CIT, NIT > &
 		) noexcept;
+
+		template< typename DataType, typename RIT, typename CIT, typename NIT >
+		RC updateNnz( Matrix< DataType, BSP1D, RIT, CIT, NIT > &A ) noexcept;
+
+		template< typename DataType, typename RIT, typename CIT, typename NIT >
+		RC updateCap( Matrix< DataType, BSP1D, RIT, CIT, NIT > &A ) noexcept;
 
 	} // namespace internal
 
@@ -111,6 +117,7 @@ namespace grb {
 		   ********************* */
 
 		template<
+			Descriptor,
 			typename Func, typename DataType1,
 			typename RIT, typename CIT, typename NIT
 		>
@@ -150,6 +157,29 @@ namespace grb {
 		);
 
 		/* *********************
+		       BLAS-2 friends
+		   ********************* */
+
+		template<
+			Descriptor,
+			class SelectionOperator,
+			typename Tin,
+			typename RITin, typename CITin, typename NITin,
+			typename Tout,
+			typename RITout, typename CITout, typename NITout
+		>
+		friend RC select(
+			Matrix< Tout, BSP1D, RITout, CITout, NITout > &,
+			const Matrix< Tin, BSP1D, RITin, CITin, NITin > &,
+			const SelectionOperator &,
+			const Phase &,
+			const typename std::enable_if<
+					!is_object< Tin >::value &&
+					!is_object< Tout >::value
+			>::type * const
+		);
+
+		/* *********************
 		      Internal friends
 		   ********************* */
 
@@ -161,6 +191,13 @@ namespace grb {
 		friend const Matrix< IOType, _GRB_BSP1D_BACKEND, RIT, CIT, NIT > &
 		internal::getLocal( const Matrix< IOType, BSP1D, RIT, CIT, NIT > & ) noexcept;
 
+		template< typename DataType, typename RIT, typename CIT, typename NIT >
+		friend RC internal::updateNnz( Matrix< DataType, BSP1D, RIT, CIT, NIT > & )
+			noexcept;
+
+		template< typename DataType, typename RIT, typename CIT, typename NIT >
+		friend RC internal::updateCap( Matrix< DataType, BSP1D, RIT, CIT, NIT > & )
+			noexcept;
 
 		private:
 
@@ -316,6 +353,9 @@ namespace grb {
 
 			/** Implements move constructor and assign-from-temporary. */
 			void moveFromOther( self_type &&other ) {
+				// make sure we had no pointer and (thus) no ID
+				assert( _ptr == nullptr );
+
 				// copy fields
 				_id = other._id;
 				_ptr = other._ptr;
@@ -330,6 +370,42 @@ namespace grb {
 				other._m = 0;
 				other._n = 0;
 				other._cap = 0;
+			}
+
+
+		protected:
+
+			/**
+			 * Helper functions to get the global coordinates of this matrix
+			 * from local coordinates.
+			 *
+			 * \return [
+			 *	0: local row index to global row index,
+			 *	1: local column index to global column index,
+			 * ]
+			 */
+			std::tuple<
+				std::function< size_t( size_t ) >,
+				std::function< size_t( size_t ) >
+			> getLocalToGlobalCoordinatesTranslationFunctions() const noexcept {
+				const auto &lpf_data = internal::grb_BSP1D.cload();
+				const size_t rows = nrows( *this );
+				const size_t columns = ncols( *this );
+
+				return std::make_tuple(
+					[ &lpf_data, rows ]( const size_t i ) -> size_t {
+						return internal::Distribution< BSP1D >::local_index_to_global(
+							i, rows, lpf_data.s, lpf_data.P );
+					},
+					[ &lpf_data, columns ]( const size_t j ) -> size_t {
+						const size_t col_pid = internal::Distribution<>::offset_to_pid(
+							j, columns, lpf_data.P );
+						const size_t col_off = internal::Distribution<>::local_offset(
+							columns, col_pid, lpf_data.P );
+						return internal::Distribution< BSP1D >::local_index_to_global(
+							j - col_off, columns, col_pid, lpf_data.P );
+					}
+				);
 			}
 
 
@@ -434,8 +510,8 @@ namespace grb {
 					<< "\t ID is " << _id << "\n";
 #endif
 				if( _m > 0 && _n > 0 ) {
-#ifdef _DEBUG
-					std::cerr << "\t removing ID...\n";
+#ifdef _DEBUG_BSP1D_MATRIX
+					std::cerr << "\t matrix destructor: removing ID...\n";
 #endif
 					assert( _ptr != nullptr );
 					auto &data = internal::grb_BSP1D.load();
@@ -448,6 +524,17 @@ namespace grb {
 
 			/** Assign-from-temporary. */
 			self_type& operator=( self_type &&other ) noexcept {
+				if( _m > 0 && _n > 0 ) {
+#ifdef _DEBUG_BSP1D_MATRIX
+					std::cerr << "\t move-assignment: removing ID...\n";
+#endif
+					assert( _ptr != nullptr );
+					auto &data = internal::grb_BSP1D.load();
+					assert( _id != std::numeric_limits< uintptr_t >::max() );
+					data.mapper.remove( _id );
+					delete [] _ptr;
+					_ptr = nullptr;
+				}
 				moveFromOther( std::forward< self_type >(other) );
 				return *this;
 			}
@@ -507,6 +594,39 @@ namespace grb {
 				return end( mode );
 			}
 
+			/**
+			 * Helper functions to get the global coordinates of this matrix
+			 * from local coordinates.
+			 *
+			 * \return [
+			 *	0: local row index to global row index,
+			 *	1: local column index to global column index,
+			 * ]
+			 */
+			std::tuple<
+				std::function< size_t( size_t ) >,
+				std::function< size_t( size_t ) >
+			> unionToGlobalCoordinatesTranslators() const noexcept {
+				const auto &lpf_data = internal::grb_BSP1D.cload();
+				const size_t rows = nrows( *this );
+				const size_t columns = ncols( *this );
+
+				return std::make_tuple(
+					[ &lpf_data, rows ]( const size_t i ) -> size_t {
+						return internal::Distribution< BSP1D >::local_index_to_global(
+							i, rows, lpf_data.s, lpf_data.P );
+					},
+					[ &lpf_data, columns ]( const size_t j ) -> size_t {
+						const size_t col_pid = internal::Distribution<>::offset_to_pid(
+							j, columns, lpf_data.P );
+						const size_t col_off = internal::Distribution<>::local_offset(
+							columns, col_pid, lpf_data.P );
+						return internal::Distribution< BSP1D >::local_index_to_global(
+							j - col_off, columns, col_pid, lpf_data.P );
+					}
+				);
+			}
+
 	};
 
 	namespace internal {
@@ -525,6 +645,26 @@ namespace grb {
 			const Matrix< D, BSP1D, RIT, CIT, NIT > &A
 		) noexcept {
 			return A._local;
+		}
+
+		template< typename DataType, typename RIT, typename CIT, typename NIT >
+		RC updateNnz( Matrix< DataType, BSP1D, RIT, CIT, NIT > &A ) noexcept {
+			(void) A;
+			return SUCCESS; // TODO placeholder
+		}
+
+		template< typename DataType, typename RIT, typename CIT, typename NIT >
+		RC updateCap( Matrix< DataType, BSP1D, RIT, CIT, NIT > &A ) noexcept {
+			size_t new_cap = capacity( internal::getLocal( A ) );
+			const RC ret = collectives< BSP1D >::allreduce(
+				new_cap, grb::operators::add< size_t >() );
+			if( ret == SUCCESS ) {
+#ifdef _DEBUG
+				std::cerr << "\t new global capacity: " << new_cap << "\n";
+#endif
+				A._cap = new_cap;
+			}
+			return ret;
 		}
 
 	} // namespace internal

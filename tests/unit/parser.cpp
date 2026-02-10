@@ -15,11 +15,12 @@
  * limitations under the License.
  */
 
-#include <cstdio>
-#include <fstream>
-#include <iostream>
 #include <map>
+#include <cstdio>
+#include <cstdint> // SIZE_MAX
+#include <fstream>
 #include <sstream>
+#include <iostream>
 #include <stdexcept>
 
 #include "graphblas/synchronizedNonzeroIterator.hpp"

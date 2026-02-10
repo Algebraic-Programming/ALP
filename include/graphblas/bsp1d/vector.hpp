@@ -30,20 +30,26 @@
 #include <lpf/core.h>
 
 #include <graphblas/phase.hpp>
-#include <graphblas/backends.hpp>
-#include <graphblas/base/pinnedvector.hpp>
-#include <graphblas/collectives.hpp>
 #include <graphblas/config.hpp>
+#include <graphblas/backends.hpp>
+#include <graphblas/collectives.hpp>
+#include <graphblas/type_traits.hpp>
+
+#include <graphblas/base/pinnedvector.hpp>
+
 #include <graphblas/reference/blas1-raw.hpp>
 #include <graphblas/reference/coordinates.hpp>
 #include <graphblas/reference/vector.hpp>
-#include <graphblas/type_traits.hpp>
-#include <graphblas/utils/alloc.hpp>
+
+#include <graphblas/bsp/internal-collectives.hpp>
+#include <graphblas/bsp/collectives_blas1_vec.hpp>
+
+#include <graphblas/alloc.hpp>
 #include <graphblas/utils/autodeleter.hpp>
 
+#include "init.hpp"
 #include "config.hpp"
 #include "distribution.hpp"
-#include "init.hpp"
 
 #ifdef _DEBUG
  #include "spmd.hpp"
@@ -64,7 +70,7 @@ namespace grb {
 		}
 
 		template< typename DataType, typename Coords >
-		void setDense( Vector< DataType, BSP1D, Coords > & x );
+		void setDense( Vector< DataType, BSP1D, Coords > &x );
 
 		template<
 			Descriptor descr,
@@ -351,13 +357,14 @@ namespace grb {
 			internal::Coordinates< _GRB_BSP1D_BACKEND >
 		> & internal::getGlobal< D, C >( const Vector< D, BSP1D, C > & );
 
-		template< typename Func, typename DataType, typename Coords >
+		template< Descriptor, typename Func, typename DataType, typename Coords >
 		friend RC eWiseLambda(
 			const Func,
 			const Vector< DataType, BSP1D, Coords > &
 		);
 
 		template<
+			Descriptor,
 			typename Func,
 			typename DataType1, typename DataType2,
 			typename Coords, typename... Args
@@ -367,28 +374,6 @@ namespace grb {
 			const Vector< DataType1, BSP1D, Coords > &,
 			const Vector< DataType2, BSP1D, Coords > &,
 			Args const &... args
-		);
-
-		/* *********************
-		    Level-1 collectives
-		          friends
-		   ********************* */
-
-		template<
-			Descriptor,
-			class Ring,
-			typename OutputType, typename InputType1, typename InputType2
-		>
-		friend RC internal::allreduce( OutputType &,
-			const Vector< InputType1, BSP1D, C > &,
-			const Vector< InputType2, BSP1D, C > &,
-			RC( reducer )(
-				OutputType &,
-				const Vector< InputType1, BSP1D, C > &,
-				const Vector< InputType2, BSP1D, C > &,
-				const Ring &
-			),
-			const Ring &
 		);
 
 		/* ********************
@@ -694,6 +679,10 @@ namespace grb {
 				nz < _local_n ? nz : _local_n
 			);
 
+#ifdef _DEBUG
+			std::cout << "\t grb::Vector< T, BSP1D, C >::initialize, reference "
+				<< "initialisations have completed" << std::endl;
+#endif
 			// retrieve global capacity
 			size_t global_cap = capacity( _local );
 			if( collectives< BSP1D >::allreduce(
@@ -704,6 +693,11 @@ namespace grb {
 				throw std::runtime_error( "Synchronising global capacity failed" );
 			}
 			_cap = global_cap;
+
+#ifdef _DEBUG
+			std::cout << "\t grb::Vector< T, BSP1D, C >::initialize, global capacity is "
+				<< _cap << std::endl;
+#endif
 
 			// now set remaining fields
 			_n = cap_in;
@@ -887,7 +881,9 @@ namespace grb {
 		RC dense_synchronize(
 			internal::Coordinates< _GRB_BSP1D_BACKEND > &global_coordinates
 		) const {
-			const auto data = internal::grb_BSP1D.cload();
+#if !defined NDEBUG || defined _DEBUG
+			const auto &data = internal::grb_BSP1D.cload();
+#endif
 			assert( data.P > 1 );
 
 #ifdef _DEBUG
@@ -927,7 +923,9 @@ namespace grb {
 		RC array_synchronize(
 			internal::Coordinates< _GRB_BSP1D_BACKEND > &global_coordinates
 		) const {
-			const auto data = internal::grb_BSP1D.cload();
+#if !defined NDEBUG || defined _DEBUG
+			const auto &data = internal::grb_BSP1D.cload();
+#endif
 			assert( data.P > 1 );
 
 #ifdef _DEBUG
@@ -2291,10 +2289,10 @@ namespace grb {
 			_raw( nullptr ), _assigned( nullptr ),
 			_local_n( 0 ), _offset( 0 ),
 			_n( 0 ), _cap( 0 ), _nnz( 0 ),
-			_s( 0 ), _P( 1 ),
 			_raw_slot( LPF_INVALID_MEMSLOT ),
 			_assigned_slot( LPF_INVALID_MEMSLOT ),
 			_stack_slot( LPF_INVALID_MEMSLOT ),
+			_s( 0 ), _P( 1 ),
 			_cleared( false ), _became_dense( false ),
 			_nnz_is_dirty( false ),	_global_is_dirty( false )
 		{
@@ -2500,9 +2498,9 @@ namespace grb {
 			_buffer( x._buffer ),
 			_local_n( x._local_n ), _offset( x._offset ),
 			_n( x._n ), _cap( x._cap ), _nnz( x._nnz ),
-			_s( x._s ), _P( x._P ),
 			_raw_slot( x._raw_slot ),
 			_assigned_slot( x._assigned_slot ), _stack_slot( x._stack_slot ),
+			_s( x._s ), _P( x._P ),
 			_cleared( x._cleared ),
 			_became_dense( x._became_dense ),
 			_nnz_is_dirty( x._nnz_is_dirty ),
@@ -2538,7 +2536,7 @@ namespace grb {
 		 *
 		 * \internal Dispatches to #grb::set.
 		 */
-		Vector< D, BSP1D, C > & operator=( Vector< D, BSP1D, C > &x ) {
+		Vector< D, BSP1D, C > & operator=( const Vector< D, BSP1D, C > &x ) {
 			const auto rc = set( *this, x );
 			if( rc != SUCCESS ) {
 				throw std::runtime_error( "grb::set inside copy-constructor: "
@@ -2556,6 +2554,12 @@ namespace grb {
 		 * @see grb::Vector for the user-level specfication.
 		 */
 		Vector< D, BSP1D, C > & operator=( Vector< D, BSP1D, C > &&x ) noexcept {
+			// get thread-local store
+			auto &data = internal::grb_BSP1D.load();
+			// free container ID
+			if( _n > 0 ) {
+				data.mapper.remove( _id );
+			}
 			// move all fields from x to our instance
 			_id = x._id;
 			_raw = x._raw;
@@ -2660,7 +2664,7 @@ namespace grb {
 		 * @see Vector::cbegin
 		 */
 		const_iterator cbegin() const {
-			const auto data = internal::grb_BSP1D.cload();
+			const auto &data = internal::grb_BSP1D.cload();
 			return _local.template cbegin< BSP1D >( data.s, data.P );
 		}
 
@@ -2679,7 +2683,7 @@ namespace grb {
 		 * @see Vector::cend
 		 */
 		const_iterator cend() const {
-			const auto data = internal::grb_BSP1D.cload();
+			const auto &data = internal::grb_BSP1D.cload();
 			return _local.template cend< BSP1D >( data.s, data.P );
 		}
 

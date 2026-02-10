@@ -35,8 +35,6 @@
 #include <graphblas/utils/iterators/nonzeroIterator.hpp>
 
 
-using namespace grb;
-
 /** Parser type */
 typedef grb::utils::MatrixFileReader<
 	double,
@@ -48,7 +46,7 @@ typedef grb::utils::MatrixFileReader<
 > Parser;
 
 /** Nonzero type */
-typedef internal::NonzeroStorage<
+typedef grb::internal::NonzeroStorage<
 	grb::config::RowIndexType,
 	grb::config::ColIndexType,
 	double
@@ -85,7 +83,7 @@ struct output {
 	int error_code;
 	size_t rep;
 	grb::utils::TimerResults times;
-	PinnedVector< double > pinnedVector;
+	grb::PinnedVector< double > pinnedVector;
 	size_t result_nnz;
 };
 
@@ -124,8 +122,8 @@ void ioProgram( const struct input &data_in, bool &success ) {
 				data.push_back( *it );
 			}*/
 			for(
-				auto it = parserL.begin( SEQUENTIAL );
-				it != parserL.end( SEQUENTIAL );
+				auto it = parserL.begin( grb::SEQUENTIAL );
+				it != parserL.end( grb::SEQUENTIAL );
 				++it
 			) {
 				data.push_back( NonzeroT( *it ) );
@@ -142,8 +140,8 @@ void ioProgram( const struct input &data_in, bool &success ) {
 				data.push_back( *it );
 			}*/
 			for(
-				auto it = parserR.begin( SEQUENTIAL );
-				it != parserR.end( SEQUENTIAL );
+				auto it = parserR.begin( grb::SEQUENTIAL );
+				it != parserR.end( grb::SEQUENTIAL );
 				++it
 			) {
 				data.push_back( NonzeroT( *it ) );
@@ -156,10 +154,11 @@ void ioProgram( const struct input &data_in, bool &success ) {
 	success = true;
 }
 
+template< grb::Descriptor descr = grb::descriptors::no_operation >
 void grbProgram( const struct input &data_in, struct output &out ) {
 	// get user process ID
-	const size_t s = spmd<>::pid();
-	assert( s < spmd<>::nprocs() );
+	const size_t s = grb::spmd<>::pid();
+	assert( s < grb::spmd<>::nprocs() );
 
 	// get input n
 	grb::utils::Timer timer;
@@ -177,18 +176,18 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	timer.reset();
 
 	// load into GraphBLAS
-	Matrix< double > A( l, m ), B( m, n );
+	grb::Matrix< double > A( l, m ), B( m, n );
 	{
 		const auto &data = StorageL::getData().second;
-		const RC rc = buildMatrixUnique(
+		const grb::RC rc = buildMatrixUnique(
 			A,
-			utils::makeNonzeroIterator<
+			grb::utils::makeNonzeroIterator<
 				grb::config::RowIndexType, grb::config::ColIndexType, double
 			>( data.cbegin() ),
-			utils::makeNonzeroIterator<
+			grb::utils::makeNonzeroIterator<
 				grb::config::RowIndexType, grb::config::ColIndexType, double
 			>( data.cend() ),
-			SEQUENTIAL
+			grb::SEQUENTIAL
 		);
 		/* Once internal issue #342 is resolved this can be re-enabled
 		const RC rc = buildMatrixUnique(
@@ -201,7 +200,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			>( data.cend() ),
 			PARALLEL
 		);*/
-		if( rc != SUCCESS ) {
+		if( rc != grb::SUCCESS ) {
 			std::cerr << "Failure: call to buildMatrixUnique did not succeed for the "
 				<< "left-hand matrix " << "(" << toString( rc ) << ")." << std::endl;
 			out.error_code = 10;
@@ -210,15 +209,15 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	}
 	{
 		const auto &data = StorageR::getData().second;
-		const RC rc = buildMatrixUnique(
+		const grb::RC rc = buildMatrixUnique(
 			B,
-			utils::makeNonzeroIterator<
+			grb::utils::makeNonzeroIterator<
 				grb::config::RowIndexType, grb::config::ColIndexType, double
 			>( data.cbegin() ),
-			utils::makeNonzeroIterator<
+			grb::utils::makeNonzeroIterator<
 				grb::config::RowIndexType, grb::config::ColIndexType, double
 			>( data.cend() ),
-			SEQUENTIAL
+			grb::SEQUENTIAL
 		);
 		/* Once internal issue #342 is resolved this can be re-enabled
 		const RC rc = buildMatrixUnique(
@@ -231,9 +230,9 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			>( data.cend() ),
 			PARALLEL
 		);*/
-		if( rc != SUCCESS ) {
+		if( rc != grb::SUCCESS ) {
 			std::cerr << "Failure: call to buildMatrixUnique did not succeed for the "
-				<< "right-hand matrix " << "(" << toString( rc ) << ")." << std::endl;
+				<< "right-hand matrix " << "(" << grb::toString( rc ) << ")." << std::endl;
 			out.error_code = 20;
 			return;
 		}
@@ -244,8 +243,8 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		// note that this check is a lighter form of the usual one (which compares
 		// versus the parser nnz-- this one compares versus what was cached in
 		// memory).
-		const size_t global_nnzL = nnz( A );
-		const size_t global_nnzR = nnz( B );
+		const size_t global_nnzL = grb::nnz( A );
+		const size_t global_nnzR = grb::nnz( B );
 		const size_t storage_nnzL = StorageL::getData().second.size();
 		const size_t storage_nnzR = StorageR::getData().second.size();
 		if( global_nnzL != storage_nnzL ) {
@@ -261,10 +260,10 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		}
 	}
 
-	RC rc = SUCCESS;
+	grb::RC rc = grb::SUCCESS;
 
 	// test default SpMSpM run
-	const Semiring<
+	const grb::Semiring<
 		grb::operators::add< double >, grb::operators::mul< double >,
 		grb::identities::zero, grb::identities::one
 	> ring;
@@ -274,38 +273,41 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 
 	// time a single call
 	{
-		Matrix< double > C( l, n );
+		grb::Matrix< double > C( l, n );
 
 		grb::utils::Timer subtimer;
 		subtimer.reset();
-		rc = rc ? rc : grb::mxm( C, A, B, ring, RESIZE );
-		assert( rc == SUCCESS );
-		rc = rc ? rc : grb::mxm( C, A, B, ring );
-		assert( rc == SUCCESS );
+		rc = rc ? rc : grb::mxm< descr >( C, A, B, ring, grb::RESIZE );
+		assert( rc == grb::SUCCESS );
+		rc = rc ? rc : grb::mxm< descr >( C, A, B, ring );
+		assert( rc == grb::SUCCESS );
+		rc = rc ? rc : grb::wait();
+		assert( rc == grb::SUCCESS );
 		double single_time = subtimer.time();
 
-		if( rc != SUCCESS ) {
+		if( rc != grb::SUCCESS ) {
 			std::cerr << "Failure: call to mxm did not succeed ("
 				<< toString( rc ) << ")." << std::endl;
 			out.error_code = 50;
 			return;
 		}
-		if( rc == SUCCESS ) {
-			rc = collectives<>::reduce( single_time, 0, operators::max< double >() );
+		if( rc == grb::SUCCESS ) {
+			rc = grb::collectives<>::reduce( single_time, 0,
+				grb::operators::max< double >() );
 		}
-		if( rc != SUCCESS ) {
+		if( rc != grb::SUCCESS ) {
 			out.error_code = 60;
 			return;
 		}
 		out.times.useful = single_time;
 		const size_t deduced_inner_reps =
 			static_cast< size_t >( 100.0 / single_time ) + 1;
-		if( rc == SUCCESS && out.rep == 0 ) {
+		if( rc == grb::SUCCESS && out.rep == 0 ) {
 			if( s == 0 ) {
 				std::cout << "Info: cold mxm completed"
 					<< ". Time taken was " << single_time << " ms. "
-					<< "Deduced inner repetitions parameter of " << out.rep << " "
-					<< "to take 1 second or more per inner benchmark.\n";
+					<< "Deduced inner repetitions parameter of " << deduced_inner_reps
+					<< " to take 1 second or more per inner benchmark.\n";
 				out.rep = deduced_inner_reps;
 			}
 			return;
@@ -321,7 +323,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	}
 
 	// allocate output for benchmark
-	Matrix< double > C( l, n );
+	grb::Matrix< double > C( l, n );
 
 	// that was the preamble
 	out.times.preamble = timer.time();
@@ -330,40 +332,34 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	double time_taken;
 	timer.reset();
 
-#ifndef NDEBUG
-	rc = rc ? rc : grb::mxm( C, A, B, ring, RESIZE );
-	assert( rc == SUCCESS );
-	rc = rc ? rc : grb::mxm( C, A, B, ring );
-	assert( rc == SUCCESS );
-#else
-	(void) grb::mxm( C, A, B, ring, RESIZE );
-	(void) grb::mxm( C, A, B, ring );
-#endif
-
+	rc = rc ? rc : grb::mxm< descr >( C, A, B, ring, grb::RESIZE );
+	assert( rc == grb::SUCCESS );
+	rc = rc ? rc : grb::mxm< descr >( C, A, B, ring );
+	assert( rc == grb::SUCCESS );
+	rc = rc ? rc : grb::wait();
+	assert( rc == grb::SUCCESS );
 	time_taken = timer.time();
-	if( rc == SUCCESS ) {
-		out.times.useful = time_taken / static_cast< double >( out.rep );
+	out.times.useful = time_taken / static_cast< double >( out.rep );
+
+	// start postamble
+	timer.reset();
+
+	// set error code
+	if( rc == grb::FAILED ) {
+		out.error_code = 80;
+		// no convergence, but will print output
+	} else if( rc != grb::SUCCESS ) {
+		std::cerr << "Benchmark run returned error: " << toString( rc ) << "\n";
+		out.error_code = 90;
+		return;
 	}
+
 	// print timing at root process
 	if( grb::spmd<>::pid() == 0 ) {
 		std::cout << "Time taken for a " << out.rep << " "
 			<< "mxm calls (hot start): " << out.times.useful << ". "
 			<< "Error code is " << out.error_code << std::endl;
 	}
-
-	// start postamble
-	timer.reset();
-
-	// set error code
-	if( rc == FAILED ) {
-		out.error_code = 80;
-		// no convergence, but will print output
-	} else if( rc != SUCCESS ) {
-		std::cerr << "Benchmark run returned error: " << toString( rc ) << "\n";
-		out.error_code = 90;
-		return;
-	}
-
 	// finish timing
 	time_taken = timer.time();
 	out.times.postamble = time_taken;
@@ -385,14 +381,18 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 
 int main( int argc, char ** argv ) {
 	// sanity check
-	if( argc < 3 || argc > 7 ) {
+	if( argc < 4 || argc > 7 ) {
 		std::cout << "Usage: " << argv[ 0 ] << " <datasetL> <datasetR> "
-			<< "<direct/indirect> (inner iterations) (outer iterations) "
+			<< "<direct/indirect> (CRS only) "
+			<< "(inner iterations) (outer iterations) "
 			<< "(verification <truth-file>)\n";
 		std::cout << "<datasetL>, <datasetR>, and <direct/indirect> are mandatory "
 			<< "arguments.\n";
 		std::cout << "<datasetL> is the left matrix of the multiplication and "
 			<< "<datasetR> is the right matrix \n";
+		std::cout << "(CRS only) is optional, the efault is 0. The only other "
+			<< "possible value is 1, in which case only the CRS-portion of the output "
+			<< "matrix shall be computed.\n";
 		std::cout << "(inner iterations) is optional, the default is "
 			<< grb::config::BENCHMARKING::inner() << ". "
 			<< "If set to zero, the program will select a number of iterations "
@@ -432,13 +432,24 @@ int main( int argc, char ** argv ) {
 		}
 	}
 
+	bool crs_only_rt = false;
+	if( argc >= 5 ) {
+		if( strncmp( argv[ 4 ], "1", 1 ) == 0 ) {
+			crs_only_rt = true;
+		} else if( strncmp( argv[ 4 ], "0", 1 ) != 0 ) {
+			std::cerr << "Error: could not parse fourth argument \"" << argv[ 4 ] << ", "
+				<< "expected \"0\" or \"1\"\n";
+			return 15;
+		}
+	}
+
 	// get inner number of iterations
 	in.rep = grb::config::BENCHMARKING::inner();
 	char * end = nullptr;
-	if( argc >= 5 ) {
-		in.rep = strtoumax( argv[ 4 ], &end, 10 );
-		if( argv[ 4 ] == end ) {
-			std::cerr << "Could not parse argument " << argv[ 4 ] << " "
+	if( argc >= 6 ) {
+		in.rep = strtoumax( argv[ 5 ], &end, 10 );
+		if( argv[ 5 ] == end ) {
+			std::cerr << "Could not parse argument " << argv[ 5 ] << " "
 				<< "for number of inner experiment repetitions." << std::endl;
 			return 20;
 		}
@@ -446,10 +457,10 @@ int main( int argc, char ** argv ) {
 
 	// get outer number of iterations
 	size_t outer = grb::config::BENCHMARKING::outer();
-	if( argc >= 6 ) {
-		outer = strtoumax( argv[ 5 ], &end, 10 );
-		if( argv[ 5 ] == end ) {
-			std::cerr << "Could not parse argument " << argv[ 5 ] << " "
+	if( argc >= 7 ) {
+		outer = strtoumax( argv[ 6 ], &end, 10 );
+		if( argv[ 6 ] == end ) {
+			std::cerr << "Could not parse argument " << argv[ 6 ] << " "
 				<< "for number of outer experiment repetitions." << std::endl;
 			return 30;
 		}
@@ -459,20 +470,28 @@ int main( int argc, char ** argv ) {
 		<< in.filenameL << ", right matrix B = " << in.filenameR << ", "
 		<< "inner repititions = " << in.rep
 		<< ", and outer reptitions = " << outer
-		<< std::endl;
+		<< ". ";
+	if( crs_only_rt ) {
+		std::cout << "If applicable to this backend, only the CRS portion of the "
+			<< "output shall be computed.\n";
+	} else {
+		std::cout << "For backends that employ Gustavson's sparse matrix storage, "
+			<< "the output is constructed using both CRS and CCS.\n";
+	}
+	std::cout << std::endl;
 
 	// the output struct
 	struct output out;
 
 	// set standard exit code
-	grb::RC rc = SUCCESS;
+	grb::RC rc = grb::SUCCESS;
 
 	// launch I/O program
 	{
 		bool success;
-		grb::Launcher< AUTOMATIC > launcher;
+		grb::Launcher< grb::AUTOMATIC > launcher;
 		rc = launcher.exec( &ioProgram, in, success, true );
-		if( rc != SUCCESS ) {
+		if( rc != grb::SUCCESS ) {
 			std::cerr << "Error: could not launch I/O subprogram\n";
 			return 40;
 		}
@@ -484,12 +503,17 @@ int main( int argc, char ** argv ) {
 
 	// launch estimator (if requested)
 	if( in.rep == 0 ) {
-		grb::Launcher< AUTOMATIC > launcher;
-		rc = launcher.exec( &grbProgram, in, out, true );
-		if( rc == SUCCESS ) {
+		grb::Launcher< grb::AUTOMATIC > launcher;
+		if( crs_only_rt ) {
+			rc = launcher.exec( &(grbProgram< grb::descriptors::force_row_major >),
+				in, out, true );
+		} else {
+			rc = launcher.exec( &grbProgram, in, out, true );
+		}
+		if( rc == grb::SUCCESS ) {
 			in.rep = out.rep;
 		}
-		if( rc != SUCCESS ) {
+		if( rc != grb::SUCCESS ) {
 			std::cerr << "launcher.exec returns with non-SUCCESS error code "
 				<< grb::toString(rc) << std::endl;
 			return 60;
@@ -497,11 +521,16 @@ int main( int argc, char ** argv ) {
 	}
 
 	// launch benchmark
-	if( rc == SUCCESS ) {
-		grb::Benchmarker< AUTOMATIC > benchmarker;
-		rc = benchmarker.exec( &grbProgram, in, out, 1, outer, true );
+	if( rc == grb::SUCCESS ) {
+		grb::Benchmarker< grb::AUTOMATIC > benchmarker;
+		if( crs_only_rt ) {
+			rc = benchmarker.exec( &(grbProgram< grb::descriptors::force_row_major >),
+				in, out, 1, outer, true );
+		} else {
+			rc = benchmarker.exec( &grbProgram, in, out, 1, outer, true );
+		}
 	}
-	if( rc != SUCCESS ) {
+	if( rc != grb::SUCCESS ) {
 		std::cerr << "benchmarker.exec returns with non-SUCCESS error code "
 			<< grb::toString( rc ) << std::endl;
 		return 70;

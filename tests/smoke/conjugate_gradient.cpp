@@ -186,6 +186,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			>( data.cend() ),
 			PARALLEL
 		);*/
+		io_rc = io_rc ? io_rc : wait();
 		if( io_rc != SUCCESS ) {
 			std::cerr << "Failure: call to buildMatrixUnique did not succeed "
 				<< "(" << toString( io_rc ) << ")." << std::endl;
@@ -195,9 +196,8 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		if( data_in.jacobi_precond ) {
 			assert( io_rc == SUCCESS );
 			io_rc = grb::set( diag, 0 );
-			io_rc = io_rc
-				? io_rc
-				: grb::eWiseLambda( [&diag,&L](
+			io_rc = io_rc ? io_rc :
+				eWiseLambda( [&diag,&L](
 						const size_t i, const size_t j, ScalarType &v
 					) {
 						if( i == j ) {
@@ -205,6 +205,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 						}
 					}, L, diag
 				);
+			io_rc = io_rc ? io_rc : wait();
 			if( io_rc != SUCCESS ) {
 				std::cerr << "Failure: extracting diagonal did not succeed ("
 					<< toString( io_rc ) << ").\n";
@@ -240,15 +241,15 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 						grb::operators::mul< ScalarType >() );
 			};
 
-	set( x, static_cast< ScalarType >( 1 ) / static_cast< ScalarType >( n ) );
-	set( b, static_cast< ScalarType >( 1 ) );
-
+	RC rc = set( x,
+		static_cast< ScalarType >( 1 ) / static_cast< ScalarType >( n ) );
+	rc = rc ? rc : set( b, static_cast< ScalarType >( 1 ) );
+	rc = rc ? rc : wait();
 	out.times.preamble = timer.time();
 
 	// by default, copy input requested repetitions to output repititions performed
 	out.rep = data_in.rep;
 	// time a single call
-	RC rc = SUCCESS;
 	if( out.rep == 0 ) {
 		timer.reset();
 		if( data_in.jacobi_precond ) {
@@ -267,6 +268,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 				r, u, temp
 			);
 		}
+		rc = rc ? rc : wait();
 		double single_time = timer.time();
 		if( !(rc == SUCCESS || rc == FAILED) ) {
 			std::cerr << "Failure: call to conjugate_gradient did not succeed ("
@@ -322,6 +324,9 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 						r, u, temp
 					);
 				}
+			}
+			if( Properties<>::isNonblockingExecution ) {
+				rc = rc ? rc : wait();
 			}
 		}
 		const double time_taken = timer.time();

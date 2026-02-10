@@ -65,6 +65,11 @@ add_grb_executables( distribution_bsp1d distribution_bsp1d.cpp
 	BACKENDS reference NO_BACKEND_NAME
 )
 
+add_grb_executables( distribution_matrix_bsp1d distribution_matrix_bsp1d.cpp
+	BACKENDS bsp1d NO_BACKEND_NAME
+	ADDITIONAL_LINK_LIBRARIES test_utils
+)
+
 add_grb_executables( distribution distribution.cpp
 	BACKENDS bsp1d NO_BACKEND_NAME
 )
@@ -125,11 +130,19 @@ add_grb_executables( matrixIterator matrixIterator.cpp
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
+add_grb_executables( fold_matrix_to_scalar fold_matrix_to_scalar.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+)
+
 add_grb_executables( doubleAssign doubleAssign.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
 add_grb_executables( matrixSet matrixSet.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+)
+
+add_grb_executables( setMatrixValue setMatrixValue.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
@@ -162,6 +175,12 @@ add_grb_executables( mxm mxm.cpp
 	ADDITIONAL_LINK_LIBRARIES test_utils
 )
 
+add_grb_executables( mxm_crs mxm.cpp
+	BACKENDS reference reference_omp
+	ADDITIONAL_LINK_LIBRARIES test_utils
+	COMPILE_DEFINITIONS TEST_CRS_ONLY
+)
+
 add_grb_executables( parserTest utilParserTest.cpp
 	BACKENDS reference NO_BACKEND_NAME
 	COMPILE_DEFINITIONS COMPARE
@@ -171,11 +190,28 @@ add_grb_executables( iteratorFilter iteratorFilter.cpp
 	BACKENDS reference NO_BACKEND_NAME
 )
 
+add_grb_executables( monoids monoids.cpp
+	BACKENDS reference NO_BACKEND_NAME
+)
+
+add_grb_executables( semirings semirings.cpp
+	BACKENDS reference NO_BACKEND_NAME
+)
+
 add_grb_executables( RBGaussSeidel RBGaussSeidel.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
+add_grb_executables( selectMatrix selectMatrix.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+	ADDITIONAL_LINK_LIBRARIES test_utils_headers
+)
+
 add_grb_executables( set set.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+)
+
+add_grb_executables( setToIndex setToIndex.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
@@ -217,6 +253,10 @@ add_grb_executables( zip zip.cpp
 )
 
 add_grb_executables( copyVoidMatrices copyVoidMatrices.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+)
+
+add_grb_executables( copyMixedDomainsMatrices copyMixedDomainsMatrices.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 

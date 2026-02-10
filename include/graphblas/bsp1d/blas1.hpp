@@ -23,18 +23,18 @@
 #ifndef _H_GRB_BSP1D_BLAS1
 #define _H_GRB_BSP1D_BLAS1
 
+#include <graphblas/rc.hpp>
+#include <graphblas/ops.hpp>
 #include <graphblas/blas0.hpp>
 #include <graphblas/blas1.hpp>
 #include <graphblas/bsp/collectives.hpp>
-#include <graphblas/ops.hpp>
-#include <graphblas/rc.hpp>
 #include <graphblas/type_traits.hpp>
 
-#include "distribution.hpp"
 #include "vector.hpp"
+#include "distribution.hpp"
 
-#define NO_CAST_ASSERT( x, y, z )                                                  \
-	static_assert( x,                                                              \
+#define NO_CAST_ASSERT( x, y, z )                                                          \
+	static_assert( x,                                                                  \
 		"\n\n"                                                                     \
 		"************************************************************************" \
 		"************************************************************************" \
@@ -53,6 +53,53 @@
 
 namespace grb {
 
+	namespace internal {
+
+		/*
+		 * Handles TRY and EXECUTE phases return code and associated global
+		 * updates.
+		 *
+		 * This helper function applies to both cases when
+		 *  -# on SUCCESS, the output vector becomes dense;
+		 *  -# on FAILED, the output vector global nonzero count needs
+		 *     updating.
+		 *
+		 * @tparam isgd If on SUCCESS, the Global output vector is
+		 *              guaranteed Dense (ISGD).
+		 * @tparam T    The value type of the output vector
+		 */
+		template< bool isgd, typename T >
+		void handle_try_execute(
+			grb::Vector< T > &x,
+			const grb::Phase &phase,
+			grb::RC &ret
+		) {
+			// handle try and execute
+			if( phase != RESIZE ) {
+				if( ret == SUCCESS ) {
+					if( isgd ) {
+						// in this case, the number of nonzeroes in the output vector is
+						// guaranteed full - no communication required
+						internal::setDense( x );
+					} else {
+						// in this case, the number of nonzeroes in the output vector may have
+						// changed
+						ret = internal::updateNnz( x );
+					}
+				} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+					ret == FAILED
+				) {
+					// in this case, the full computation has not completed but the contents of
+					// x do contain a subset of results. Therefore, the number of nonzeroes may
+					// have changed, but we need to take care to still propagate FAILED
+					const RC subrc = internal::updateNnz( x );
+					if( subrc != SUCCESS ) { ret = grb::PANIC; }
+				}
+			}
+		}
+
+	} // end namespace ``grb::internal''
+
 	/**
 	 * \defgroup BLAS1_REF The Level-1 ALP/GraphBLAS routines -- BSP1D backend
 	 *
@@ -61,7 +108,8 @@ namespace grb {
 
 	/** \internal No implementation notes. */
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename InputType, typename IOType, typename MaskType,
 		typename Coords
 	>
@@ -70,7 +118,8 @@ namespace grb {
 		const Vector< MaskType, BSP1D, Coords > &mask,
 		IOType &beta,
 		const Monoid &monoid,
-		const typename std::enable_if< !grb::is_object< IOType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
 	) {
@@ -111,9 +160,9 @@ namespace grb {
 		RC rc = foldr< descr >( internal::getLocal( x ), internal::getLocal( mask ),
 			local, monoid );
 
-		// do allreduce using \a op
+		// do allreduce
 		if( rc == SUCCESS ) {
-			rc = collectives< BSP1D >::allreduce< descr >( local, monoid.getOperator() );
+			rc = collectives< BSP1D >::allreduce< descr >( local, monoid );
 		}
 
 		// accumulate end result
@@ -127,7 +176,8 @@ namespace grb {
 
 	/** \internal No implementation notes. */
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename InputType, typename IOType,
 		typename Coords
 	>
@@ -135,7 +185,8 @@ namespace grb {
 		const Vector< InputType, BSP1D, Coords > &x,
 		IOType &beta,
 		const Monoid &monoid,
-		const typename std::enable_if< !grb::is_object< IOType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
 	) {
@@ -166,9 +217,9 @@ namespace grb {
 		// do local foldr
 		RC rc = foldr< descr >( internal::getLocal( x ), local, monoid );
 
-		// do allreduce using \a op
+		// do allreduce
 		if( rc == SUCCESS ) {
-			rc = collectives< BSP1D >::allreduce< descr >( local, monoid.getOperator() );
+			rc = collectives< BSP1D >::allreduce< descr >( local, monoid );
 		}
 
 		// accumulate end result
@@ -182,7 +233,8 @@ namespace grb {
 
 	/** \internal No implementation notes. */
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename IOType, typename InputType, typename MaskType,
 		typename Coords
 	>
@@ -191,7 +243,8 @@ namespace grb {
 		const Vector< InputType, BSP1D, Coords > &y,
 		const Vector< MaskType, BSP1D, Coords > &mask,
 		const Monoid &monoid,
-		const typename std::enable_if< !grb::is_object< IOType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
 			!grb::is_object< MaskType >::value &&
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
@@ -246,9 +299,9 @@ namespace grb {
 			<< local << ". Entering allreduce..." << std::endl;
 #endif
 
-		// do allreduce using \a op
+		// do allreduce
 		if( rc == SUCCESS ) {
-			rc = collectives< BSP1D >::allreduce< descr >( local, monoid.getOperator() );
+			rc = collectives< BSP1D >::allreduce< descr >( local, monoid );
 		}
 
 		// accumulate end result
@@ -300,7 +353,8 @@ namespace grb {
 		Vector< IOType, BSP1D, Coords > &y,
 		const Operator &op,
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< InputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< InputType >::value &&
 			grb::is_operator< Operator >::value, void
 		>::type * const = nullptr
 	) {
@@ -337,7 +391,8 @@ namespace grb {
 
 	/** \internal No implementation notes. */
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename IOType, typename Coords, typename InputType
 	>
 	RC foldr(
@@ -345,7 +400,8 @@ namespace grb {
 		Vector< IOType, BSP1D, Coords > &y,
 		const Monoid &monoid,
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< InputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< InputType >::value &&
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
 	) {
@@ -387,16 +443,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				internal::setDense( y );
-			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
-				ret == FAILED
-			) {
-				const RC subrc = internal::updateNnz( y );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		internal::template handle_try_execute< true >( y, phase, ret );
 
 		// done
 		return ret;
@@ -583,7 +630,8 @@ namespace grb {
 		const InputType &beta,
 		const Operator &op,
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< InputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< InputType >::value &&
 			grb::is_operator< Operator >::value, void
 		>::type * const = nullptr
 	) {
@@ -628,7 +676,8 @@ namespace grb {
 		const InputType &beta,
 		const Monoid &monoid,
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< InputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< InputType >::value &&
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
 	) {
@@ -670,15 +719,8 @@ namespace grb {
 			}
 		}
 
-		// handle try and execute
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				internal::setDense( x );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( x );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		// handle try and execute phases
+		internal::template handle_try_execute< true >( x, phase, ret );
 
 		// done
 		return ret;
@@ -697,7 +739,8 @@ namespace grb {
 		const InputType &beta,
 		const Operator &op,
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< InputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< InputType >::value &&
 			grb::is_operator< Operator >::value, void
 		>::type * const = nullptr
 	) {
@@ -760,7 +803,8 @@ namespace grb {
 		const InputType &beta,
 		const Monoid &monoid,
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< InputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< InputType >::value &&
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
 	) {
@@ -833,10 +877,13 @@ namespace grb {
 					const RC subrc = internal::updateNnz( x );
 					if( subrc != SUCCESS ) { ret = PANIC; }
 				}
-			} else if( ret == FAILED ) {
+			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+				ret == FAILED
+			) {
 				assert( phase == TRY );
 				const RC subrc = internal::updateNnz( x );
 				if( subrc != SUCCESS ) { ret = PANIC; }
+				// ensure propagate failed error code
 			}
 		}
 
@@ -997,19 +1044,7 @@ namespace grb {
 		}
 
 		// handle try and execute
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				// x may have a new global number of nonzeroes that needs to be synced
-				// (recall that the dense case is not handled here)
-				ret = internal::updateNnz( x );
-			} else if( ret == FAILED ) {
-				// x may contain useful results that are a subset of the requested
-				// computation. Therefore the nnz may have changed, but we should
-				// take care to continue propagate FAILED
-				const RC subrc = internal::updateNnz( x );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		internal::template handle_try_execute< false >( x, phase, ret );
 
 		// done
 		return ret;
@@ -1027,7 +1062,8 @@ namespace grb {
 		const Vector< InputType, BSP1D, Coords > &y,
 		const OP &op = OP(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< grb::is_operator< OP >::value &&
+		const typename std::enable_if<
+			grb::is_operator< OP >::value &&
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< MaskType >::value &&
 			!grb::is_object< InputType >::value, void
@@ -1088,14 +1124,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( x );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( x );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		internal::template handle_try_execute< false >( x, phase, ret );
 
 		// done
 		return ret;
@@ -1113,7 +1142,8 @@ namespace grb {
 		const Vector< InputType, BSP1D, Coords > &y,
 		const Monoid &monoid = Monoid(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< grb::is_monoid< Monoid >::value &&
+		const typename std::enable_if<
+			grb::is_monoid< Monoid >::value &&
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< MaskType >::value &&
 			!grb::is_object< InputType >::value, void
@@ -1174,14 +1204,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( x );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( x );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		internal::template handle_try_execute< false >( x, phase, ret );
 
 		// done
 		return ret;
@@ -1234,7 +1257,12 @@ namespace grb {
 			return ILLEGAL;
 		}
 		if( capacity( z ) < n && phase == EXECUTE ) {
-			return FAILED;
+			const grb::RC clear_rc = grb::clear( z );
+			if( clear_rc == grb::SUCCESS ) {
+				return ILLEGAL;
+			} else {
+				return PANIC;
+			}
 		}
 
 		// catch trivial resize
@@ -1311,8 +1339,13 @@ namespace grb {
 		if( size( mask ) != n ) {
 			return MISMATCH;
 		}
-		if( capacity( z ) < n && phase == EXECUTE ) {
-			return FAILED;
+		if( grb::capacity( z ) < n && phase == grb::EXECUTE ) {
+			const grb::RC clear_rc = grb::clear( z );
+			if( clear_rc == grb::SUCCESS ) {
+				return grb::ILLEGAL;
+			} else {
+				return grb::PANIC;
+			}
 		}
 
 		// catch trivial resize
@@ -1378,8 +1411,13 @@ namespace grb {
 		if( (descr & descriptors::dense) && nnz( z ) != n ) {
 			return ILLEGAL;
 		}
-		if( capacity( z ) < n && phase == EXECUTE ) {
-			return FAILED;
+		if( grb::capacity( z ) < n && phase == grb::EXECUTE ) {
+			const grb::RC clear_rc = grb::clear( z );
+			if( clear_rc == grb::SUCCESS ) {
+				return grb::ILLEGAL;
+			} else {
+				return grb::PANIC;
+			}
 		}
 
 		// catch trivial resize
@@ -1456,8 +1494,13 @@ namespace grb {
 		if( size( mask ) != n ) {
 			return MISMATCH;
 		}
-		if( capacity( z ) < n && phase == EXECUTE ) {
-			return FAILED;
+		if( grb::capacity( z ) < n && phase == grb::EXECUTE ) {
+			const grb::RC clear_rc = grb::clear( z );
+			if( clear_rc == grb::SUCCESS ) {
+				return grb::ILLEGAL;
+			} else {
+				return grb::PANIC;
+			}
 		}
 
 		// catch trivial resize
@@ -1557,8 +1600,8 @@ namespace grb {
 		} else if( phase == EXECUTE ) {
 			if( ret == SUCCESS ) {
 				internal::setDense( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
+			} else if( ret == ILLEGAL ) {
+				const RC subrc = grb::clear( z );
 				if( subrc != SUCCESS ) { ret = PANIC; }
 			}
 		}
@@ -1647,8 +1690,8 @@ namespace grb {
 		} else if( phase == EXECUTE ) {
 			if( ret == SUCCESS ) {
 				internal::setDense( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
+			} else if( ret == ILLEGAL ) {
+				const RC subrc = grb::clear( z );
 				if( subrc != SUCCESS ) { ret = PANIC; }
 			}
 		}
@@ -1754,19 +1797,9 @@ namespace grb {
 		}
 
 		// catch execute
-		if( phase != RESIZE ) {
-			assert( phase == EXECUTE );
-			if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			} else if( ret == SUCCESS ) {
-				if( !(descr & descriptors::dense) ) {
-					ret = internal::updateNnz( z );
-				} else {
-					internal::setDense( z );
-				}
-			}
-		}
+		internal::template handle_try_execute<
+				((descr & descriptors::dense) > 0)
+			>( z, phase, ret );
 
 		// done
 		return ret;
@@ -1861,14 +1894,7 @@ namespace grb {
 		}
 
 		// handle try and execute
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -1962,14 +1988,7 @@ namespace grb {
 		}
 
 		// handle try and execute
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -2074,15 +2093,7 @@ namespace grb {
 		}
 
 		// handle try and execute
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			}
-			if( ret == FAILED ) {
-				const RC update_rc = internal::updateNnz( z );
-				if( update_rc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -2090,7 +2101,8 @@ namespace grb {
 
 	/** \internal Does not require communication. */
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>
@@ -2167,15 +2179,8 @@ namespace grb {
 		}
 
 		// handle execute phase
-		if( phase != RESIZE ) {
-			assert( phase == EXECUTE );
-			if( ret == SUCCESS ) {
-				internal::setDense( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		internal::template handle_try_execute< true >( z, phase, ret );
+
 		return ret;
 	}
 
@@ -2259,15 +2264,7 @@ namespace grb {
 		}
 
 		// handle execute
-		if( phase != RESIZE ) {
-			assert( phase == EXECUTE );
-			if( ret == SUCCESS ) {
-				internal::setDense( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		internal::template handle_try_execute< true >( z, phase, ret );
 
 		// done
 		return ret;
@@ -2361,14 +2358,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -2462,14 +2452,7 @@ namespace grb {
 		}
 
 		// handle execute and try phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -2569,14 +2552,7 @@ namespace grb {
 		}
 
 		// handle execute and try phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -2676,14 +2652,7 @@ namespace grb {
 		}
 
 		// handle try and execute
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -2697,7 +2666,8 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2,
 		typename InputType3, typename OutputType,
 		typename Coords
@@ -2709,7 +2679,8 @@ namespace grb {
 		const Vector< InputType3, BSP1D, Coords > &y,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			!grb::is_object< InputType3 >::value &&
@@ -2767,7 +2738,8 @@ namespace grb {
 	 *          the additive monoid.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename OutputType,
 		typename Coords
 	>
@@ -2777,7 +2749,8 @@ namespace grb {
 		const Vector< InputType2, BSP1D, Coords > &x,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_semiring< Ring >::value,
@@ -2816,7 +2789,8 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2,
 		typename InputType3, typename OutputType,
 		typename Coords
@@ -2828,7 +2802,8 @@ namespace grb {
 		const Vector< InputType3, BSP1D, Coords > &y,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			!grb::is_object< InputType3 >::value &&
@@ -2871,7 +2846,8 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2,
 		typename InputType3, typename OutputType,
 		typename Coords
@@ -2883,7 +2859,8 @@ namespace grb {
 		const Vector< InputType3, BSP1D, Coords > &y,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			!grb::is_object< InputType3 >::value &&
@@ -2926,7 +2903,8 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2,
 		typename InputType3, typename OutputType,
 		typename Coords
@@ -2937,7 +2915,8 @@ namespace grb {
 		const InputType3 gamma,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			!grb::is_object< InputType3 >::value &&
@@ -2975,7 +2954,8 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
 		typename OutputType, typename Coords
 	>
@@ -2997,7 +2977,9 @@ namespace grb {
 		if( n != grb::size( a ) ) {
 			return MISMATCH;
 		}
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 		if( phase == RESIZE ) {
@@ -3021,7 +3003,8 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
 		typename OutputType, typename Coords
 	>
@@ -3032,7 +3015,8 @@ namespace grb {
 		const InputType3 gamma,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			!grb::is_object< InputType3 >::value &&
@@ -3043,7 +3027,9 @@ namespace grb {
 		if( n != grb::size( x ) ) {
 			return MISMATCH;
 		}
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 		if( phase == RESIZE ) {
@@ -3067,7 +3053,8 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
 		typename OutputType, typename Coords
 	>
@@ -3077,7 +3064,8 @@ namespace grb {
 		const Vector< InputType3, BSP1D, Coords > & y,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			!grb::is_object< InputType3 >::value &&
@@ -3088,7 +3076,9 @@ namespace grb {
 		if( n != grb::size( y ) ) {
 			return MISMATCH;
 		}
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 		if( phase == RESIZE ) {
@@ -3110,7 +3100,8 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
 		typename OutputType, typename Coords
 	>
@@ -3120,14 +3111,17 @@ namespace grb {
 		const InputType3 gamma,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			!grb::is_object< InputType3 >::value &&
 			grb::is_semiring< Ring >::value,
 		void >::type * const = nullptr
 	) {
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 		if( phase == RESIZE ) {
@@ -3141,7 +3135,8 @@ namespace grb {
 
 	/** \internal Requires syncing of output nonzero count. */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename OutputType,
 		typename Coords
 	>
@@ -3151,7 +3146,8 @@ namespace grb {
 		const Vector< InputType2, BSP1D, Coords > &y,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_semiring< Ring >::value, void
@@ -3210,14 +3206,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -3225,7 +3214,8 @@ namespace grb {
 
 	/** \internal Requires syncing of output nonzero count. */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename OutputType,
 		typename Coords
 	>
@@ -3235,7 +3225,8 @@ namespace grb {
 		const Vector< InputType2, BSP1D, Coords > &y,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_semiring< Ring >::value, void
@@ -3288,14 +3279,7 @@ namespace grb {
 		}
 
 		// handle execute and try phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -3303,7 +3287,8 @@ namespace grb {
 
 	/** \internal Requires syncing of output nonzero count. */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename OutputType,
 		typename Coords
 	>
@@ -3313,7 +3298,8 @@ namespace grb {
 		const InputType2 beta,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_semiring< Ring >::value, void
@@ -3365,14 +3351,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = FAILED; }
-			}
-		}
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -3391,7 +3370,8 @@ namespace grb {
 		const InputType2 beta,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_semiring< Ring >::value, void
@@ -3463,7 +3443,8 @@ namespace grb {
 		const Vector< InputType2, BSP1D, Coords > &y,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_semiring< Ring >::value, void
@@ -3525,14 +3506,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -3552,7 +3526,8 @@ namespace grb {
 		const Vector< InputType2, BSP1D, Coords > &y,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_semiring< Ring >::value, void
@@ -3617,14 +3592,7 @@ namespace grb {
 		}
 
 		// handle execute and try phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -3644,7 +3612,8 @@ namespace grb {
 		const InputType2 beta,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_semiring< Ring >::value, void
@@ -3709,14 +3678,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = FAILED; }
-			}
-		}
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -3736,7 +3698,8 @@ namespace grb {
 		const InputType2 beta,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_semiring< Ring >::value, void
@@ -3798,14 +3761,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = FAILED; }
-			}
-		}
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -3832,7 +3788,8 @@ namespace grb {
 		const Vector< InputType3, BSP1D, Coords > &y,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< MaskType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
@@ -3860,7 +3817,9 @@ namespace grb {
 		if( n != grb::size( m ) ) {
 			return MISMATCH;
 		}
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 
@@ -3869,7 +3828,9 @@ namespace grb {
 			internal::getLocal( a ), internal::getLocal( x ), internal::getLocal( y ),
 			ring, phase
 		);
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			if( collectives< BSP1D >::allreduce(
 				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
@@ -3892,7 +3853,8 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2,
 		typename InputType3,
 		typename OutputType, typename MaskType,
@@ -3906,7 +3868,8 @@ namespace grb {
 		const Vector< InputType3, BSP1D, Coords > &y,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< MaskType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
@@ -3921,7 +3884,9 @@ namespace grb {
 		if( n != grb::size( y ) ) {
 			return MISMATCH;
 		}
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 
@@ -3930,7 +3895,9 @@ namespace grb {
 			alpha, internal::getLocal( x ), internal::getLocal( y ),
 			ring, phase
 		);
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			if( collectives< BSP1D >::allreduce(
 				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
@@ -3953,7 +3920,8 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
 		typename OutputType, typename MaskType,
 		typename Coords
@@ -4023,7 +3991,8 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
 		typename OutputType, typename MaskType, typename Coords
 	>
@@ -4035,7 +4004,8 @@ namespace grb {
 		const InputType3 gamma,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< MaskType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
@@ -4085,7 +4055,8 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
 		typename OutputType, typename MaskType, typename Coords
 	>
@@ -4097,7 +4068,8 @@ namespace grb {
 		const InputType3 gamma,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< MaskType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
@@ -4119,7 +4091,9 @@ namespace grb {
 		if( n != grb::size( m ) ) {
 			return MISMATCH;
 		}
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 
@@ -4128,7 +4102,9 @@ namespace grb {
 			internal::getLocal( a ), beta, gamma,
 			ring, phase
 		);
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			if( collectives< BSP1D >::allreduce(
 				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
@@ -4151,7 +4127,8 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
 		typename OutputType, typename MaskType, typename Coords
 	>
@@ -4163,7 +4140,8 @@ namespace grb {
 		const InputType3 gamma,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< MaskType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
@@ -4185,7 +4163,9 @@ namespace grb {
 		if( n != grb::size( m ) ) {
 			return MISMATCH;
 		}
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 
@@ -4194,7 +4174,9 @@ namespace grb {
 			alpha, internal::getLocal( x ), gamma,
 			ring, phase
 		);
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			if( collectives< BSP1D >::allreduce(
 				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
@@ -4217,7 +4199,8 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
 		typename OutputType, typename MaskType, typename Coords
 	>
@@ -4229,7 +4212,8 @@ namespace grb {
 		const Vector< InputType3, BSP1D, Coords > &y,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< MaskType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
@@ -4251,7 +4235,9 @@ namespace grb {
 		if( n != grb::size( m ) ) {
 			return MISMATCH;
 		}
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 
@@ -4260,7 +4246,9 @@ namespace grb {
 			alpha, beta, internal::getLocal( y ),
 			ring, phase
 		);
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			if( collectives< BSP1D >::allreduce(
 				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
@@ -4283,7 +4271,8 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
 		typename OutputType, typename MaskType, typename Coords
 	>
@@ -4295,7 +4284,8 @@ namespace grb {
 		const InputType3 gamma,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< MaskType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
@@ -4314,7 +4304,9 @@ namespace grb {
 		if( n != grb::size( m ) ) {
 			return MISMATCH;
 		}
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 
@@ -4408,7 +4400,8 @@ namespace grb {
 		const Vector< InputType2, BSP1D, Coords > &y,
 		const AddMonoid &addMonoid,
 		const AnyOp &anyOp,
-		const typename std::enable_if< !grb::is_object< InputType1 >::value &&
+		const typename std::enable_if<
+			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			!grb::is_object< OutputType >::value &&
 			grb::is_monoid< AddMonoid >::value &&
@@ -4433,8 +4426,7 @@ namespace grb {
 			internal::getLocal( x ), internal::getLocal( y ),
 			addMonoid, anyOp
 		);
-		ret = ret ? ret : collectives< BSP1D >::allreduce(
-			oop, addMonoid.getOperator() );
+		ret = ret ? ret : collectives< BSP1D >::allreduce( oop, addMonoid );
 
 		// fold out-of-place dot product into existing value and exit
 		ret = ret ? ret : foldl( z, oop, addMonoid.getOperator() );
@@ -4489,18 +4481,24 @@ namespace grb {
 	 * also distributed which is correct, since all calls are collective there may
 	 * never be a mismatch in globally known vector sizes.
 	 */
-	template< typename Func, typename DataType, typename Coords >
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename Func, typename DataType, typename Coords
+	>
 	RC eWiseLambda( const Func f, const Vector< DataType, BSP1D, Coords > &x ) {
 		const internal::BSP1D_Data &data = internal::grb_BSP1D.cload();
 		// rely on local lambda, passing in the active global distribution, global
 		// length, and number of user processes
-		return internal::eWiseLambda< typename internal::Distribution< BSP1D > >(
-			f, internal::getLocal( x ), x._n, data.s, data.P );
+		return internal::eWiseLambda<
+			descr,
+			typename internal::Distribution< BSP1D >
+		>( f, internal::getLocal( x ), x._n, data.s, data.P );
 		// note the sparsity structure will not change by the above call
 	}
 
 	/** \internal No implementation notes. */
 	template<
+		Descriptor descr = descriptors::no_operation,
 		typename Func,
 		typename DataType1, typename DataType2, typename Coords,
 		typename... Args
@@ -4517,7 +4515,7 @@ namespace grb {
 		}
 		// in this implementation, the distributions are equal so no need for any
 		// synchronisation
-		return eWiseLambda( f, x, args... );
+		return eWiseLambda< descr >( f, x, args... );
 		// note the sparsity structure will not change by the above call
 	}
 
@@ -4531,7 +4529,8 @@ namespace grb {
 		const Vector< T, BSP1D, Coords > &x,
 		const Vector< U, BSP1D, Coords > &y,
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< T >::value &&
+		const typename std::enable_if<
+			!grb::is_object< T >::value &&
 			!grb::is_object< U >::value, void
 		>::type * const = nullptr
 	) {
@@ -4566,7 +4565,8 @@ namespace grb {
 		Vector< U, BSP1D, Coords > &y,
 		const Vector< std::pair< T, U >, BSP1D, Coords > &in,
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< T >::value &&
+		const typename std::enable_if<
+			!grb::is_object< T >::value &&
 			!grb::is_object< U >::value, void
 		>::type * const = nullptr
 	) {

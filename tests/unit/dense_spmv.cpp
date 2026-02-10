@@ -95,6 +95,7 @@ void grbProgram( const struct input &data, struct output &out ) {
 		parser.begin( SEQUENTIAL ), parser.end( SEQUENTIAL ),
 		SEQUENTIAL
 	);
+	out.error_code = out.error_code ? out.error_code : wait();
 	out.times.io += timer.time();
 
 	if( out.error_code != SUCCESS ) { return; }
@@ -111,17 +112,15 @@ void grbProgram( const struct input &data, struct output &out ) {
 		case 1: {
 			// prepare experiment
 			timer.reset();
-			if( out.error_code == SUCCESS ) {
-				out.error_code = grb::set( vright, 1 );
-			}
-			if( out.error_code == SUCCESS ) {
-				out.error_code = grb::set( vleft, 0 );
-			}
+			out.error_code = set( vright, 1 );
+			out.error_code = out.error_code ? out.error_code : set( vleft, 0 );
+			out.error_code = out.error_code ? out.error_code : wait();
 			out.times.preamble += timer.time();
 			if( out.error_code != SUCCESS ) { return; }
 
 			// functional check
 			out.error_code = mxv< grb::descriptors::dense >( vleft, mx, vright, ring );
+			out.error_code = out.error_code ? out.error_code : wait();
 			double * chk = new double[ parser.m() ];
 			size_t * cnt = new size_t[ parser.m() ];
 			double * mag = new double[ parser.m() ];
@@ -164,9 +163,13 @@ void grbProgram( const struct input &data, struct output &out ) {
 
 			// do experiment
 			out.error_code = mxv< grb::descriptors::dense >( vleft, mx, vright, ring );
+			out.error_code = out.error_code ? out.error_code : wait();
 			timer.reset();
 			for( size_t i = 0; out.error_code == SUCCESS && i < data.rep; ++i ) {
 				out.error_code = mxv< grb::descriptors::dense >( vleft, mx, vright, ring );
+				if( Properties<>::isNonblockingExecution ) {
+					out.error_code = out.error_code ? out.error_code : wait();
+				}
 			}
 			out.times.useful = timer.time() / static_cast< double >( data.rep );
 			// done
@@ -178,18 +181,16 @@ void grbProgram( const struct input &data, struct output &out ) {
 		case 2: {
 			// prepare experiment
 			timer.reset();
-			if( out.error_code == SUCCESS ) {
-				out.error_code = grb::set( vleft, 1 );
-			}
-			if( out.error_code == SUCCESS ) {
-				out.error_code = grb::set( vright, 0 );
-			}
+			out.error_code = set( vleft, 1 );
+			out.error_code = out.error_code ? out.error_code : set( vright, 0 );
+			out.error_code = out.error_code ? out.error_code : wait();
 			out.times.preamble += timer.time();
 			if( out.error_code != SUCCESS ) { return; }
 
 			// functional check
 			out.error_code = mxv< grb::descriptors::dense |
 				grb::descriptors::transpose_matrix >( vright, mx, vleft, ring );
+			out.error_code = out.error_code ? out.error_code : wait();
 			double * chk = new double[ parser.n() ];
 			size_t * cnt = new size_t[ parser.n() ];
 			double * mag = new double[ parser.n() ];
@@ -233,10 +234,14 @@ void grbProgram( const struct input &data, struct output &out ) {
 			// do experiment
 			out.error_code = mxv< grb::descriptors::dense |
 				descriptors::transpose_matrix >( vright, mx, vleft, ring );
+			out.error_code = out.error_code ? out.error_code : wait();
 			timer.reset();
 			for( size_t i = 0; out.error_code == SUCCESS && i < data.rep; ++i ) {
 				out.error_code = mxv< grb::descriptors::dense |
 					descriptors::transpose_matrix >( vright, mx, vleft, ring );
+				if( Properties<>::isNonblockingExecution ) {
+					out.error_code = out.error_code ? out.error_code : wait();
+				}
 			}
 			out.times.useful = timer.time() / static_cast< double >( data.rep );
 			// done
@@ -248,12 +253,9 @@ void grbProgram( const struct input &data, struct output &out ) {
 		case 3: {
 			// do experiment
 			timer.reset();
-			if( out.error_code == SUCCESS ) {
-				out.error_code = grb::set( vleft, 1 );
-			}
-			if( out.error_code == SUCCESS ) {
-				out.error_code = grb::set( vright, 0 );
-			}
+			out.error_code = set( vleft, 1 );
+			out.error_code = out.error_code ? out.error_code : set( vright, 0 );
+			out.error_code = out.error_code ? out.error_code : wait();
 			out.times.preamble += timer.time();
 			if( out.error_code != SUCCESS ) { return; }
 
@@ -301,9 +303,13 @@ void grbProgram( const struct input &data, struct output &out ) {
 
 			// do experiment
 			out.error_code = vxm< grb::descriptors::dense >( vright, vleft, mx, ring );
+			out.error_code = out.error_code ? out.error_code : wait();
 			timer.reset();
 			for( size_t i = 0; out.error_code == SUCCESS && i < data.rep; ++i ) {
 				out.error_code = vxm< grb::descriptors::dense >( vright, vleft, mx, ring );
+				if( Properties<>::isNonblockingExecution ) {
+					out.error_code = out.error_code ? out.error_code : wait();
+				}
 			}
 			out.times.useful = timer.time() / static_cast< double >( data.rep );
 			// done
@@ -315,18 +321,16 @@ void grbProgram( const struct input &data, struct output &out ) {
 		case 4: {
 			// prepare experiment
 			timer.reset();
-			if( out.error_code == SUCCESS ) {
-				out.error_code = grb::set( vright, 1 );
-			}
-			if( out.error_code == SUCCESS ) {
-				out.error_code = grb::set( vleft, 0 );
-			}
+			out.error_code = set( vright, 1 );
+			out.error_code = out.error_code ? out.error_code : set( vleft, 0 );
+			out.error_code = out.error_code ? out.error_code : wait();
 			out.times.preamble += timer.time();
 			if( out.error_code != SUCCESS ) { return; }
 
 			// functional check
 			out.error_code = vxm< grb::descriptors::dense |
 				grb::descriptors::transpose_matrix >( vleft, vright, mx, ring );
+			out.error_code = out.error_code ? out.error_code : wait();
 			double * chk = new double[ parser.m() ];
 			size_t * cnt = new size_t[ parser.m() ];
 			double * mag = new double[ parser.m() ];
@@ -370,10 +374,14 @@ void grbProgram( const struct input &data, struct output &out ) {
 			// do experiment
 			out.error_code = vxm< grb::descriptors::dense |
 				grb::descriptors::transpose_matrix >( vleft, vright, mx, ring );
+			out.error_code = out.error_code ? out.error_code : wait();
 			timer.reset();
 			for( size_t i = 0; out.error_code == SUCCESS && i < data.rep; ++i ) {
 				out.error_code = vxm< grb::descriptors::dense |
 					grb::descriptors::transpose_matrix >( vleft, vright, mx, ring );
+				if( Properties<>::isNonblockingExecution ) {
+					out.error_code = out.error_code ? out.error_code : wait();
+				}
 			}
 			out.times.useful = timer.time() / static_cast< double >( data.rep );
 			// done

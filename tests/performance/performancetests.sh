@@ -148,53 +148,69 @@ echo " "
 if [[ -z $DATASETTORUN && ( -z "$EXPTYPE" || "$EXPTYPE" == "KERNEL" ) ]]; then
 
 	echo ">>>      [ ]           [x]       Testing semiring axpy versus hardcoded axpy over"
-	echo "                                 10 000 000 doubles"
+	echo "                                 100 000 000 doubles"
 	echo " "
-	${TEST_BIN_DIR}/fma &> ${TEST_OUT_DIR}/fma 10000000 0
-	head -1 ${TEST_OUT_DIR}/fma
-	tail -2 ${TEST_OUT_DIR}/fma
-	egrep 'label|Overall timings|0,' ${TEST_OUT_DIR}/fma | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
+	${TEST_BIN_DIR}/fma-sequential 100000000 0 &> ${TEST_OUT_DIR}/fma-sequential
+	head -1 ${TEST_OUT_DIR}/fma-sequential
+	tail -2 ${TEST_OUT_DIR}/fma-sequential
+	egrep 'label|Overall timings|0,' ${TEST_OUT_DIR}/fma-sequential | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
 
 	echo ">>>      [ ]           [x]       Testing monoid reduce versus hardcoded reduce over"
-	echo "                                 10 000 000 doubles"
+	echo "                                 100 000 000 doubles"
 	echo " "
-	${TEST_BIN_DIR}/reduce &> ${TEST_OUT_DIR}/reduce 10000000 0
-	head -1 ${TEST_OUT_DIR}/reduce
-	tail -2 ${TEST_OUT_DIR}/reduce
-	egrep 'label|Overall timings|0,' ${TEST_OUT_DIR}/reduce | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
+	${TEST_BIN_DIR}/reduce-sequential 100000000 0 &> ${TEST_OUT_DIR}/reduce-sequential
+	head -1 ${TEST_OUT_DIR}/reduce-sequential
+	tail -2 ${TEST_OUT_DIR}/reduce-sequential
+	egrep 'label|Overall timings|0,' ${TEST_OUT_DIR}/reduce-sequential | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
 
 	echo ">>>      [ ]           [x]       Testing semiring dot product versus its hardcoded variant"
-	echo "                                 over 10 000 000 doubles"
+	echo "                                 over 100 000 000 doubles"
 	echo " "
-	${TEST_BIN_DIR}/dot &> ${TEST_OUT_DIR}/dot 10000000 0
-	head -1 ${TEST_OUT_DIR}/dot
-	tail -2 ${TEST_OUT_DIR}/dot
-	egrep 'label|Overall timings|0,' ${TEST_OUT_DIR}/dot | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
+	${TEST_BIN_DIR}/dot-sequential 100000000 0 &> ${TEST_OUT_DIR}/dot-sequential
+	head -1 ${TEST_OUT_DIR}/dot-sequential
+	tail -2 ${TEST_OUT_DIR}/dot-sequential
+	egrep 'label|Overall timings|0,' ${TEST_OUT_DIR}/dot-sequential | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
 
 	echo ">>>      [ ]           [x]       Testing semiring axpy versus hardcoded axpy over"
-	echo "                                 10 000 000 doubles, using the OpenMP reference backend"
+	echo "                                 100 000 000 doubles, using the OpenMP reference backend"
 	echo " "
-	${TEST_BIN_DIR}/fma-openmp &> ${TEST_OUT_DIR}/fma-openmp 10000000 0
-	head -1 ${TEST_OUT_DIR}/fma-openmp
-	tail -2 ${TEST_OUT_DIR}/fma-openmp
-	egrep 'label|Overall timings|0,' ${TEST_OUT_DIR}/fma-openmp | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
+	${TEST_BIN_DIR}/fma-blocking 100000000 0 &> ${TEST_OUT_DIR}/fma-blocking
+	head -1 ${TEST_OUT_DIR}/fma-blocking
+	tail -2 ${TEST_OUT_DIR}/fma-blocking
+	egrep 'label|Overall timings|0,' ${TEST_OUT_DIR}/fma-blocking | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
+
+	echo ">>>      [ ]           [x]       Testing semiring axpy versus hardcoded axpy over"
+	echo "                                 100 000 000 doubles, using the nonblocking backend"
+	echo " "
+	${TEST_BIN_DIR}/fma-nonblocking 100000000 0 &> ${TEST_OUT_DIR}/fma-nonblocking
+	head -1 ${TEST_OUT_DIR}/fma-nonblocking
+	tail -2 ${TEST_OUT_DIR}/fma-nonblocking
+	egrep 'label|Overall timings|0,' ${TEST_OUT_DIR}/fma-nonblocking | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
 
 	echo ">>>      [ ]           [x]       Testing monoid reduce versus hardcoded reduce over"
-	echo "                                 10 000 000 doubles, using the OpenMP reference backend"
+	echo "                                 100 000 000 doubles, using the OpenMP reference backend"
 	echo " "
-	${TEST_BIN_DIR}/reduce-openmp &> ${TEST_OUT_DIR}/reduce-openmp 10000000 0
+	${TEST_BIN_DIR}/reduce-openmp 100000000 0 &> ${TEST_OUT_DIR}/reduce-openmp
 	head -1 ${TEST_OUT_DIR}/reduce-openmp
 	tail -2 ${TEST_OUT_DIR}/reduce-openmp
 	egrep 'label|Overall timings|0,' ${TEST_OUT_DIR}/reduce-openmp | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
 
-
 	echo ">>>      [ ]           [x]       Testing semiring dot product versus its hardcoded variant"
-	echo "                                 over 10 000 000 doubles, using the OpenMP reference backend"
+	echo "                                 over 100 000 000 doubles, using the OpenMP reference backend"
 	echo " "
-	${TEST_BIN_DIR}/dot-openmp &> ${TEST_OUT_DIR}/dot-openmp 10000000 0
+	${TEST_BIN_DIR}/dot-openmp 100000000 0 &> ${TEST_OUT_DIR}/dot-openmp
 	head -1 ${TEST_OUT_DIR}/dot-openmp
 	tail -2 ${TEST_OUT_DIR}/dot-openmp
 	egrep 'label|Overall timings|0,' ${TEST_OUT_DIR}/dot-openmp | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
+
+	echo ">>>      [x]           [x]       Testing fuselets versus standard reference_omp using a"
+	echo "                                 problem size of 100 000 000."
+	echo " "
+	${TEST_BIN_DIR}/fuselets_performance 100000000 1 30 &> ${TEST_OUT_DIR}/fuselets_performance
+	head -1 ${TEST_OUT_DIR}/fuselets_performance
+	grep "Test OK" ${TEST_OUT_DIR}/fuselets_performance || echo "Test FAILED"
+	echo " "
+	egrep 'label|Overall timings|0,' ${TEST_OUT_DIR}/fuselets_performance | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
 
 fi
 

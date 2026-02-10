@@ -27,6 +27,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 
 	// repeatedly used containers
 	grb::Vector< bool > even_mask( n );
+	grb::Vector< bool > odd_mask( n );
 	grb::Vector< size_t > temp( n );
 	grb::Vector< double > left( n );
 	grb::Vector< double > right( n );
@@ -42,7 +43,14 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		}, temp );
 	rc = rc ? rc : grb::set( even_mask, temp, true );
 	if( rc != grb::SUCCESS ) {
-		std::cerr << "\t initialisation of mask FAILED\n";
+		std::cerr << "\t initialisation of even mask FAILED\n";
+		return;
+	}
+
+	// create odd mask
+	rc = grb::set< grb::descriptors::invert_mask >( odd_mask, temp, true );
+	if( rc != grb::SUCCESS ) {
+		std::cerr << "\t initialisation of odd mask FAILED\n";
 		return;
 	}
 
@@ -160,6 +168,75 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		return;
 	}
 
+	// test 5, init
+	rc = rc ? rc :  grb::clear( x );
+	rc = rc ? rc :  grb::clear( y );
+	assert( rc == grb::SUCCESS );
+	int true_dot = 0;
+	alpha = 0;
+
+	rc = rc ? rc : grb::set< grb::descriptors::use_index >( y, 0 );
+	for( size_t i : {2,3,5,7,13,17,19,23,29} ){
+		if( i >= n ) break;
+		rc = rc ? rc :  grb::setElement( x, 1, i );
+		true_dot += i;
+	}
+	assert( rc == grb::SUCCESS );
+
+	// test 5, exec
+	rc = grb::dot( alpha, x, y, intRing );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t test 5 (sparse non constant-value vectors) dot FAILED\n";
+		return;
+	}
+
+	// test 5, check
+	if( alpha != true_dot ) {
+		std::cerr << "\t test 5 (sparse non constant-value vectors) unexpected value "
+			<< alpha << ", expected " << true_dot << ".\n";
+		rc = FAILED;
+		return;
+	}
+
+	// test 6, init
+	rc = grb::set( y, x );
+	rc = rc ? rc : grb::set< grb::descriptors::use_index >( x, 0 );
+	alpha = 0;
+
+	// test 6, exec
+	rc = rc ? rc : grb::dot( alpha, x, y, intRing );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t test 6 (swapped version of test 5) dot FAILED\n";
+		return;
+	}
+
+	// test 6, check
+	if( alpha != true_dot ) {
+		std::cerr << "\t test 6 (swapped version of test 5) unexpected value "
+			<< alpha << ", expected " << true_dot << ".\n";
+		rc = FAILED;
+		return;
+	}
+
+	// test 7, init
+	rc = grb::set< grb::descriptors::use_index >( x, odd_mask, 0 );
+	rc = rc ? rc : grb::set< grb::descriptors::use_index >( y, even_mask, 0 );
+	alpha = 0;
+
+	// test 7, exec
+	rc = rc ? rc : grb::dot( alpha, x, y, intRing );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t test 7 (sparse dot no overlap) FAILED\n";
+		return;
+	}
+
+	// test 7, check
+	if( alpha != 0 ) {
+		std::cerr << "\t test 7 (sparse dot no overlap) unexpected value "
+			<< alpha << ", expected 0.\n";
+		rc = FAILED;
+		return;
+	}
 }
 
 int main( int argc, char ** argv ) {

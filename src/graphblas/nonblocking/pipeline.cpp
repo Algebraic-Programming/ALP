@@ -73,7 +73,7 @@ Pipeline::Pipeline() {
 		input_matrices.insert( dummy );
 		out_of_place_output_coordinates.insert( dumCoor );
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
-		already_dense_coordinates.insert( dumCCoor );
+		already_dense_coordinates.insert( std::make_pair( dumCCoor, true ) );
 #endif
 		dense_descr_coordinates.insert( dumCoor );
 	}
@@ -540,22 +540,21 @@ bool Pipeline::emptyAlreadyDenseVectors() const {
 bool Pipeline::containsAlreadyDenseVector(
 	const Coordinates< nonblocking > * const vector_ptr
 ) const {
-	return already_dense_coordinates.find( vector_ptr ) !=
-		already_dense_coordinates.end();
+	const auto it = already_dense_coordinates.find( vector_ptr );
+	return it != already_dense_coordinates.cend() && it->second;
 }
 
 void Pipeline::markMaybeSparseVector(
 	const Coordinates< nonblocking > * const vector_ptr
 ) {
 	// the vector should be marked sparse only if it has not already been marked
-	if( already_dense_coordinates.find( vector_ptr ) !=
-		already_dense_coordinates.end()
-	) {
+	auto it = already_dense_coordinates.find( vector_ptr );
+	if( it != already_dense_coordinates.end() ) {
 		// when this method is invoked by an out-of-place primitive
 		// disable a potentially enabled dense descriptor
 		all_already_dense_vectors = false;
-		// and remove the coordinates from the set
-		already_dense_coordinates.erase( vector_ptr );
+		// and disable the coordinates
+		it->second = false;
 	}
 }
 #endif
@@ -699,7 +698,7 @@ void Pipeline::buildAlreadyDenseVectors() {
 		it != dense_descr_coordinates.end(); ++it
 	) {
 		if( ( *it )->isDense() ) {
-			already_dense_coordinates.insert( *it );
+			already_dense_coordinates.insert( std::make_pair( *it, true ) );
 		} else {
 			all_already_dense_vectors = false;
 		}
@@ -711,7 +710,7 @@ void Pipeline::buildAlreadyDenseVectors() {
 		it != accessed_coordinates.end(); ++it
 	) {
 		if( ( *it )->isDense() ) {
-			already_dense_coordinates.insert( *it );
+			already_dense_coordinates.insert( std::make_pair( *it, true ) );
 		} else {
 			all_already_dense_vectors = false;
 		}
@@ -747,6 +746,10 @@ grb::RC Pipeline::verifyDenseDescriptor() {
 		it != dense_descr_coordinates.end(); ++it
 	) {
 		if( !( *it )->isDense() ) {
+#ifdef _NONBLOCKING_DEBUG
+			std::cout << "\t error in pipeline execution: the dense descriptor was "
+				<< "illegally used" << std::endl;
+#endif
 			return ILLEGAL;
 		}
 	}
@@ -852,7 +855,7 @@ grb::RC Pipeline::execution() {
 		#pragma omp parallel num_threads( nthreads )
 		{
 			size_t start, end;
-			config::OMP::localRange( start, end, 0, num_tiles );
+			config::OMP::localRange( start, end, 0, num_tiles, 1 );
 			for( size_t tile_id = start; tile_id < end; ++tile_id ) {
 
 				// compute the lower and upper bounds
@@ -1031,13 +1034,6 @@ grb::RC Pipeline::execution() {
 
 	// verify that the dense descriptor was legally used
 	ret = ret ? ret : verifyDenseDescriptor();
-
-#ifdef _NONBLOCKING_DEBUG
-	if( ret == ILLEGAL ) {
-		std::cerr << "error in pipeline execution: the dense descriptor was "
-			<< "illegally used" << std::endl;
-	}
-#endif
 
 	clear();
 

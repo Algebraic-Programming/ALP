@@ -54,7 +54,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 			std::cerr << "Expected empty range (II)\n";
 			rc = grb::FAILED;
 		}
-		for( const int &x : r ) {
+		for( const double &x : r ) {
 			std::cerr << "Expected empty range, but found " << x << "\n";
 			rc = grb::FAILED;
 		}

@@ -157,7 +157,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	Matrix< double > L( n, n );
 	{
 		const auto &data = Storage::getData().second;
-		const RC rc = buildMatrixUnique(
+		RC rc = buildMatrixUnique(
 			L,
 			utils::makeNonzeroIterator<
 				grb::config::RowIndexType, grb::config::ColIndexType, double
@@ -178,6 +178,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			>( data.cend() ),
 			PARALLEL
 		);*/
+		rc = rc ? rc : wait();
 		if( rc != SUCCESS ) {
 			std::cerr << "Failure: call to buildMatrixUnique did not succeed "
 				<< "(" << toString( rc ) << ")." << std::endl;
@@ -209,15 +210,19 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	Vector< double > x( n ), b( n ), r( n ),
 		buf1( n ), buf2( n ), buf3( n ), buf4( n ), buf5( n );
 
-	set( x, static_cast< double >( 1 ) / static_cast< double >( n ) );
-	set( b, static_cast< double >( 1 ) );
+	RC rc = set( x, static_cast< double >( 1 ) / static_cast< double >( n ) );
+	assert( rc == SUCCESS );
+	rc = rc ? rc : set( b, static_cast< double >( 1 ) );
+	assert( rc == SUCCESS );
+	rc = rc ? rc : wait();
+	assert( rc == SUCCESS );
 
+	// done with preparations
 	out.times.preamble = timer.time();
 
 	// by default, copy input requested repetitions to output repititions performed
 	out.rep = data_in.rep;
 	// time a single call
-	RC rc = SUCCESS;
 	if( out.rep == 0 ) {
 		timer.reset();
 		rc = bicgstab(
@@ -227,6 +232,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			r, buf1, buf2, buf3, buf4, buf5,
 			ring, minus, divide
 		);
+		rc = rc ? rc : wait();
 		double single_time = timer.time();
 		if( !(rc == SUCCESS || rc == FAILED) ) {
 			std::cerr << "Failure: call to BiCGstab not succeed ("
@@ -262,16 +268,18 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		double time_taken;
 		timer.reset();
 		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
-
 			rc = set( x, static_cast< double >( 1 ) / static_cast< double >( n ) );
-
-			if( rc == SUCCESS ) {
-				rc = bicgstab(
+			assert( rc == SUCCESS );
+			rc = rc ? rc : bicgstab(
 					x, L, b,
 					data_in.solver_iterations, tol,
 					out.iterations, out.residual,
 					r, buf1, buf2, buf3, buf4, buf5
 				);
+			assert( rc == SUCCESS );
+			if( Properties<>::isNonblockingExecution ) {
+				rc = rc ? rc : wait();
+				assert( rc == SUCCESS );
 			}
 		}
 		time_taken = timer.time();

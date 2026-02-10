@@ -173,7 +173,8 @@ namespace grb {
 				 * The set is built explicitly before the execution of the pipeline in the
 				 * execution method.
 				 */
-				std::set< const Coordinates< nonblocking > * > already_dense_coordinates;
+				std::map< const Coordinates< nonblocking > *, bool >
+					already_dense_coordinates;
 #endif
 				/**
 				 * This set of vectors is used for the verification for correct usage of the
@@ -318,6 +319,7 @@ namespace grb {
 					const Coordinates< nonblocking > * const vector_ptr
 				);
 #endif
+
 				void markMaybeSparseDenseDescriptorVerification(
 					Coordinates< nonblocking > * const vector_ptr
 				);
@@ -329,6 +331,7 @@ namespace grb {
 				void merge( Pipeline &pipeline );
 
 				void clear();
+
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 				void buildAlreadyDenseVectors();
 #endif

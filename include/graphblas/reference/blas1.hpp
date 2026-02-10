@@ -1156,7 +1156,7 @@ namespace grb {
 						std::cout << "fold_from_vector_to_vector_generic: using eWiseLambda, "
 							<< "foldl, using the mask's sparsity structure\n";
 #endif
-						return eWiseLambda(
+						return eWiseLambda< descr >(
 							[ &fold_into, &to_fold, &op ]( const size_t i ) {
 #ifdef _DEBUG
 								std::cout << "Left-folding " << to_fold[ i ] << " into " << fold_into[ i ];
@@ -1171,7 +1171,7 @@ namespace grb {
 						std::cout << "fold_from_vector_to_vector_generic: using eWiseLambda, "
 							<< "foldr, using the mask's sparsity structure\n";
 #endif
-						return eWiseLambda(
+						return eWiseLambda< descr >(
 							[ &fold_into, &to_fold, &op ]( const size_t i ) {
 #ifdef _DEBUG
 								std::cout << "Right-folding " << to_fold[ i ] << " into "
@@ -1190,7 +1190,7 @@ namespace grb {
 						std::cout << "fold_from_vector_to_vector_generic: using eWiseLambda, "
 							<< "foldl, using to_fold's sparsity\n";
 #endif
-						return eWiseLambda(
+						return eWiseLambda< descr >(
 							[ &fold_into, &to_fold, &op ]( const size_t i ) {
 #ifdef _DEBUG
 								std::cout << "Left-folding " << to_fold[ i ] << " into "
@@ -1206,7 +1206,7 @@ namespace grb {
 						std::cout << "fold_from_vector_to_vector_generic: using eWiseLambda, "
 							<< "foldl, using to_fold's sparsity\n";
 #endif
-						return eWiseLambda(
+						return eWiseLambda< descr >(
 							[ &fold_into, &to_fold, &op ]( const size_t i ) {
 #ifdef _DEBUG
 								std::cout << "Right-folding " << to_fold[ i ] << " into "
@@ -1225,7 +1225,7 @@ namespace grb {
 						std::cout << "fold_from_vector_to_vector_generic: using eWiseLambda, "
 							"foldl, using fold_into's sparsity\n";
 #endif
-						return eWiseLambda(
+						return eWiseLambda< descr >(
 							[ &fold_into, &to_fold, &op ]( const size_t i ) {
 #ifdef _DEBUG
 								std::cout << "Left-folding " << to_fold[ i ] << " into "
@@ -1242,7 +1242,7 @@ namespace grb {
 						std::cout << "fold_from_vector_to_vector_generic: using eWiseLambda, "
 							<< "foldr, using fold_into's sparsity\n";
 #endif
-						return eWiseLambda(
+						return eWiseLambda< descr >(
 							[ &fold_into, &to_fold, &op ]( const size_t i ) {
 #ifdef _DEBUG
 								std::cout << "Right-folding " << to_fold[ i ] << " into "
@@ -2975,6 +2975,13 @@ namespace grb {
 #ifdef _DEBUG
 			std::cout << "\t internal::dense_apply_generic called\n";
 #endif
+#ifndef GRB_NO_NOOP_CHECKS
+			static_assert(
+				!internal::maybe_noop< OP >::value,
+				"Warning: you may be generating an output vector with uninitialised values."
+				" (Define the GRB_NO_NOOP_CHECKS macro to disable this check.)\n"
+			);
+#endif
 			static_assert( !(left_scalar && left_sparse),
 				"The left-hand side must be scalar OR sparse, but cannot be both!" );
 			static_assert( !(right_scalar && right_sparse),
@@ -3132,9 +3139,11 @@ namespace grb {
 			(void) n;
 #endif
 #ifndef GRB_NO_NOOP_CHECKS
-			static_assert( !internal::maybe_noop< OP >::value, "Warning: you may be "
-				"generating an output vector with uninitialised values. Define "
-				"the GRB_NO_NOOP_CHECKS macro to disable this check.\n" );
+			static_assert(
+				(descr & descriptors::dense) || !internal::maybe_noop< OP >::value,
+				"Warning: you may be generating an output vector with uninitialised values."
+				" (Define the GRB_NO_NOOP_CHECKS macro to disable this check.)\n"
+			);
 #endif
 			// assertions
 			assert( !masked || mask_coors != nullptr );
@@ -3741,7 +3750,10 @@ namespace grb {
 #else
 								(void) z_coors.assign( index );
 #endif
+								GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED
+								// z_b[ k ] has been initialized in the loop just before
 								*( z_p + index ) = z_b[ k ];
+								GRB_UTIL_RESTORE_WARNINGS
 							}
 						}
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
@@ -9735,6 +9747,7 @@ namespace grb {
 		 * @see Vector::lambda_reference
 		 */
 		template<
+			Descriptor descr,
 			typename ActiveDistribution,
 			typename Func,
 			typename DataType, typename Coords
@@ -9748,7 +9761,8 @@ namespace grb {
 			std::cout << "Info: entering eWiseLambda function on vectors.\n";
 #endif
 			const auto &coors = internal::getCoordinates( x );
-			if( coors.isDense() ) {
+			if( (descr & descriptors::dense) || coors.isDense() ) {
+				assert( coors.isDense() );
 				// vector is distributed sequentially, so just loop over it
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
 				#pragma omp parallel
@@ -9805,6 +9819,7 @@ namespace grb {
 	 * case of the recursion. It delegates to a distribution-generic eWiseLambda.
 	 */
 	template<
+		Descriptor descr = descriptors::no_operation,
 		typename Func,
 		typename DataType1, typename Coords
 	>
@@ -9813,7 +9828,14 @@ namespace grb {
 		const Vector< DataType1, reference, Coords > &x
 	) {
 		const size_t n = internal::getCoordinates( x ).size();
-		return internal::eWiseLambda< internal::Distribution< reference > >(
+		if( (descr & descriptors::dense) && grb::nnz( x ) < n ) {
+#ifdef _DEBUG
+			std::cerr << "Error: eWiseLambda called with dense descriptor "
+				<< "on a sparse vector.\n";
+#endif
+			return ILLEGAL;
+		}
+		return internal::eWiseLambda< descr, internal::Distribution< reference > >(
 			f, x, n, 0, 1 );
 	}
 
@@ -9828,6 +9850,7 @@ namespace grb {
 	 * @see Vector::lambda_reference
 	 */
 	template<
+		Descriptor descr = descriptors::no_operation,
 		typename Func,
 		typename DataType1, typename DataType2,
 		typename Coords, typename... Args
@@ -9841,7 +9864,7 @@ namespace grb {
 			return MISMATCH;
 		}
 		// continue
-		return eWiseLambda( f, x, args... );
+		return eWiseLambda< descr >( f, x, args... );
 	}
 
 	/**

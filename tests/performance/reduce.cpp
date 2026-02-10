@@ -60,9 +60,10 @@ void test( const struct Input &in, struct Output &out ) {
 	{
 		grb::Vector< int > dummy( in.n );
 		out.error = grb::set( dummy, 0 );
-		if( out.error == grb::SUCCESS ) {
-			out.error = grb::set< grb::descriptors::use_index >( xv, dummy );
-		}
+		out.error = out.error ? out.error :
+			grb::set< grb::descriptors::use_index >( xv, dummy );
+		out.error = out.error ? out.error :
+			grb::wait();
 	}
 	if( out.error != grb::SUCCESS ) {
 		return;
@@ -77,18 +78,19 @@ void test( const struct Input &in, struct Output &out ) {
 		double ttime = timer.time();
 		// get cache `hot'
 		out.error = grb::foldl< grb::descriptors::dense >( alpha, xv, realm );
+		out.error = out.error ? out.error : grb::wait();
 		if( out.error != SUCCESS ) {
-			std::cerr << "grb::reduce returns non-SUCCESS exit code "
+			std::cerr << "grb::foldl returns non-SUCCESS exit code "
 				<< grb::toString( out.error ) << ".\n";
 			return;
 		}
 		// use this to infer number of inner iterations, if requested to be computed
 		ttime = timer.time() - ttime;
 		if( in.rep == 0 ) {
-			out.reps_used = static_cast< size_t >( 1000.0 / ttime ) + 1;
+			out.reps_used = static_cast< size_t >( 100.0 / ttime ) + 1;
 			std::cout << "Auto-selected " << out.reps_used << " inner repititions of "
-				<< "approx. " << ttime << " ms. each (to achieve around 1 second if inner "
-				<< "loop wall-clock time).\n";
+				<< "approx. " << ttime << " ms. each in order to achieve around "
+				<< "100 ms. of inner-loop wall-clock time.\n";
 		} else {
 			out.reps_used = in.rep;
 		}
@@ -97,7 +99,16 @@ void test( const struct Input &in, struct Output &out ) {
 		// benchmark templated axpy
 		for( size_t i = 0; i < out.reps_used; ++i ) {
 			alpha = 0.0;
-			(void) grb::foldl< grb::descriptors::dense >( alpha, xv, realm );
+			out.error = grb::foldl< grb::descriptors::dense >( alpha, xv, realm );
+			// avoid overhead of calling wait if not required
+			if( grb::Properties<>::isNonblockingExecution ) {
+				out.error = out.error ? out.error : grb::wait();
+			}
+			if( out.error != grb::SUCCESS ) {
+				std::cerr << "grb::foldl returns " << grb::toString( out.error )
+					<< " during hot benchmark loop; exiting with error!\n";
+				return;
+			}
 		}
 		out.times.useful = timer.time() / static_cast< double >( out.reps_used );
 
@@ -122,10 +133,11 @@ void test( const struct Input &in, struct Output &out ) {
 		// get cache `hot'
 		alpha = realm.template getIdentity< double >();
 		out.error = grb::eWiseLambda(
-			[ &alpha, &xv, &realm ]( const size_t i ) {
-				(void) grb::foldl( alpha, xv[ i ], realm.getOperator() );
-			},
+				[ &alpha, &xv, &realm ]( const size_t i ) {
+					(void) grb::foldl( alpha, xv[ i ], realm.getOperator() );
+				},
 			xv );
+		out.error = out.error ? out.error : grb::wait();
 		if( out.error != SUCCESS ) {
 			std::cerr << "grb::eWiseLambda returns non-SUCCESS exit code "
 				<< grb::toString( out.error ) << ".\n";
@@ -134,10 +146,10 @@ void test( const struct Input &in, struct Output &out ) {
 		// use this to infer number of inner iterations, if requested to be computed
 		ltime = timer.time() - ltime;
 		if( in.rep == 0 ) {
-			out.reps_used = static_cast< size_t >( 1000.0 / ltime ) + 1;
+			out.reps_used = static_cast< size_t >( 100.0 / ltime ) + 1;
 			std::cout << "Auto-selected " << out.reps_used << " inner repititions of "
-				<< "approx. " << ltime << " ms. each (to achieve around 1 second if inner "
-				<< "loop wall-clock time).\n";
+				<< "approximately " << ltime << " ms. each in order to achieve around "
+				<< "100 ms. of inner-loop wall-clock time.\n";
 		} else {
 			out.reps_used = in.rep;
 		}
@@ -146,18 +158,27 @@ void test( const struct Input &in, struct Output &out ) {
 		// benchmark templated axpy
 		for( size_t i = 0; i < out.reps_used; ++i ) {
 			alpha = realm.template getIdentity< double >();
-			(void)grb::eWiseLambda(
-				[ &alpha, &xv, &realm ]( const size_t i ) {
-					(void)grb::foldl( alpha, xv[ i ], realm.getOperator() );
-				},
+			out.error = grb::eWiseLambda(
+					[ &alpha, &xv, &realm ]( const size_t i ) {
+						(void) grb::foldl( alpha, xv[ i ], realm.getOperator() );
+					},
 				xv );
+			// avoid overhead of calling wait if not required
+			if( grb::Properties<>::isNonblockingExecution ) {
+				out.error = out.error ? out.error : grb::wait();
+			}
+			if( out.error != grb::SUCCESS ) {
+				std::cerr << "grb::foldl returns " << grb::toString( out.error )
+					<< " during hot benchmark loop; exiting with error!\n";
+				return;
+			}
 		}
 		out.times.useful = timer.time() / static_cast< double >( out.reps_used );
 
 		// postamble
 		timer.reset();
 		for( size_t i = 0; i < in.n; ++i ) {
-			if( ! grb::utils::equals( expected, alpha, in.n - 1 ) ) {
+			if( !grb::utils::equals( expected, alpha, in.n - 1 ) ) {
 				std::cout << expected << " (expected) does not equal " << alpha
 					<< " (eWiseLambda).\n";
 				out.error = FAILED;
@@ -175,10 +196,10 @@ void test( const struct Input &in, struct Output &out ) {
 		// use this to infer number of inner iterations, if requested to be computed
 		ctime = timer.time() - ctime;
 		if( in.rep == 0 ) {
-			out.reps_used = static_cast< size_t >( 1000.0 / ctime ) + 1;
+			out.reps_used = static_cast< size_t >( 100.0 / ctime ) + 1;
 			std::cout << "Auto-selected " << out.reps_used << " inner repititions of "
-				<< "approx. " << ctime << " ms. each (to achieve around 1 second if inner "
-				<< "loop wall-clock time).\n";
+				<< "approx. " << ctime << " ms. each in order to achieve around "
+				<< "100 ms. of inner-loop wall-clock time.\n";
 		} else {
 			out.reps_used = in.rep;
 		}
@@ -255,16 +276,25 @@ int main( int argc, char ** argv ) {
 	grb::Benchmarker< AUTOMATIC > bench;
 
 	// start functional test
-	std::cout << "\nBenchmark label: grb::reduce of size " << in.n << std::endl;
+	std::cout << "\nBenchmark label: grb::foldl (reduction-to-scalar, "
+		<< grb::toString( grb::config::default_backend ) << ") of size " << in.n
+		<< std::endl;
 	grb::RC rc = bench.exec( &(test< TEMPLATED >), in, out, 1, outer, true );
 	if( rc == SUCCESS && grb::Properties<>::writableCaptured ) {
-		std::cout << "\nBenchmark label: grb::eWiseLambda (reduce) of size " << in.n
+		std::cout << "\nBenchmark label: grb::eWiseLambda (reduction-to-scalar, "
+			<< grb::toString( grb::config::default_backend ) << ") of size " << in.n
 			<< std::endl;
 		rc = bench.exec( &(test< LAMBDA >), in, out, 1, outer, true );
 	}
 	if( rc == SUCCESS ) {
-		std::cout << "\nBenchmark label: compiler-optimised reduce of size " << in.n
-			<< std::endl;
+		std::cout << "\nBenchmark label: ";
+		if( bench_kernels_parallel() ) {
+			std::cout << "parallel (OpenMP) ";
+		} else {
+			std::cout << "sequential (C) ";
+		}
+		std::cout << "compiler-optimised reduce-to-scalar of size "
+			<< in.n << std::endl;
 		rc = bench.exec( &(test< RAW >), in, out, 1, outer, true );
 	}
 	if( rc != SUCCESS ) {
@@ -279,8 +309,8 @@ int main( int argc, char ** argv ) {
 		return EXIT_FAILURE;
 	}
 
-	std::cout << "NOTE: please check the above performance figures manually-- the "
-		"timings should approximately match.\n";
+	std::cout << "\nNOTE: please check the above performance figures manually-- the "
+		"timings should approximately match.\n\n";
 
 	// done
 	std::cout << "Test OK\n" << std::endl;

@@ -227,7 +227,7 @@ void grbProgram( const simulation_input &in, struct output &out ) {
 
 	// assume successful run
 	out.error_code = SUCCESS;
-	RC rc { SUCCESS };
+	RC rc = SUCCESS;
 
 	// wrap hpcg_data inside a unique_ptr to forget about cleaning chores
 	std::unique_ptr< hpcg_data< double, double, double > > hpcg_state;
@@ -258,6 +258,7 @@ void grbProgram( const simulation_input &in, struct output &out ) {
 		grb::identities::zero, grb::identities::one
 	>() );
 	rc = rc ? rc : set( x, 0.0 );
+	rc = rc ? rc : wait();
 
 #ifdef HPCG_PRINT_SYSTEM
 	if( spmd<>::pid() == 0 ) {
@@ -277,6 +278,7 @@ void grbProgram( const simulation_input &in, struct output &out ) {
 			in.smoother_steps, in.smoother_steps, in.max_iterations, 0.0,
 			out.performed_iterations, out.residual
 		);
+		rc = rc ? rc : wait();
 		double single_time = timer.time();
 		if( rc == SUCCESS ) {
 			rc = collectives<>::reduce( single_time, 0, operators::max< double >() );
@@ -294,14 +296,14 @@ void grbProgram( const simulation_input &in, struct output &out ) {
 				in.smoother_steps, in.smoother_steps, in.max_iterations, 0.0,
 				out.performed_iterations, out.residual
 			);
-			(void) ++(out.test_repetitions);
-			if( rc != SUCCESS ) {
-				break;
+			if( Properties<>::isNonblockingExecution ) {
+				rc = rc ? rc : wait();
 			}
+			(void) ++(out.test_repetitions);
 		}
 		double time_taken = timer.time();
 		out.times.useful = time_taken / static_cast< double >( out.test_repetitions );
-		// sleep( 1 );
+		sleep( 1 );
 	}
 
 	if( spmd<>::pid() == 0 ) {
@@ -329,10 +331,11 @@ void grbProgram( const simulation_input &in, struct output &out ) {
 		grb::operators::add< double >, grb::operators::mul< double >,
 		grb::identities::zero, grb::identities::one
 	> ring;
-	rc = rc ? rc : grb::set( b, 1.0 );
+	rc = rc ? rc : set( b, 1.0 );
 	out.square_norm_diff = 0.0;
-	rc = rc ? rc : grb::eWiseMul( b, -1.0, x, ring );
-	rc = rc ? rc : grb::dot( out.square_norm_diff, b, b, ring );
+	rc = rc ? rc : eWiseMul( b, -1.0, x, ring );
+	rc = rc ? rc : dot( out.square_norm_diff, b, b, ring );
+	rc = rc ? rc : wait();
 
 	// set error code
 	out.error_code = rc;

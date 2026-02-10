@@ -140,7 +140,7 @@ int KML_CG_PREFIXED( InitSI )(
 	KmlSolverTask **handle, int n, const float *a,
 	const int *ja, const int *ia
 ) {
-	// negative numbers become positive when casted to size_t
+	// negative numbers become positive when cast to size_t
 	if( n <= 0 ) { return KMLSS_BAD_N; }
 	sparse_err_t err = sparse_cg_init_sii( handle, n, a, ja, ia );
 	return sparse_err_t_2_int( err );
