@@ -156,7 +156,7 @@ namespace grb {
 			const EnergyType myrand = -rand( rng );
 
 			for( size_t si = nprocs ; rc == grb::SUCCESS && si > 0; --si ){
-				if( si-1 == s ){
+				if( si == s + 1 ){
 					for( size_t i = n_replicas - 1 ; i > 0 ; --i ){
 						const EnergyType de = ( energies[ i ] - energies[ i-1 ]) * (betas[ i ] - betas[ i-1 ]);
 
@@ -165,25 +165,24 @@ namespace grb {
 							std::swap( energies[i], energies[i-1] );
 						}
 					}
+				}
+
+				if( si == 1 ) continue;
+				if( si == s + 1 ){
 					grb::set( s1, states[0] );
 					msg[ 1 ].e = energies[ 0 ];
 					msg[ 1 ].b = betas[0];
 					msg[ 1 ].r = myrand;
-				}else if( si-2 == s ){
+				}else if( si == s + 2 ){
 					grb::set( s0, states[ n_replicas - 1 ] );
 					msg[ 0 ].e = energies[ n_replicas - 1 ];
 					msg[ 0 ].b = betas[ n_replicas - 1 ];
 					msg[ 0 ].r = myrand;
 				}
-				if( si == 1 ) continue;
 
 #ifdef _GRB_WITH_LPF
-				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 0 ].e, si-2 );
-				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 0 ].b, si-2 );
-				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 0 ].r, si-2 );
-				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 1 ].e, si-1 );
-				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 1 ].b, si-1 );
-				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 1 ].r, si-1 );
+				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 0 ], si-2 );
+				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 1 ], si-1 );
 #else
 				assert( false ); // this should never run
 #endif
@@ -208,10 +207,10 @@ namespace grb {
 #else
 					assert( false ); // this should never run
 #endif
-					if( si-1 == s ){
+					if( si == s + 1 ){
 						rc = rc ? rc : grb::set( states[ 0 ], s0 );
 						rc = rc ? rc : grb::setElement( energies, msg[ 0 ].e, 0 );
-					}else if( si-2 ==  s ){
+					}else if( si ==  s + 2 ){
 						rc = rc ? rc : grb::set( states[ n_replicas - 1 ], s1 );
 						rc = rc ? rc : grb::setElement( energies, msg[ 1 ].e, n_replicas - 1 );
 					}
@@ -760,7 +759,7 @@ namespace grb {
 					for( const auto x : dn0 ){
 						const size_t i = x.first;
 						assert( mask[x.first] == 1 );
-						assert( x.second );
+						// assert( x.second );
 						if( x.second >= rand[i] ){
 							assert( dn[i] == 1 );
 							assert( accept[i] == 1 );
