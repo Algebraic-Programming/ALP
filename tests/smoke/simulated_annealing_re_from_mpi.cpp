@@ -449,8 +449,24 @@ void grbProgram(
     // seed RNGs (C and C++ engines) using requested seed (hardcoded default 8 if not provided)
     std::minstd_rand rng ( data_in.seed + s ); // rng or std::mt19937
 
+	if( data_in.n_replicas < nprocs ){
+		std::cerr << "Number of processes must be larger or equal to the number of replicas\n";
+		out.error_code = grb::FAILED;
+		return;
+	}
+
     // create states storage and initialize with random 1/0 values
-    const size_t n_replicas = data_in.n_replicas;
+    const size_t n_replicas = ( data_in.n_replicas / nprocs ) + (( data_in.n_replicas % nprocs > s )? 1 : 0);
+
+#ifndef NDEBUG
+	size_t total_replicas = n_replicas;
+	const auto add_operator =  grb::operators::add< size_t >();
+	grb::collectives<>::allreduce( total_replicas, add_operator );
+	std::cerr << total_replicas << " == " << data_in.n_replicas  << "\n";
+	assert( total_replicas == data_in.n_replicas );
+
+#endif
+
     std::vector< grb::Vector< IOType, internal_backend > > states0;
     std::vector< grb::Vector< IOType, internal_backend > > states;
     std::vector< IOType > rand_data (n);
