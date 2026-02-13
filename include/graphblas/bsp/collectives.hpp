@@ -697,8 +697,6 @@ namespace grb {
 
 				// ensure the global buffer has enough capacity
 				RC rc = data.ensureBufferSize( sizeof( IOType ) );
-				// ensure we have enough memory slots for local registration
-				rc = rc ? rc : data.ensureMemslotAvailable();
 				// ensure we can execute the requested collective call
 				rc = rc ? rc : data.ensureCollectivesCapacity( 1, 0, sizeof( IOType ) );
 				// ensure we have the required h-relation capacity
@@ -707,22 +705,19 @@ namespace grb {
 					: data.ensureMaxMessages( std::max( data.P + 1, 2 * data.P - 3 ) );
 				if( rc != SUCCESS ) { return rc; }
 
-				// root retrieve buffer area and copies payload into buffer
-				// rationale: this saves one global registration, which otherwise is likely
-				//            to dominate most uses for this collective call
+				// everyone retrieve buffer area
+				// rationale: this saves having to register inout, which otherwise is likely
+				// to dominate most uses for this collective call
+				IOType * const __restrict__ buffer = data.template getBuffer< IOType >();
+
+				// root copies data into buffer
 				if( data.s == static_cast< size_t >( root ) ) {
-					IOType * const __restrict__ buffer = data.template getBuffer< IOType >();
 					*buffer = inout;
 				}
 
-				// register destination area, schedule broadcast, and wait for it to finish
-				lpf_memslot_t dest_slot = LPF_INVALID_MEMSLOT;
-				lpf_err_t lpf_rc = lpf_register_local(
-					data.context, &inout, sizeof( IOType ), &dest_slot );
-				if( lpf_rc == SUCCESS ) {
-					lpf_rc = lpf_broadcast( data.coll, data.slot, dest_slot, sizeof( IOType ),
-						root );
-				}
+				// schedule broadcast
+				lpf_err_t lpf_rc = lpf_broadcast( data.coll, data.slot, data.slot, sizeof( IOType ),
+					root );
 				if( lpf_rc == LPF_SUCCESS ) {
 					lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
 				}
@@ -731,10 +726,8 @@ namespace grb {
 				rc = internal::checkLPFerror( lpf_rc,
 					"grb::collectives< BSP >::broadcast (scalar)" );
 
-				// cleanup
-				if( dest_slot != LPF_INVALID_MEMSLOT && lpf_rc != LPF_ERR_FATAL ) {
-					(void) lpf_deregister( data.context, dest_slot );
-				}
+				// copy back
+				inout = *buffer;
 
 				// done
 				return rc;
