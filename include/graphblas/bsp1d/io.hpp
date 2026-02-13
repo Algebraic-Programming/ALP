@@ -279,7 +279,7 @@ namespace grb {
 
 		// collect global error state
 		if( collectives< BSP1D >::allreduce(
-				rc, grb::operators::logical_or< grb::RC >()
+				rc, grb::operators::any_or< grb::RC >()
 			) != SUCCESS
 		) {
 			return PANIC;
@@ -384,7 +384,7 @@ namespace grb {
 		bool local_ok = ret == SUCCESS;
 		if( collectives< BSP1D >::allreduce(
 				ret,
-				operators::logical_or< RC >()
+				operators::any_or< RC >()
 			) != grb::SUCCESS
 		) {
 #ifdef _BSP1D_IO_DEBUG
@@ -603,7 +603,7 @@ namespace grb {
 		}
 
 		// Gather remote error state
-		if( collectives< BSP1D >::allreduce( ret, operators::logical_or< RC >() )
+		if( collectives< BSP1D >::allreduce( ret, operators::any_or< RC >() )
 			!= SUCCESS
 		) {
 			return PANIC;
@@ -682,7 +682,7 @@ namespace grb {
 
 		// in resize mode, we hit two collectives and otherwise none
 		if( phase == RESIZE ) {
-			if( collectives< BSP1D >::allreduce( ret, operators::logical_or< RC >() )
+			if( collectives< BSP1D >::allreduce( ret, operators::any_or< RC >() )
 				!= SUCCESS
 			) {
 				return PANIC;
@@ -758,7 +758,7 @@ namespace grb {
 			data.s, data.P
 		);
 
-		if( collectives< BSP1D >::allreduce( ret, operators::logical_or< RC >() )
+		if( collectives< BSP1D >::allreduce( ret, operators::any_or< RC >() )
 			!= SUCCESS
 		) {
 			return PANIC;
@@ -833,7 +833,7 @@ namespace grb {
 			data.s, data.P
 		);
 
-		if( collectives< BSP1D >::allreduce( ret, operators::logical_or< RC >() )
+		if( collectives< BSP1D >::allreduce( ret, operators::any_or< RC >() )
 			!= SUCCESS
 		) {
 			return PANIC;
@@ -921,7 +921,7 @@ namespace grb {
 		}
 
 		// synchronise error status
-		if( collectives< BSP1D >::allreduce( ret, operators::logical_or< RC >() )
+		if( collectives< BSP1D >::allreduce( ret, operators::any_or< RC >() )
 			!= SUCCESS
 		) {
 			return PANIC;
@@ -1041,7 +1041,7 @@ namespace grb {
 #ifdef _BSP1D_IO_DEBUG
 		std::cout << "\t all-reducing error code\n";
 #endif
-		if( collectives< BSP1D >::allreduce( ret, operators::logical_or< RC >() )
+		if( collectives< BSP1D >::allreduce( ret, operators::any_or< RC >() )
 			!= SUCCESS
 		) {
 			return PANIC;
@@ -1187,7 +1187,7 @@ namespace grb {
 			std::cout << "\t global exit-check\n";
 #endif
 			if( collectives< BSP1D >::allreduce(
-					ret, grb::operators::logical_or< grb::RC >()
+					ret, grb::operators::any_or< grb::RC >()
 				) != SUCCESS
 			) {
 				return PANIC;
@@ -1319,7 +1319,7 @@ namespace grb {
 #endif
 				if( collectives< BSP1D >::allreduce(
 						rc,
-						grb::operators::logical_or< grb::RC >()
+						grb::operators::any_or< grb::RC >()
 					) != SUCCESS
 				) {
 					return PANIC;

@@ -851,7 +851,7 @@ void grb_program( const size_t &n, RC &rc ) {
 	// synchronise return code for distributed backends
 	{
 		const grb::RC my_rc = rc;
-		if( collectives<>::allreduce( rc, grb::operators::logical_or< RC >() )
+		if( collectives<>::allreduce( rc, grb::operators::any_or< RC >() )
 			!= SUCCESS )
 		{
 			std::cerr << "Fatal error: could not reduce final error code over all user "

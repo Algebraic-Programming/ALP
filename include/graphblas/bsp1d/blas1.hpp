@@ -436,7 +436,7 @@ namespace grb {
 		RC ret = foldr< descr >( alpha, internal::getLocal( y ), monoid, phase );
 		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
@@ -514,7 +514,7 @@ namespace grb {
 		// necessary to catch such a violation -- but, gain, only in the sparse case.
 		if( !dense_descr_is_given && at_least_one_vector_is_sparse ) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >() ) != SUCCESS
+				ret, grb::operators::any_or< RC >() ) != SUCCESS
 			) {
 				return PANIC;
 			}
@@ -588,7 +588,7 @@ namespace grb {
 			!config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities()
 		) {
 			if( collectives< BSP1D >::allreduce( ret,
-				grb::operators::logical_or< RC >() ) != SUCCESS
+				grb::operators::any_or< RC >() ) != SUCCESS
 			) {
 				return PANIC;
 			}
@@ -713,7 +713,7 @@ namespace grb {
 		RC ret = foldl< descr >( internal::getLocal( x ), beta, monoid, phase );
 		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
@@ -856,7 +856,7 @@ namespace grb {
 			beta, monoid, phase );
 		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
@@ -958,7 +958,7 @@ namespace grb {
 		// positions in either vector that are not populated in the other. A check is
 		// necessary to catch such a violation -- but, gain, only in the sparse case.
 		if( !dense_descr_is_given && at_least_one_vector_is_sparse ) {
-			if( collectives< BSP1D >::allreduce( ret, grb::operators::logical_or< RC >() )
+			if( collectives< BSP1D >::allreduce( ret, grb::operators::any_or< RC >() )
 				!= SUCCESS
 			) {
 				return PANIC;
@@ -1032,7 +1032,7 @@ namespace grb {
 		if( phase == RESIZE &&
 			!config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities()
 		) {
-			if( collectives< BSP1D >::allreduce( ret, grb::operators::logical_or< RC >() )
+			if( collectives< BSP1D >::allreduce( ret, grb::operators::any_or< RC >() )
 				!= SUCCESS
 			) {
 				return PANIC;
@@ -1117,7 +1117,7 @@ namespace grb {
 
 		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
@@ -1197,7 +1197,7 @@ namespace grb {
 
 		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
@@ -1582,7 +1582,7 @@ namespace grb {
 			internal::getLocal( x ), beta, op, phase );
 		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
@@ -1672,7 +1672,7 @@ namespace grb {
 			internal::getLocal( y ), op, phase );
 		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
@@ -1790,7 +1790,7 @@ namespace grb {
 			internal::getLocal( x ), internal::getLocal( y ), op, phase );
 		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
@@ -1887,7 +1887,7 @@ namespace grb {
 			internal::getLocal( mask ), alpha, internal::getLocal( y ), op, phase );
 		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
@@ -1981,7 +1981,7 @@ namespace grb {
 			internal::getLocal( mask ), internal::getLocal( x ), beta, op, phase );
 		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
@@ -2086,7 +2086,7 @@ namespace grb {
 		);
 		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
@@ -2172,7 +2172,7 @@ namespace grb {
 			internal::getLocal( x ), beta, monoid, phase );
 		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
@@ -2257,7 +2257,7 @@ namespace grb {
 			internal::getLocal( y ), monoid, phase );
 		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
@@ -2351,7 +2351,7 @@ namespace grb {
 		);
 		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
@@ -2445,7 +2445,7 @@ namespace grb {
 		);
 		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
@@ -2545,7 +2545,7 @@ namespace grb {
 		);
 		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
@@ -2645,7 +2645,7 @@ namespace grb {
 		);
 		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
@@ -2768,7 +2768,7 @@ namespace grb {
 			internal::getLocal( x ), ring, phase );
 		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
@@ -2825,7 +2825,7 @@ namespace grb {
 			internal::getLocal( x ), internal::getLocal( y ), ring, phase );
 		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
@@ -2882,7 +2882,7 @@ namespace grb {
 			internal::getLocal( a ), chi, internal::getLocal( y ), ring, phase );
 		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
@@ -3199,7 +3199,7 @@ namespace grb {
 		);
 		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
@@ -3272,7 +3272,7 @@ namespace grb {
 			internal::getLocal( y ), ring, phase );
 		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
@@ -3344,7 +3344,7 @@ namespace grb {
 			internal::getLocal( x ), beta, ring, phase );
 		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
@@ -3412,7 +3412,7 @@ namespace grb {
 			alpha, beta, ring, phase );
 		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
@@ -3499,7 +3499,7 @@ namespace grb {
 		);
 		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
@@ -3585,7 +3585,7 @@ namespace grb {
 		);
 		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
@@ -3671,7 +3671,7 @@ namespace grb {
 		);
 		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
@@ -3754,7 +3754,7 @@ namespace grb {
 		);
 		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
@@ -3832,7 +3832,7 @@ namespace grb {
 			phase == RESIZE
 		) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
@@ -3899,7 +3899,7 @@ namespace grb {
 			phase == RESIZE
 		) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
@@ -3970,7 +3970,7 @@ namespace grb {
 		);
 		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
@@ -4106,7 +4106,7 @@ namespace grb {
 			phase == RESIZE
 		) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
@@ -4178,7 +4178,7 @@ namespace grb {
 			phase == RESIZE
 		) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
@@ -4250,7 +4250,7 @@ namespace grb {
 			phase == RESIZE
 		) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
@@ -4314,7 +4314,7 @@ namespace grb {
 			internal::getLocal( m ), alpha, beta, gamma, ring, phase );
 		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::logical_or< RC >()
+				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}

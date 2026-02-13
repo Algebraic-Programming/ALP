@@ -34,7 +34,7 @@
 
 
 grb::RC grb::internal::assertSyncedRC( const grb::RC &in ) {
-	grb::operators::logical_or< grb::RC > reduce_op;
+	grb::operators::any_or< grb::RC > reduce_op;
 	grb::RC global_rc = in;
 	if( grb::collectives< BSP1D >::allreduce( global_rc, reduce_op )
 		!= grb::RC::SUCCESS

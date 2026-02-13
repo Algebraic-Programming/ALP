@@ -36,7 +36,7 @@ static bool same( double a, double b, double epsilon = 0.00001 ) {
 }
 
 void grbProgram( const size_t &P, int &exit_status ) {
-	grb::operators::logical_or< int > reduceRC;
+	grb::operators::any_or< int > reduceRC;
 	const size_t s = spmd<>::pid();
 	assert( P == spmd<>::nprocs() );
 	assert( s < P );

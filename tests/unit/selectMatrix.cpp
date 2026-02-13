@@ -446,7 +446,7 @@ void grb_program_operators( const size_t &n, RC &rc ) {
 		">> out of <one-column>" );
 
 	// done
-	if( collectives<>::allreduce( rc, operators::logical_or< RC >() )
+	if( collectives<>::allreduce( rc, operators::any_or< RC >() )
 		!= SUCCESS
 	) {
 		rc = PANIC;
@@ -540,7 +540,7 @@ void grb_program_lambdas( const size_t &n, RC &rc ) {
 		);
 
 	// done
-	if( collectives<>::allreduce( rc, operators::logical_or< RC >() )
+	if( collectives<>::allreduce( rc, operators::any_or< RC >() )
 		!= SUCCESS
 	) {
 		rc = PANIC;

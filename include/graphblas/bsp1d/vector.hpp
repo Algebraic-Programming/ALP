@@ -2495,7 +2495,7 @@ namespace grb {
 
 			// Synchronise once between all processes
 			if( SUCCESS !=
-				collectives< BSP1D >::allreduce( ret, operators::logical_or< RC >() )
+				collectives< BSP1D >::allreduce( ret, operators::any_or< RC >() )
 			) {
 				throw std::runtime_error( "grb::Vector< BSP1D >::Vector( initializer_list ): "
 					"collective::allreduce failed." );
