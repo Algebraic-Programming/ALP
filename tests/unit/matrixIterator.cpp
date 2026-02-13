@@ -282,7 +282,7 @@ RC test_matrix(
 		values + num_nnz, 0 );
 	grb::RC ret = test_matrix_iter( orig_begin, orig_end, row_col_offset, mat );
 	if(
-		collectives<>::allreduce( ret, grb::operators::any_or< RC >() ) != SUCCESS
+		collectives<>::allreduce( ret, grb::operators::logical_or< RC >() ) != SUCCESS
 	) {
 		std::cerr << "Cannot reduce error code\n";
 		ret = PANIC;
@@ -299,7 +299,7 @@ RC test_matrix(
 	auto orig_end = internal::makeSynchronized( rows + num_nnz, cols + num_nnz, 0 );
 	grb::RC ret = test_matrix_iter( orig_begin, orig_end, row_col_offset, mat );
 	if(
-		collectives<>::allreduce( ret, grb::operators::any_or< RC >() ) != SUCCESS
+		collectives<>::allreduce( ret, grb::operators::logical_or< RC >() ) != SUCCESS
 	) {
 		std::cerr << "Cannot reduce error code\n";
 		ret = PANIC;

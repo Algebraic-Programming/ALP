@@ -48,7 +48,7 @@ static grb::RC expect_count( size_t &count, const size_t expected ) {
 // user processes (e.g. by setting them dependent on local iterators)
 static void syncRC( grb::RC &rc ) {
 	const grb::RC coll_rc = grb::collectives<>::allreduce( rc,
-		grb::operators::any_or< grb::RC >() );
+		grb::operators::logical_or< grb::RC >() );
 	if( coll_rc != grb::SUCCESS ) {
 		std::cerr << " collective unexpectedly FAILED (" << grb::toString( coll_rc )
 			<< "\n";

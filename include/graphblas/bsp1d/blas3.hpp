@@ -56,7 +56,7 @@ namespace grb {
 		) noexcept {
 			RC global_rc = local_rc;
 			if( collectives<>::allreduce( global_rc,
-				operators::any_or< RC >() ) != SUCCESS
+				operators::logical_or< RC >() ) != SUCCESS
 			) {
 				return PANIC;
 			}
@@ -128,7 +128,7 @@ namespace grb {
 			phase
 		);
 		if( phase == RESIZE ) {
-			if( collectives<>::allreduce( ret, operators::any_or< RC >() ) != SUCCESS ) {
+			if( collectives<>::allreduce( ret, operators::logical_or< RC >() ) != SUCCESS ) {
 				return PANIC;
 			} else {
 				return ret;
@@ -200,7 +200,7 @@ namespace grb {
 			<< nnz( internal::getLocal( out ) ) << "\n";
 #endif
 		// synchronise error code
-		if( collectives<>::allreduce( ret, operators::any_or< RC >() ) != SUCCESS ) {
+		if( collectives<>::allreduce( ret, operators::logical_or< RC >() ) != SUCCESS ) {
 			return PANIC;
 		}
 

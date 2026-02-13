@@ -117,7 +117,7 @@ void grb_program( const size_t &n, RC &rc ) {
 
 	print_local( lpf_data, local_ss );
 
-	if( collectives<>::allreduce( rc, operators::any_or<RC>() ) != SUCCESS ) {
+	if( collectives<>::allreduce( rc, operators::logical_or<RC>() ) != SUCCESS ) {
 		rc = PANIC;
 	}
 }
