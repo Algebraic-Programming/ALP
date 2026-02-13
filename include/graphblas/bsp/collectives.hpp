@@ -367,7 +367,7 @@ namespace grb {
 			 * This function may place an alloc of \f$ P\mathit{sizeof}(IOType) \f$ bytes
 			 * if the internal buffer was not sufficiently large.
 			 *
-			 * @tparam Operator A binary operator that must never generate no-ops.
+			 * @tparam Operator A binary operator.
 			 */
 			template<
 				Descriptor descr = descriptors::no_operation,
@@ -525,8 +525,6 @@ namespace grb {
 					<< inout << " and op = " << &op << std::endl;
 #endif
 				// static sanity checks
-				static_assert( !grb::internal::maybe_noop< Operator >::value,
-					"Operators passed to reduce must never be able to generate no-ops" );
 				static_assert( !grb::is_object< IOType >::value,
 					"grb::collectives::allreduce cannot have another ALP object as its scalar "
 					"type!" );
@@ -596,8 +594,6 @@ namespace grb {
 					<< &monoid << std::endl;
 #endif
 				// static sanity checks
-				static_assert( !grb::internal::maybe_noop< Monoid >::value, "Monoids passed to "
-					"reduce must never be able to generate no-ops" );
 				static_assert( !grb::is_object< IOType >::value,
 					"grb::collectives::allreduce cannot have another ALP object as its scalar "
 					"type!" );
