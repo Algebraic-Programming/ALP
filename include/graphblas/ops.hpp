@@ -1220,8 +1220,24 @@ namespace grb {
 		};
 
 		template< typename D1, typename D2, typename D3, Backend implementation >
-		struct maybe_noop< operators::right_assign_if< D1, D2, D3, implementation > > {
+		struct maybe_noop<
+			operators::right_assign_if< D1, D2, D3, implementation >
+		> {
 			static constexpr bool value = true;
+		};
+
+		template< typename D1, typename D2, typename D3, Backend implementation >
+		struct maybe_noop< operators::any_or< D1, D2, D3, implementation > > {
+			static constexpr bool value = true;
+		};
+
+		template< typename Monoid >
+		struct maybe_noop<
+			Monoid,
+			typename std::enable_if< is_monoid< Monoid >::value, void >::type
+		> {
+			static const constexpr bool value =
+				maybe_noop< typename Monoid::Operator >::value;
 		};
 
 	} // end namespace grb::internal
