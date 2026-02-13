@@ -189,6 +189,7 @@ namespace grb {
 				const lpf_pid_t root,
 				const Operator &op,
 				const typename Operator::D3 * const id,
+				const IOType * const id2,
 				internal::BSP1D_Data &data,
 				const char * const source
 			) {
@@ -325,20 +326,17 @@ namespace grb {
 				rc = internal::checkLPFerror( lpf_rc, source );
 
 				// copy back
-				if( all ) {
-					if( rc == SUCCESS ) {
-						if( left_looking ) {
-							(void) foldr( *buffer, inout, op );
+				if( rc == SUCCESS ) {
+					if( all || data.s == static_cast< size_t >( root ) ) {
+						if( use_id ) {
+							inout = *id2;
+							if( left_looking ) {
+								(void) foldr( *buffer, inout, op );
+							} else {
+								(void) foldl( inout, *buffer, op );
+							}
 						} else {
-							(void) foldl( inout, *buffer, op );
-						}
-					}
-				} else {
-					if( rc == SUCCESS && data.s == static_cast< size_t >( root ) ) {
-						if( left_looking ) {
-							(void) foldr( *buffer, inout, op );
-						} else {
-							(void) foldl( inout, *buffer, op );
+							inout = *buffer;
 						}
 					}
 				}
@@ -416,7 +414,7 @@ namespace grb {
 				const RC ret = reduce_allreduce_generic<
 					descr, Operator, IOType, false, true
 				>(
-					inout, 0, op, nullptr, data,
+					inout, 0, op, nullptr, nullptr, data,
 					"grb::collectives< BSP >::allreduce (operator)"
 				);
 #ifdef _DEBUG_BSP_COLLECTIVES
@@ -481,12 +479,13 @@ namespace grb {
 				// get identity
 				const typename Monoid::D3 id = monoid.template
 					getIdentity< typename Monoid::D3 >();
+				const IOType id2 = monoid.template getIdentity< IOType >();
 
 				// dispatch
 				const RC ret = reduce_allreduce_generic<
 					descr, typename Monoid::Operator, IOType, !same_domains, true
 				>(
-					inout, 0, monoid.getOperator(), &id, data,
+					inout, 0, monoid.getOperator(), &id, &id2, data,
 					"grb::collectives< BSP >::allreduce (monoid)"
 				);
 
@@ -559,7 +558,7 @@ namespace grb {
 				return reduce_allreduce_generic<
 					descr, Operator, IOType, false, false
 				>(
-					inout, root, op, nullptr, data,
+					inout, root, op, nullptr, nullptr, data,
 					"grb::collectives< BSP >::reduce (operator)"
 				);
 			}
@@ -622,14 +621,15 @@ namespace grb {
 				}
 
 				// get identity
-				typename Monoid::D3 id = monoid.template
+				const typename Monoid::D3 id = monoid.template
 					getIdentity< typename Monoid::D3 >();
+				const IOType id2 = monoid.template getIdentity< IOType >();
 
 				// dispatch
 				return reduce_allreduce_generic<
 					descr, typename Monoid::Operator, IOType, !same_domains, false
 				>(
-					inout, root, monoid.getOperator(), &id, data,
+					inout, root, monoid.getOperator(), &id, &id2, data,
 					"grb::collectives< BSP >::reduce (monoid)"
 				);
 			}

@@ -52,8 +52,11 @@
 #include "distribution.hpp"
 
 #ifdef _DEBUG
- #include "spmd.hpp"
  #define _BSP1D_VECTOR_DEBUG
+#endif
+
+#ifdef _BSP1D_VECTOR_DEBUG
+ #include "spmd.hpp"
 #endif
 
 
@@ -607,8 +610,8 @@ namespace grb {
 #endif
 
 			if( cap_in > 0 && nz > cap_in ) {
-				std::cerr << "\t grb::Vector< BSP1D >: illegal initial capacity requested!"
-					<< std::endl;
+				std::cerr << "\t grb::Vector< BSP1D >: illegal initial capacity requested: "
+					<< nz << " is larger than its size (" << cap_in << ")!" << std::endl;
 				throw std::runtime_error( toString( ILLEGAL ) );
 			}
 
