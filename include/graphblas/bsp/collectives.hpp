@@ -291,7 +291,8 @@ namespace grb {
 				if( all ) {
 #ifdef _DEBUG_BSP_COLLECTIVES
 					std::cout << "\t\t collectives< BSP >::reduce_allreduce_generic, calls "
-						<< "lpf_allreduce with size " << sizeof(OPIOT) << std::endl;
+						<< "lpf_allreduce with size " << sizeof(OPIOT) << " and buffer content "
+						<< (*buffer) << std::endl;
 #endif
 					(void) root;
 					lpf_rc = lpf_allreduce(
@@ -334,7 +335,7 @@ namespace grb {
 				}
 
 				// done
-				return SUCCESS;
+				return rc;
 			}
 
 
@@ -356,6 +357,8 @@ namespace grb {
 			 *
 			 * This function may place an alloc of \f$ P\mathit{sizeof}(IOType) \f$ bytes
 			 * if the internal buffer was not sufficiently large.
+			 *
+			 * @tparam Operator A binary operator that must never generate no-ops.
 			 */
 			template<
 				Descriptor descr = descriptors::no_operation,
@@ -374,6 +377,8 @@ namespace grb {
 #endif
 
 				// static sanity checks
+				static_assert( !grb::internal::maybe_noop< Operator >::value,
+					"Operators passed to allreduce must never be able to generate no-ops" );
 				static_assert( !grb::is_object< IOType >::value,
 					"grb::collectives::allreduce cannot have another ALP object as its scalar "
 					"type!" );
@@ -445,6 +450,8 @@ namespace grb {
 					<< std::endl;
 #endif
 				// static sanity checks
+				static_assert( !grb::internal::maybe_noop< Monoid >::value, "Monoids "
+					"passed to allreduce must never be able to generate no-ops" );
 				static_assert( !grb::is_object< IOType >::value,
 					"grb::collectives::allreduce cannot have another ALP object as its scalar "
 					"type!" );
@@ -513,6 +520,8 @@ namespace grb {
 					<< inout << " and op = " << &op << std::endl;
 #endif
 				// static sanity checks
+				static_assert( !grb::internal::maybe_noop< Operator >::value,
+					"Operators passed to reduce must never be able to generate no-ops" );
 				static_assert( !grb::is_object< IOType >::value,
 					"grb::collectives::allreduce cannot have another ALP object as its scalar "
 					"type!" );
@@ -582,6 +591,8 @@ namespace grb {
 					<< &monoid << std::endl;
 #endif
 				// static sanity checks
+				static_assert( !grb::internal::maybe_noop< Monoid >::value, "Monoids passed to "
+					"reduce must never be able to generate no-ops" );
 				static_assert( !grb::is_object< IOType >::value,
 					"grb::collectives::allreduce cannot have another ALP object as its scalar "
 					"type!" );
