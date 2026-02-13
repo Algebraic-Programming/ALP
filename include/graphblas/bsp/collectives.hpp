@@ -272,10 +272,11 @@ namespace grb {
 				// rationale: this saves one global registration, which otherwise is likely
 				//            to dominate most uses for this collective call
 				if( use_id ) {
+					*buffer = *id;
 					if( left_looking ) {
-						(void) apply( *buffer, *id, inout, op );
+						(void) foldl( *buffer, inout, op );
 					} else {
-						(void) apply( *buffer, inout, *id, op );
+						(void) foldr( inout, *buffer, op );
 					}
 				} else {
 					// no operator application necessary, they are the same type so we can
@@ -326,11 +327,19 @@ namespace grb {
 				// copy back
 				if( all ) {
 					if( rc == SUCCESS ) {
-						inout = *buffer;
+						if( left_looking ) {
+							(void) foldr( *buffer, inout, op );
+						} else {
+							(void) foldl( inout, *buffer, op );
+						}
 					}
 				} else {
 					if( rc == SUCCESS && data.s == static_cast< size_t >( root ) ) {
-						inout = *buffer;
+						if( left_looking ) {
+							(void) foldr( *buffer, inout, op );
+						} else {
+							(void) foldl( inout, *buffer, op );
+						}
 					}
 				}
 
@@ -377,8 +386,6 @@ namespace grb {
 #endif
 
 				// static sanity checks
-				static_assert( !grb::internal::maybe_noop< Operator >::value,
-					"Operators passed to allreduce must never be able to generate no-ops" );
 				static_assert( !grb::is_object< IOType >::value,
 					"grb::collectives::allreduce cannot have another ALP object as its scalar "
 					"type!" );
@@ -450,8 +457,6 @@ namespace grb {
 					<< std::endl;
 #endif
 				// static sanity checks
-				static_assert( !grb::internal::maybe_noop< Monoid >::value, "Monoids "
-					"passed to allreduce must never be able to generate no-ops" );
 				static_assert( !grb::is_object< IOType >::value,
 					"grb::collectives::allreduce cannot have another ALP object as its scalar "
 					"type!" );
