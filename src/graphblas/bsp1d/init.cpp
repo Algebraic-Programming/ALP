@@ -392,14 +392,14 @@ grb::RC grb::internal::BSP1D_Data::ensureBufferSize( const size_t size_in ) {
 	// check if we can exit early
 	if( checkBufferSize( size_in ) == SUCCESS ) {
 #ifdef _DEBUG
-		std::cout << "\t" << s << ": current capacity suffices\n";
+		std::cout << "\t" << s << ": current capacity suffices" << std::endl;
 #endif
 		return ret;
 	} else {
 #ifdef _DEBUG
 		std::cout << "\t" << s
 			<< ": current capacity is insufficient, reallocating global "
-			<< "buffer...\n";
+			<< "buffer..." << std::endl;
 #endif
 	}
 

@@ -189,6 +189,7 @@ namespace grb {
 				const lpf_pid_t root,
 				const Operator &op,
 				const typename Operator::D3 * const id,
+				const IOType * const id2,
 				internal::BSP1D_Data &data,
 				const char * const source
 			) {
@@ -272,10 +273,11 @@ namespace grb {
 				// rationale: this saves one global registration, which otherwise is likely
 				//            to dominate most uses for this collective call
 				if( use_id ) {
+					*buffer = *id;
 					if( left_looking ) {
-						(void) apply( *buffer, *id, inout, op );
+						(void) foldl( *buffer, inout, op );
 					} else {
-						(void) apply( *buffer, inout, *id, op );
+						(void) foldr( inout, *buffer, op );
 					}
 				} else {
 					// no operator application necessary, they are the same type so we can
@@ -291,7 +293,8 @@ namespace grb {
 				if( all ) {
 #ifdef _DEBUG_BSP_COLLECTIVES
 					std::cout << "\t\t collectives< BSP >::reduce_allreduce_generic, calls "
-						<< "lpf_allreduce with size " << sizeof(OPIOT) << std::endl;
+						<< "lpf_allreduce with size " << sizeof(OPIOT) << " and buffer content "
+						<< (*buffer) << std::endl;
 #endif
 					(void) root;
 					lpf_rc = lpf_allreduce(
@@ -323,18 +326,23 @@ namespace grb {
 				rc = internal::checkLPFerror( lpf_rc, source );
 
 				// copy back
-				if( all ) {
-					if( rc == SUCCESS ) {
-						inout = *buffer;
-					}
-				} else {
-					if( rc == SUCCESS && data.s == static_cast< size_t >( root ) ) {
-						inout = *buffer;
+				if( rc == SUCCESS ) {
+					if( all || data.s == static_cast< size_t >( root ) ) {
+						if( use_id ) {
+							inout = *id2;
+							if( left_looking ) {
+								(void) foldr( *buffer, inout, op );
+							} else {
+								(void) foldl( inout, *buffer, op );
+							}
+						} else {
+							inout = *buffer;
+						}
 					}
 				}
 
 				// done
-				return SUCCESS;
+				return rc;
 			}
 
 
@@ -356,6 +364,8 @@ namespace grb {
 			 *
 			 * This function may place an alloc of \f$ P\mathit{sizeof}(IOType) \f$ bytes
 			 * if the internal buffer was not sufficiently large.
+			 *
+			 * @tparam Operator A binary operator.
 			 */
 			template<
 				Descriptor descr = descriptors::no_operation,
@@ -404,7 +414,7 @@ namespace grb {
 				const RC ret = reduce_allreduce_generic<
 					descr, Operator, IOType, false, true
 				>(
-					inout, 0, op, nullptr, data,
+					inout, 0, op, nullptr, nullptr, data,
 					"grb::collectives< BSP >::allreduce (operator)"
 				);
 #ifdef _DEBUG_BSP_COLLECTIVES
@@ -469,12 +479,13 @@ namespace grb {
 				// get identity
 				const typename Monoid::D3 id = monoid.template
 					getIdentity< typename Monoid::D3 >();
+				const IOType id2 = monoid.template getIdentity< IOType >();
 
 				// dispatch
 				const RC ret = reduce_allreduce_generic<
 					descr, typename Monoid::Operator, IOType, !same_domains, true
 				>(
-					inout, 0, monoid.getOperator(), &id, data,
+					inout, 0, monoid.getOperator(), &id, &id2, data,
 					"grb::collectives< BSP >::allreduce (monoid)"
 				);
 
@@ -547,7 +558,7 @@ namespace grb {
 				return reduce_allreduce_generic<
 					descr, Operator, IOType, false, false
 				>(
-					inout, root, op, nullptr, data,
+					inout, root, op, nullptr, nullptr, data,
 					"grb::collectives< BSP >::reduce (operator)"
 				);
 			}
@@ -610,14 +621,15 @@ namespace grb {
 				}
 
 				// get identity
-				typename Monoid::D3 id = monoid.template
+				const typename Monoid::D3 id = monoid.template
 					getIdentity< typename Monoid::D3 >();
+				const IOType id2 = monoid.template getIdentity< IOType >();
 
 				// dispatch
 				return reduce_allreduce_generic<
 					descr, typename Monoid::Operator, IOType, !same_domains, false
 				>(
-					inout, root, monoid.getOperator(), &id, data,
+					inout, root, monoid.getOperator(), &id, &id2, data,
 					"grb::collectives< BSP >::reduce (monoid)"
 				);
 			}
@@ -685,8 +697,6 @@ namespace grb {
 
 				// ensure the global buffer has enough capacity
 				RC rc = data.ensureBufferSize( sizeof( IOType ) );
-				// ensure we have enough memory slots for local registration
-				rc = rc ? rc : data.ensureMemslotAvailable();
 				// ensure we can execute the requested collective call
 				rc = rc ? rc : data.ensureCollectivesCapacity( 1, 0, sizeof( IOType ) );
 				// ensure we have the required h-relation capacity
@@ -695,22 +705,19 @@ namespace grb {
 					: data.ensureMaxMessages( std::max( data.P + 1, 2 * data.P - 3 ) );
 				if( rc != SUCCESS ) { return rc; }
 
-				// root retrieve buffer area and copies payload into buffer
-				// rationale: this saves one global registration, which otherwise is likely
-				//            to dominate most uses for this collective call
+				// everyone retrieve buffer area
+				// rationale: this saves having to register inout, which otherwise is likely
+				// to dominate most uses for this collective call
+				IOType * const __restrict__ buffer = data.template getBuffer< IOType >();
+
+				// root copies data into buffer
 				if( data.s == static_cast< size_t >( root ) ) {
-					IOType * const __restrict__ buffer = data.template getBuffer< IOType >();
 					*buffer = inout;
 				}
 
-				// register destination area, schedule broadcast, and wait for it to finish
-				lpf_memslot_t dest_slot = LPF_INVALID_MEMSLOT;
-				lpf_err_t lpf_rc = lpf_register_local(
-					data.context, &inout, sizeof( IOType ), &dest_slot );
-				if( lpf_rc == SUCCESS ) {
-					lpf_rc = lpf_broadcast( data.coll, data.slot, dest_slot, sizeof( IOType ),
-						root );
-				}
+				// schedule broadcast
+				lpf_err_t lpf_rc = lpf_broadcast( data.coll, data.slot, data.slot, sizeof( IOType ),
+					root );
 				if( lpf_rc == LPF_SUCCESS ) {
 					lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
 				}
@@ -719,10 +726,8 @@ namespace grb {
 				rc = internal::checkLPFerror( lpf_rc,
 					"grb::collectives< BSP >::broadcast (scalar)" );
 
-				// cleanup
-				if( dest_slot != LPF_INVALID_MEMSLOT && lpf_rc != LPF_ERR_FATAL ) {
-					(void) lpf_deregister( data.context, dest_slot );
-				}
+				// copy back
+				inout = *buffer;
 
 				// done
 				return rc;

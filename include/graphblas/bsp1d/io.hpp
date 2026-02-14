@@ -32,7 +32,7 @@
  #include <omp.h>
 #endif
 
-#include "graphblas/blas1.hpp"                 // for grb::size
+#include "graphblas/blas1.hpp"          // for grb::size
 #include "graphblas/nonzeroStorage.hpp"
 
 // the below transforms an std::vector iterator into an ALP/GraphBLAS-compatible
@@ -151,12 +151,12 @@ namespace grb {
 	 */
 	template< typename DataType, typename RIT, typename CIT, typename NIT >
 	size_t nnz( const Matrix< DataType, BSP1D, RIT, CIT, NIT > &A ) noexcept {
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 		std::cout << "Called grb::nnz (matrix, BSP1D).\n";
 #endif
 		// get local number of nonzeroes
 		size_t ret = nnz( A._local );
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 		std::cout << "\t local number of nonzeroes: " << ret << std::endl;
 #endif
 		// call allreduce on it
@@ -164,7 +164,7 @@ namespace grb {
 			descriptors::no_casting,
 			operators::add< size_t >
 		>( ret );
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 		std::cout << "\t global number of nonzeroes: " << ret << std::endl;
 #endif
 		// after allreduce, return sum of the local nonzeroes
@@ -252,7 +252,7 @@ namespace grb {
 		Vector< InputType, BSP1D, Coords > &x,
 		const size_t new_nz
 	) noexcept {
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 		std::cerr << "In grb::resize (vector, BSP1D)\n"
 			<< "\t vector size is " << grb::size(x) << "\n"
 			<< "\t requested capacity is " << new_nz << "\n";
@@ -270,7 +270,7 @@ namespace grb {
 		const size_t local_size = grb::size( internal::getLocal( x ) );
 		const size_t local_new_nz = new_nz > local_size ? local_size : new_nz;
 
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 		std::cerr << "\t will request local capacity " << local_new_nz << "\n";
 #endif
 
@@ -287,7 +287,7 @@ namespace grb {
 
 		// on failure, old capacity remains in effect, so return
 		if( rc != SUCCESS ) {
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 			std::cerr << "\t at least one user process reports error: "
 				<< toString( rc ) << "\n";
 #endif
@@ -335,7 +335,7 @@ namespace grb {
 		Matrix< InputType, BSP1D, RIT, CIT, NIT > &A,
 		const size_t new_nz
 	) noexcept {
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 		std::cerr << "In grb::resize (matrix, BSP1D)\n"
 			<< "\t matrix is " << nrows( A ) << " by " << ncols( A ) << "\n"
 			<< "\t current capacity is " << capacity( A ) << "\n"
@@ -353,7 +353,7 @@ namespace grb {
 				(new_nz / m == n && (new_nz % m > 0)) ||
 				(new_nz / n == m && (new_nz % n > 0))
 			) {
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 				std::cerr << "\t requested capacity is too large\n";
 #endif
 				return ILLEGAL;
@@ -370,7 +370,7 @@ namespace grb {
 		// pre-catch trivial local case in order to avoid divide-by-zero
 		if( m > 0 && n > 0 ) {
 			// make sure new_nz does not overflow locally
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 			std::cerr << "\t delegating to process-local grb::resize\n";
 #endif
 			if( new_nz / m > n || new_nz / m > n ) {
@@ -387,7 +387,7 @@ namespace grb {
 				operators::any_or< RC >()
 			) != grb::SUCCESS
 		) {
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 			std::cerr << "\t some user processes reported error\n";
 #endif
 		}
@@ -399,7 +399,7 @@ namespace grb {
 				if( resize( internal::getLocal( A ), old_capacity ) != SUCCESS ) {
 					// this situation is a breach of contract that we (apparently) cannot
 					// recover from
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 					std::cerr << "\t could not recover old capacity\n";
 #endif
 					return PANIC;
@@ -415,13 +415,13 @@ namespace grb {
 			operators::add< size_t >()
 		);
 		if( ret != SUCCESS ) {
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 			std::cerr << "\t could not synchronise new global capacity\n";
 #endif
 			return PANIC;
 		}
 		A._cap = new_global_cap;
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 		std::cerr << "\t new global capacity is " << new_global_cap << "\n";
 #endif
 
@@ -556,14 +556,25 @@ namespace grb {
 			"grb::set (Vector, at index, BSP1D)",
 			"called with a value type that does not match that of the given vector"
 		);
+#ifdef _BSP1D_IO_DEBUG
+		std::cout << "\t entering setElement, BSP1D" << std::endl;
+#endif
 
 		// dynamic sanity check
 		const size_t n = size( x );
 		if( i >= n ) {
+#ifdef _BSP1D_IO_DEBUG
+			std::cout << "\t\t mismatch detected: index " << i << ", while size is "
+				<< n << std::endl;
+#endif
 			return MISMATCH;
 		}
 		if( descr & descriptors::dense ) {
 			if( nnz( x ) < n ) {
+#ifdef _BSP1D_IO_DEBUG
+				std::cout << "\t\t illegal use of dense descriptor: vector is sparse"
+					<< std::endl;
+#endif
 				return ILLEGAL;
 			}
 		}
@@ -583,7 +594,7 @@ namespace grb {
 			// local, so translate index and perform requested operation
 			const size_t local_index =
 				internal::Distribution< BSP1D >::global_index_to_local( i, n, data.P );
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 			std::cout << data.s << ", grb::setElement translates global index "
 				<< i << " to " << local_index << "\n";
 #endif
@@ -620,6 +631,11 @@ namespace grb {
 				ret = PANIC;
 			}
 		}
+
+#ifdef _BSP1D_IO_DEBUG
+		std::cout << "Exiting setElement, BSP1D with return code "
+			<< grb::toString( ret ) << std::endl;
+#endif
 
 		// done
 		return ret;
@@ -1167,7 +1183,7 @@ namespace grb {
 
 		// check for illegal at sibling processes
 		if( data.P > 1 && (descr & descriptors::no_duplicates) ) {
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 			std::cout << "\t global exit-check\n";
 #endif
 			if( collectives< BSP1D >::allreduce(
@@ -1234,7 +1250,7 @@ namespace grb {
 		// sequential case first. This one is easier as it simply discards input
 		// iterator elements whenever they are not local
 		if( mode == SEQUENTIAL ) {
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 			std::cout << "buildVector< BSP1D > called, index + value iterators, "
 				<< "SEQUENTIAL mode\n";
 #endif
@@ -1256,7 +1272,7 @@ namespace grb {
 
 				// sanity check on input
 				if( *ind_start >= n ) {
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 					std::cout << "\t mismatch detected, returning\n";
 #endif
 					return MISMATCH;
@@ -1274,12 +1290,12 @@ namespace grb {
 						);
 					index_cache.push_back( localIndex );
 					value_cache.push_back( static_cast< InputType >( *val_start ) );
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 					std::cout << "\t local nonzero will be added to " << localIndex << ", "
 						<< "value " << ( *val_start ) << "\n";
 #endif
 				} else {
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 					std::cout << "\t remote nonzero at " << ( *ind_start )
 						<< " will be skipped.\n";
 #endif
@@ -1298,7 +1314,7 @@ namespace grb {
 			);
 
 			if( data.P > 1 && (descr & descriptors::no_duplicates) ) {
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 				std::cout << "\t global exit check (2)\n";
 #endif
 				if( collectives< BSP1D >::allreduce(
@@ -1397,14 +1413,14 @@ namespace grb {
 					row_local_index,
 					column_offset + column_local_index
 				);
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 				std::cout << "\t\t\t translating nonzero at ( " << start.i() << ", "
 					<< start.j() << " ) to one at ( " << row_local_index << ", "
 					<< ( column_offset + column_local_index ) << " ) at PID "
 					<< row_pid << "\n";
 #endif
 			} else if( mode == PARALLEL ) {
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 				std::cout << "\t\t\t sending nonzero at ( " << start.i() << ", "
 					<< start.j() << " ) to PID " << row_pid << " at ( "
 					<< row_local_index << ", " << (column_offset + column_local_index)
@@ -1421,7 +1437,7 @@ namespace grb {
 					row_local_index, column_offset + column_local_index
 				);
 			} else {
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 				std::cout << "PID " << data.s << " ignores nonzero at ( "
 					<< start.i() << ", " << start.j() << " )\n";
 #endif
@@ -1580,7 +1596,7 @@ namespace grb {
 			if( ret != SUCCESS ){
 				return ret;
 			}
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 			for( lpf_pid_t i = 0; i < data.P; i++) {
 				if( data.s == i ) {
 					std::cout << "Process " << data.s << std::endl;
@@ -1669,7 +1685,7 @@ namespace grb {
 					for( size_t tid = 1; tid < num_threads; ++tid ) {
 						first_nnz_ptr[ tid ] = first_nnz_ptr[ tid - 1 ]
 							+ parallel_non_zeroes_ptr[ tid - 1 ][ pid ].size();
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 						if( parallel_non_zeroes_ptr[ tid - 1 ][ pid ].size() > 0 ) {
 							std::cout << "pid " << data.s << ", destination process " << pid
 								<< ", tid " << omp_get_thread_num() << ", destination thread " << tid
@@ -1689,7 +1705,7 @@ namespace grb {
 					parallel_non_zeroes_ptr[ thread_id ][ pid ];
 				const size_t first_nnz_local = first_nnz_ptr[ thread_id ];
 				const size_t num_nnz_local = local_out.size();
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 				for( lpf_pid_t i = 0; i < data.P; i++ ) {
 					if( data.s == i ) {
 						if( omp_get_thread_num() == 0 ) {

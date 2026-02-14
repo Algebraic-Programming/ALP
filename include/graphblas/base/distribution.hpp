@@ -67,14 +67,11 @@ namespace grb {
 				 * The argument \a P must be strictly larger than one.
 				 */
 				static constexpr size_t global_index_to_process_id(
-// need to employ an ugly hack to make sure all of compilation without warnings
-// and doxygen work
-#ifdef __DOXYGEN__
 					const size_t i, const size_t n, const size_t P
-#else
-					const size_t, const size_t, const size_t
-#endif
 				) {
+					(void) i;
+					(void) n;
+					(void) P;
 					return 0;
 				}
 
@@ -133,15 +130,12 @@ namespace grb {
 				 * @returns The number of elements preceding \a s.
 				 */
 				static constexpr size_t local_offset(
-// need to employ an ugly hack to make sure all of compilation without warnings
-// and doxygen work
-#ifdef __DOXYGEN__
 					const size_t global_size,
 					const size_t s, const size_t P
-#else
-					const size_t, const size_t, const size_t
-#endif
 				) {
+					(void) global_size;
+					(void) P;
+					(void) s;
 					return 0;
 				}
 
@@ -163,6 +157,50 @@ namespace grb {
 					(void) global_size;
 					(void) P;
 					return 0;
+				}
+
+				/**
+				 * For a given global length, how many elements or rows shall be stored at
+				 * the given process \a s.
+				 *
+				 * @param[in] global The global size of the vector or of the matrix
+				 *                   dimension.
+				 * @param[in]   s    Request the local length at this process.
+				 * @param[in]   P    The global number of active user processes. Must be
+				 *                   larger than \a s.
+				 *
+				 * @returns The number of vector elements or matrix rows to store at the
+				 *          given process \a s, given the \a global size of the vector or
+				 *          matrix.
+				 *
+				 * This function completes in \f$ \Theta(1) \f$ time.
+				 */
+				static inline size_t global_length_to_local(
+					const size_t global,
+					const size_t s, const size_t P
+				) {
+					(void) s;
+					(void) P;
+					return global;
+				}
+
+				/**
+				 * For a given global length, the maximum number of elements, rows, or
+				 * columns that any process stores locally.
+				 *
+				 * @param[in] global The global size of the vector or of the matrix
+				 *                   dimension (row- or column-wise).
+				 * @param[in] P      The global number of active user processes.
+				 *
+				 * @returns The requested number of elements, rows, or columns.
+				 *
+				 * This function completes in \f$ \Theta(1) \f$ time.
+				 */
+				static inline size_t global_length_to_max_local(
+					const size_t global, const size_t P
+				) {
+					(void) P;
+					return global;
 				}
 
 		};

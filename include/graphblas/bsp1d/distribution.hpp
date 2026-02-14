@@ -193,6 +193,28 @@ namespace grb {
 			}
 
 			/**
+			 * For a given global length, the maximum number of elements, rows, or
+			 * columns that any process stores locally.
+			 *
+			 * @param[in] global The global size of the vector or of the matrix
+			 *                   dimension (row- or column-wise).
+			 * @param[in] P      The global number of active user processes.
+			 *
+			 * @returns The requested number of elements, rows, or columns.
+			 *
+			 * This function completes in \f$ \Theta(1) \f$ time.
+			 *
+			 * Implementation note: for this particular distribution, the maximum number
+			 * of entries is always at PID 0. Therefore this implementation simply
+			 * returns <tt>global_length_to_local( global, 0, P );</tt>.
+			 */
+			static inline size_t global_length_to_max_local(
+				const size_t global, const size_t P
+			) {
+				return global_length_to_local( global, 0, P );
+			}
+
+			/**
 			 * For a given global length, how many elements or rows are stored at
 			 * \em all user processes preceding a given process \a s. This function is
 			 * semantically equivalent to the following implementation:

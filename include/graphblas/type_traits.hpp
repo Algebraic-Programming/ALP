@@ -331,7 +331,7 @@ namespace grb {
 		 *
 		 * \ingroup typeTraits
 		 */
-		template< typename OP >
+		template< typename OP, typename = void >
 		struct maybe_noop {
 			static_assert( is_operator< OP >::value,
 				"Argument to internal::maybe_noop must be an operator."

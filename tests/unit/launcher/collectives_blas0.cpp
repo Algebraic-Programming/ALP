@@ -47,7 +47,7 @@ void grbProgram( const size_t &P, int &exit_status ) {
 
 	// broadcast
 	if( spmd<>::pid() == 0 ) {
-		std::cout << "\t testing broadcast\n";
+		std::cout << "\t testing broadcast" << std::endl;
 	}
 	{
 		d = 0;
@@ -71,7 +71,7 @@ void grbProgram( const size_t &P, int &exit_status ) {
 
 	// reduce
 	if( spmd<>::pid() == 0 ) {
-		std::cout << "\t testing reduce\n";
+		std::cout << "\t testing reduce" << std::endl;
 	}
 	{
 		d = pi;
@@ -95,7 +95,7 @@ void grbProgram( const size_t &P, int &exit_status ) {
 
 	// allreduce
 	if( spmd<>::pid() == 0 ) {
-		std::cout << "\t testing allreduce\n";
+		std::cout << "\t testing allreduce" << std::endl;
 	}
 	{
 		d = pi;

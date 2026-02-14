@@ -90,6 +90,9 @@ namespace grb {
 				return SUCCESS;
 			}
 			if( descr & descriptors::dense ) {
+				if( nnz( u ) < size( u ) ) {
+					return ILLEGAL;
+				}
 				if( nnz( v ) < size( v ) ) {
 					return ILLEGAL;
 				}
@@ -233,6 +236,9 @@ namespace grb {
 				return SUCCESS;
 			}
 			if( descr & descriptors::dense ) {
+				if( nnz( u ) < size( u ) ) {
+					return ILLEGAL;
+				}
 				if( nnz( v ) < size( v ) ) {
 					return ILLEGAL;
 				}

@@ -513,8 +513,8 @@ namespace grb {
 		// positions in either vector that are not populated in the other. A check is
 		// necessary to catch such a violation -- but, gain, only in the sparse case.
 		if( !dense_descr_is_given && at_least_one_vector_is_sparse ) {
-			if( collectives< BSP1D >::allreduce( ret, grb::operators::any_or< RC >() )
-				!= SUCCESS
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >() ) != SUCCESS
 			) {
 				return PANIC;
 			}
@@ -587,8 +587,8 @@ namespace grb {
 		if( phase == RESIZE &&
 			!config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities()
 		) {
-			if( collectives< BSP1D >::allreduce( ret, grb::operators::any_or< RC >() )
-				!= SUCCESS
+			if( collectives< BSP1D >::allreduce( ret,
+				grb::operators::any_or< RC >() ) != SUCCESS
 			) {
 				return PANIC;
 			}
