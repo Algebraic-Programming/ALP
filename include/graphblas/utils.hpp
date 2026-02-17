@@ -327,7 +327,10 @@ namespace grb {
 				ret = assigned;
 			} else {
 				// if based on value, if there is a value, cast it to bool
-				if( assigned ) {
+				if( !assigned ) {
+					return false;
+				}
+				else {
 					ret = static_cast< bool >( val[ offset ] );
 				}
 				// otherwise there is no value and false is assumed
@@ -354,7 +357,10 @@ namespace grb {
 				ret = assigned;
 			} else {
 				// if based on value, if there is a value, cast it to bool
-				if( assigned ) {
+				if( !assigned ) {
+					return false;
+				}
+				else {
 					ret = static_cast< bool >( real( val [ offset ] ) ) ||
 					       static_cast< bool >( imag( val [ offset ] ) );
 				}
@@ -378,7 +384,7 @@ namespace grb {
 			// set default mask to false
 			bool ret = assigned;
 			// check whether we should return the inverted value
-			if( descriptor & descriptors::invert_mask ) {
+			if( ( descriptor & descriptors::structural_complement ) == descriptors::structural_complement ) {
 				return !ret;
 			} else {
 				return ret;
@@ -392,7 +398,7 @@ namespace grb {
 			const ValuesType * const values,
 			const size_t k,
 			typename std::enable_if<
-				!std::is_void< MatrixDataType >::value
+				std::is_void< MatrixDataType >::value
 			>::type * = nullptr
 		) {
 			return interpretMask< descriptor, ValuesType >( assigned, values, k );
@@ -402,20 +408,13 @@ namespace grb {
 		template< Descriptor descriptor, typename MatrixDataType, typename ValuesType >
 		static bool interpretMatrixMask(
 			const bool &assigned,
-			const ValuesType * const,
-			const size_t,
+			const ValuesType * const values,
+			const size_t k,
 			typename std::enable_if<
-				std::is_void< MatrixDataType >::value
+				!std::is_void< MatrixDataType >::value
 			>::type * = nullptr
 		) {
-			// set default mask to false
-			bool ret = assigned;
-			// check whether we should return the inverted value
-			if( descriptor & descriptors::invert_mask ) {
-				return !ret;
-			} else {
-				return ret;
-			}
+			return interpretMask< descriptor, ValuesType >( assigned, values, k );
 		}
 
 	} // namespace utils

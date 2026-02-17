@@ -387,6 +387,8 @@ namespace grb {
 
 				OUTER,
 
+				MASKED_OUTER,
+
 				UNZIP_VECTOR_VECTOR_VECTOR,
 
 				ZIP_MATRIX_VECTOR_VECTOR_VECTOR,
@@ -503,7 +505,7 @@ namespace grb {
 			};
 
 			/** \internal How many operation vertex types exist. */
-			const constexpr size_t numOperationVertexTypes = 111;
+			const constexpr size_t numOperationVertexTypes = 113;
 
 			/** \internal An array of all operation vertex types. */
 			const constexpr enum OperationVertexType
@@ -563,6 +565,7 @@ namespace grb {
 				MXM_MATRIX_MATRIX_MATRIX_SEMIRING,
 				MXM_MATRIX_MATRIX_MATRIX_MONOID,
 				OUTER,
+				MASKED_OUTER,
 				UNZIP_VECTOR_VECTOR_VECTOR,
 				ZIP_MATRIX_VECTOR_VECTOR_VECTOR,
 				ZIP_MATRIX_VECTOR_VECTOR,
