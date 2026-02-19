@@ -266,7 +266,9 @@ namespace grb {
 					EnergyType(
 						 grb::Vector< StateType, backend >&,
 						 const TempType&,
-						 SweepDataType&
+						 SweepDataType&,
+						 const size_t,
+						 const size_t
 				 	)
 				>
 			>
@@ -332,7 +334,7 @@ namespace grb {
 
 				for( size_t j = 0 ; j < n_replicas ; ++j ){
 
-					energies[j] += sweep( states[j], betas[j], sweep_data );
+					energies[j] += sweep( states[j], betas[j], sweep_data, i_sweep, j );
 					rc = rc ? rc : grb::wait< backend >(); // should be done with nonblocking backend, I guess
 				
 					// update_best state and energy
@@ -658,8 +660,23 @@ namespace grb {
 			start = std::chrono::high_resolution_clock::now();
 #endif
 
-			std::vector< grb::Vector< bool, backend > > masks ;
-			rc = rc ? rc : matrix_partition< descr >( masks, couplings, h, rand, seed );
+			std::vector< grb::Vector< bool, backend > > masks,
+						masks_orig;
+			rc = rc ? rc : matrix_partition< descr >( masks_orig, couplings, h, rand, seed );
+
+			const size_t d = n/4;
+			for(const auto &mask : masks_orig ){
+				masks.emplace_back( n );
+				for( const auto &x : mask ){
+					rc = rc ? rc : grb::setElement( masks.back(), true, x.first );
+
+					if( grb::nnz( masks.back() ) >= d ){
+						masks.emplace_back( n );
+
+					}
+				}
+			}
+
 #ifdef TIMING
 				end = std::chrono::high_resolution_clock::now();
 				duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
@@ -692,7 +709,9 @@ namespace grb {
 #endif
 				 grb::Vector< StateType, backend > &state,
 				 const TempType &beta,
-				 decltype(sweep_data) &data
+				 decltype(sweep_data) &data,
+				 const size_t i,
+				 const size_t j
 			  ){
 				const size_t s 		= spmd<>::pid();
 				(void) s;
@@ -734,7 +753,10 @@ namespace grb {
 				const grb::Vector< StateType, backend > old_state = state;
 #endif
 				rc = rc ? rc : grb::wait< backend >();
-				for(const auto &mask : masks ){
+
+				const auto &mask = masks[(i + j)%masks.size()];
+				// for(const auto &mask : masks )
+				{
 					// dn = (2*state_slice - 1) * h_slice
 					rc = rc ? rc : grb::set< descr >( dn, mask, state );
 					rc = rc ? rc : grb::foldl< descr | grb::descriptors::invert_mask >( dn, state, static_cast< QType >( -1 ), right_assign_op );
