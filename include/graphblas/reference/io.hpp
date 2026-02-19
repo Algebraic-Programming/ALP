@@ -2203,87 +2203,156 @@ namespace grb {
 		}
 
 		// get output CRS and CCS structures
-		// TODO: check for crs_only descriptor
+		// TODO: check for crs_only descriptor, also in the code that follows
 		auto &CRS_raw = internal::getCRS( C );
 		auto &CCS_raw = internal::getCCS( C );
-		config::NonzeroIndexType * C_col_index = internal::template
+		config::NonzeroIndexType * const C_col_index = internal::template
 			getReferenceBuffer< typename config::NonzeroIndexType >( ncols + 1 );
 		CRS_raw.col_start[ 0 ] = 0;
 
 #ifdef _H_GRB_REFERENCE_OMP_IO
-		// TODO ALPify the below
-		#pragma omp parallel for simd
+		#pragma omp parallel
 #endif
-		for( size_t j = 0; j <= ncols; ++j ) {
-			CCS_raw.col_start[ j ] = 0;
-			C_col_index[ j ] = 0;
-		}
-
-		//TODO: revise the below, WIP
-		char * arr = nullptr;
-		char * buf = nullptr;
-		MaskType * valbuf = nullptr;
-		internal::Coordinates< reference > coors;
-		internal::getMatrixBuffers( arr, buf, valbuf, 1, M );
-		coors.set( arr, false, buf, ncols );
-
-		// do counting sort, phase 1 -- also this loop should employ the same
-		// parallelisation strategy during counting
-		nzc = 0;
-		for( size_t i = 0; i < nrows; ++i ) {
-			coors.clear();
-			for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
-				const auto k_col = mask_raw.row_index[ k ];
-				if( utils::interpretMask< descr, MaskType >( true, mask_raw.getValues(), k ) ) {
-					coors.assign( k_col );
-				}
+		{
+			NIT crs_ws, ccs_ws; // workspace for prefix sum (CCS start array)
+			// initialise CCS_raw.col_start and C_col_index
+			size_t start, end;
+#ifdef _H_GRB_REFERENCE_OMP_IO
+			config::OMP::localRange( start, end, 0, ncols + 1 );
+#else
+			start = 0;
+			end = ncols + 1;
+#endif
+			for( size_t j = start; j < end; ++j ) {
+				CCS_raw.col_start[ j ] = 0;
+				C_col_index[ j ] = 0;
 			}
-			for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
-				const auto k_col = A_raw.row_index[ k ];
-				if( coors.assigned( k_col ) ) {
-					(void) nzc++;
-					(void) (CCS_raw.col_start[ k_col + 1 ])++;
-				}
+
+			// get thread-local buffers to initialise thread-local SPA and value buffer
+			internal::Coordinates< reference > coors;
+			MaskType * valbuf = nullptr;
+			if( nthreads == 1 ) {
+				char * arr = nullptr;
+				char * buf = nullptr;
+				internal::getMatrixBuffers( arr, buf, valbuf, 1, M );
+				coors.set( arr, false, buf, ncols );
+			} else {
+				// TODO check if this also uses the "sequential" buffers, I forgot
+				// (if not, then we're not using all available buffer space)
+				char * arr = nullptr;
+				char * buf = nullptr;
+				internal::spa_ompPar_getBuffers( arr, buf, valbuf, bufferMD, M );
+				coors.set_seq( arr, false, buf, n );
 			}
-			CRS_raw.col_start[ i + 1 ] = nzc;
-		}
 
-		// TODO this is a prefix sum -- use the OMP utility function here to
-		//      parallelise it
-		for( size_t j = 1; j < ncols; ++j ) {
-			CCS_raw.col_start[ j + 1 ] += CCS_raw.col_start[ j ];
-		}
+			// we will be using the initialised arrays from this "superstep" using a
+			// different distribution in the following, therefore need to sync
+			#pragma omp barrier
 
-		// do counting sort, phase 2 -- use previously computed CCS offset array to
-		// update CCS during the computational phase. Also this loop should employ
-		// the same (multiple-SPA) parallelisation strategy as above
-		nzc = 0;
-		for( size_t i = 0; i < nrows; ++i ) {
-			coors.clear();
-			for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
-				const auto k_col = mask_raw.row_index[ k ];
-				if( utils::interpretMatrixMask< descr, MaskType >(
-					true, mask_raw.getValues(), k )
+			// do counting sort, phase 1 -- also this loop should employ the same
+			// parallelisation strategy during counting
+			size_t local_nzc = 0;
+#ifdef _H_GRB_REFERENCE_OMP_IO
+			config::OMP::localRange( start, end, 0, nrows );
+#else
+			start = 0;
+			end = nrows;
+#endif
+			for( size_t i = start; i < end; ++i ) {
+				coors.clear();
+				for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
+					const auto k_col = mask_raw.row_index[ k ];
+					if( utils::interpretMask< descr, MaskType >( true, mask_raw.getValues(), k ) ) {
+						coors.assign( k_col );
+					}
+				}
+				for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+					const auto k_col = A_raw.row_index[ k ];
+					if( coors.assigned( k_col ) ) {
+						(void) ++local_nzc;
+#ifdef _H_GRB_REFERENCE_OMP_IO
+						#pragma omp atomic update
+#else
+						(void)
+#endif
+							++(CCS_raw.col_start[ k_col + 1 ]);
+					}
+				}
+				CRS_raw.col_start[ i + 1 ] = local_nzc;
+			}
+
+			// finish updating CCS_raw.col_start, while finishing prefix-sum of
+			// CRS_raw.col_start
+			utils::template prefixSum_ompPar_phase2< true >(
+				CRS_raw.col_start, nrows, crs_ws );
+			#pragma omp barrier
+
+			// also start to prefix-sum CCS_raw.col_start, interleaved with that of
+			// the last phase of prefix-summing CRS_raw.col_start. Note that both
+			// operations while concurrent employ different distributions
+			utils::template prefixSum_ompPar_phase3< true >(
+				CRS_raw.col_start, nrows, crs_ws );
+			utils::template prefixSum_ompPar_phase1< true >(
+				CCS_raw.col_start, ncols, ccs_ws );
+			#pragma omp barrier
+
+			// followed by the last two phases of the prefix-sum of CCS_raw.col_start
+			utils::template prefixSum_ompPar_phase2< true >(
+				CCS_raw.col_start, ncols, ccs_ws );
+			#pragma omp barrier
+			utils::template prefixSum_ompPar_phase3< true >(
+				CCS_raw.col_start, ncols, ccs_ws );
+
+			// do counting sort, phase 2 -- use previously computed CCS offset array to
+			// update CCS during the computational phase. This loop employs the same
+			// (multiple-SPA) parallelisation strategy as above
+			local_nzc = 0;
+			for( size_t i = start; i < end; ++i ) {
+				coors.clear();
+				for(
+					auto k = mask_raw.col_start[ i ];
+					k < mask_raw.col_start[ i + 1 ];
+					++k
 				) {
-					coors.assign( k_col );
+					const auto k_col = mask_raw.row_index[ k ];
+					if( utils::interpretMatrixMask< descr, MaskType >(
+						true, mask_raw.getValues(), k )
+					) {
+						coors.assign( k_col );
+					}
 				}
-			}
-			for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
-				const auto k_col = A_raw.row_index[ k ];
-				if( coors.assigned( k_col ) ) {
-					constexpr int zero = 0;
-					CRS_raw.row_index[ nzc ] = k_col;
-					CRS_raw.setValue( nzc, A_raw.getValue( k, zero ) );
-					const size_t CCS_index = C_col_index[ k_col ] + CCS_raw.col_start[ k_col ];
-					(void) C_col_index[ k_col ]++;
-					CCS_raw.row_index[ CCS_index ] = i;
-					CCS_raw.setValue( CCS_index, A_raw.getValue( k, zero ) );
-					(void) nzc++;
+				for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+					const auto k_col = A_raw.row_index[ k ];
+					if( coors.assigned( k_col ) ) {
+						constexpr int zero = 0;
+						// update CRS
+						CRS_raw.row_index[ CRS_raw.col_start[ start + 1 ] + local_nzc ] = k_col;
+						CRS_raw.setValue( CRS_raw.col_start[ start + 1 ] + local_nzc,
+							A_raw.getValue( k, zero ) );
+						// update CCS
+						size_t atomic_offset;
+#ifdef _H_GRB_REFERENCE_OMP_IO
+						#pragma omp atomic capture
+#endif
+						{
+							atomic_offset = C_col_index[ k_col ];
+#ifndef _H_GRB_REFERENCE_OMP_IO
+						(void)
+#endif
+							++(C_col_index[ k_col ]);
+						}
+						const size_t CCS_index = atomic_offset + CCS_raw.col_start[ k_col ];
+						CCS_raw.row_index[ CCS_index ] = i;
+						CCS_raw.setValue( CCS_index, A_raw.getValue( k, zero ) );
+
+						// move to next nonzero
+						(void) ++local_nzc;
+					}
 				}
 			}
 		}
 #ifndef NDEBUG
- #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_IO
 		#pragma omp parallel schedule( static, config::CACHE_LINE_SIZE::value() )
  #endif
 		for( size_t j = 0; j < ncols; ++j ) {
@@ -2291,7 +2360,7 @@ namespace grb {
 				C_col_index[ j ] );
 		}
 #endif
-		internal::setCurrentNonzeroes( C, nzc );
+		internal::setCurrentNonzeroes( C, CRS_raw.col_start[ rows ] );
 
 		// done
 		return SUCCESS;
