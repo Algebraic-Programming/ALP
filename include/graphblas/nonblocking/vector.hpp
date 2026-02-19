@@ -520,6 +520,39 @@ namespace grb {
 
 } // namespace grb
 
+// std::swap specialization for nonblocking vectors
+namespace std {
+
+	/**
+	 * Swaps two nonblocking ALP/GraphBLAS vectors.
+	 *
+	 * This specialization ensures that any pending lazy evaluation operations
+	 * are executed before the swap occurs, maintaining correctness of the
+	 * nonblocking backend's lazy evaluation system.
+	 *
+	 * @tparam D             The value type of the vectors.
+	 * @tparam MyCoordinates The coordinates type.
+	 *
+	 * @param[in,out] left  The first vector to swap.
+	 * @param[in,out] right The second vector to swap.
+	 */
+	template< typename D, typename MyCoordinates >
+	void swap(
+		grb::Vector< D, grb::nonblocking, MyCoordinates > &left,
+		grb::Vector< D, grb::nonblocking, MyCoordinates > &right
+	) noexcept {
+		// Execute any pending lazy operations on both vectors to ensure
+		// the lazy evaluation system doesn't hold stale pointers after swap
+		grb::internal::le.execution( &left );
+		grb::internal::le.execution( &right );
+
+		// Swap the underlying reference vectors
+		std::swap( grb::internal::getRefVector( left ),
+			grb::internal::getRefVector( right ) );
+	}
+
+} // namespace std
+
 #undef NO_CAST_ASSERT
 #undef NO_MASKCAST_ASSERT
 
