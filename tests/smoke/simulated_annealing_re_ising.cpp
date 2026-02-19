@@ -1,10 +1,6 @@
 /*
-  Minimal scaffold adapted from ising_machine_sb.cpp to drive a replica-exchange
-  simulated-annealing (RE-SA) solver.  Algorithmic parts are intentionally left
-  unimplemented (stubs).  This file mirrors the existing IO / launcher /
-  program structure and replaces numpy arrays with grb::Vector and lists of
-  numpy vectors with std::vector< grb::Vector<...> >. Sparse matrices are
-  represented as grb::Matrix< JType >.
+  Minimal scaffolding adapted from ising_machine_sb.cpp to drive a replica-exchange
+  simulated-annealing (RE-SA) solver.
 
   Purpose: allow running internal tests or an external-run mode while the RE-SA
   algorithm is implemented separately.
