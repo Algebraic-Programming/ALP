@@ -28,8 +28,8 @@
 #include <graphblas/utils/singleton.hpp>
 #include <graphblas/utils/iterators/nonzeroIterator.hpp>
 #include <utils/output_verification.hpp>
-#include <graphblas.hpp>
 #include <utils/print_vec_mat.hpp>
+#include <graphblas.hpp>
 
 const int LPF_MPI_AUTO_INITIALIZE = 0;
 
