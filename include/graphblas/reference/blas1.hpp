@@ -9438,7 +9438,10 @@ namespace grb {
 								// if apply surely initialises zz, we could use a blend-like op
 								for( size_t k = 0; k < AnyOp::blocksize; ++k ) {
 									if( mask[ k ] ) {
-										apply( zz[ k ], xx[ k ], yy[ k ], anyOp );
+										GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED        // yy and xx cannot be used
+										                                           // uninitialised or mask
+										apply( zz[ k ], xx[ k ], yy[ k ], anyOp ); // would be false while zz
+										GRB_UTIL_RESTORE_WARNINGS                  // init is just above
 									} else {
 										zz[ k ] = addMonoid.template getIdentity< typename AnyOp::D3 >();
 									}
