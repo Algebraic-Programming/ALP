@@ -2261,7 +2261,6 @@ namespace grb {
 			}
 #endif
 
-
 			// we will be using the initialised arrays from this "superstep" using a
 			// different distribution in the following, therefore need to sync
 			#pragma omp barrier
