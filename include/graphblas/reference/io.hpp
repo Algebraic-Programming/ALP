@@ -944,8 +944,8 @@ namespace grb {
 #endif
 			// static checks
 			static_assert(
-				( !(descr & descriptors::no_casting) ||
-					( A_is_mask && std::is_same< InputType1, bool >::value ) ),
+				( !(descr & descriptors::no_casting) || !A_is_mask ||
+					std::is_same< InputType1, bool >::value ),
 				"grb::internal::set_copy called with non-Boolean mask types. This is an "
 				"internal error. Please submit a bug report."
 			);
