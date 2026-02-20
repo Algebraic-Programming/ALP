@@ -73,7 +73,7 @@ namespace grb {
 		 * descriptor must be combined with #grb::descriptors::structural.
 		 * ALP/GraphBLAS forbids taking the structural inverse of matrix masks
 		 * (because then either the output matrix or the mask matrix has
-		 * \f$ \mathcal{mn} \f$ values, which defeats any useful application of
+		 * \f$ \mathcal{O}(mn) \f$ values, which defeats any useful application of
 		 * GraphBLAS as this signifies one of the containers is, in fact, not sparse).
 		 */
 		static constexpr Descriptor invert_mask = 1;

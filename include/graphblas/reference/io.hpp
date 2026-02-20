@@ -945,8 +945,8 @@ namespace grb {
 			// static checks
 			static_assert(
 				( !(descr & descriptors::no_casting) ||
-					( !A_is_mask && std::is_same< InputType1, OutputType >::value ) ),
-				"grb::internal::set_copy called with non-matching value types. This is an "
+					( A_is_mask && std::is_same< InputType1, bool >::value ) ),
+				"grb::internal::set_copy called with non-Boolean mask types. This is an "
 				"internal error. Please submit a bug report."
 			);
 			static_assert(
@@ -2064,6 +2064,11 @@ namespace grb {
 				std::is_same< InputType, OutputType >::value
 			), "grb::set",
 			"called with non-matching value types"
+		);
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< MaskType, bool >::value
+			), "grb::set",
+			"called with non-Boolean mask types"
 		);
 
 		// dynamic checks

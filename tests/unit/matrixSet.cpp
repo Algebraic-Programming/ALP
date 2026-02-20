@@ -478,6 +478,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		maskVoid = grb::algorithms::matrices< void >::identity( n );
 	} catch( ... ) {
 		std::cerr << "\t constructing maskVoid FAILED\n";
+		rc = FAILED;
 		return;
 	}
 	rc = grb::buildMatrixUnique( input, I_mask, J_mask, input_vals, 2 * n - 1,
