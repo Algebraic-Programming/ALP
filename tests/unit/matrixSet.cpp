@@ -334,7 +334,22 @@ RC masked_tests(
 	if( masked_tests_generic_impl( rc, output, mask, input, n ) != SUCCESS ) {
 		return rc;
 	}
-	return masked_tests_nvm_impl( rc, output, mask, input, n );
+	if( masked_tests_nvm_impl( rc, output, mask, input, n ) != SUCCESS ) {
+		return rc;
+	}
+	std::cout << "\t re-running previous tests with force_row_major descriptor\n";
+	if( masked_tests_generic_impl< descriptors::force_row_major >(
+		rc, output, mask, input, n ) != SUCCESS
+	) {
+		return rc;
+	}
+	if( masked_tests_nvm_impl< descriptors::force_row_major >(
+		rc, output, mask, input, n ) != SUCCESS
+	) {
+		return rc;
+	}
+	std::cout << "\t\t no_casting descriptor SKIPPED\n";
+	return rc;
 }
 
 /** Specialised dispatch for masked tests with void masks */
@@ -344,9 +359,18 @@ RC masked_tests(
 	const grb::Matrix< void > &mask, const grb::Matrix< Tin > &input,
 	const size_t n
 ) {
-	const grb::RC ret = masked_tests_generic_impl( rc, output, mask, input, n );
+	if( masked_tests_generic_impl( rc, output, mask, input, n ) != SUCCESS ) {
+		return rc;
+	}
+	std::cout << "\t re-running previous tests with force_row_major descriptor\n";
+	if( masked_tests_generic_impl< descriptors::force_row_major >(
+		rc, output, mask, input, n ) != SUCCESS
+	) {
+		return rc;
+	}
 	std::cout << "\t\t invert_mask descriptor SKIPPED\n";
-	return ret;
+	std::cout << "\t\t no_casting descriptor SKIPPED\n";
+	return rc;
 }
 
 /** Specialised dispatch for masked tests with no-cast domains */
@@ -362,16 +386,49 @@ RC masked_tests(
 	if( masked_tests_nvm_impl( rc, output, mask, input, n ) != SUCCESS ) {
 		return rc;
 	}
+	std::cout << "\t re-running previous tests with force_row_major descriptor\n";
+	if( masked_tests_generic_impl< descriptors::force_row_major >(
+		rc, output, mask, input, n ) != SUCCESS
+	) {
+		return rc;
+	}
+	if( masked_tests_nvm_impl< descriptors::force_row_major >(
+		rc, output, mask, input, n ) != SUCCESS
+	) {
+		return rc;
+	}
 	std::cout << "\t re-running previous tests with no_casting descriptor\n";
+	if( masked_tests_generic_impl< descriptors::no_casting >(
+		rc, output, mask, input, n ) != SUCCESS
+	) {
+		return rc;
+	}
+	if( masked_tests_nvm_impl< descriptors::no_casting >(
+		rc, output, mask, input, n ) != SUCCESS
+	) {
+		return rc;
+	}
+	std::cout << "\t re-running previous tests with no_casting *and* "
+		<< "force_row_major descriptors\n";
 	if(
-		masked_tests_generic_impl< descriptors::no_casting >(
+		masked_tests_generic_impl<
+			descriptors::no_casting | descriptors::force_row_major
+		>(
 			rc, output, mask, input, n
 		) != SUCCESS
 	) {
 		return rc;
 	}
-	return masked_tests_nvm_impl< descriptors::no_casting >(
-			rc, output, mask, input, n );
+	if(
+		masked_tests_nvm_impl<
+			descriptors::no_casting | descriptors::force_row_major
+		>(
+			rc, output, mask, input, n
+		) != SUCCESS
+	) {
+		return rc;
+	}
+	return rc;
 }
 
 void grb_program( const size_t &n, grb::RC &rc ) {
@@ -767,7 +824,7 @@ int main( int argc, char ** argv ) {
 	if( argc == 2 ) {
 		size_t read;
 		std::istringstream ss( argv[ 1 ] );
-		if( ! ( ss >> read ) ) {
+		if( !( ss >> read ) ) {
 			std::cerr << "Error parsing first argument\n";
 			printUsage = true;
 		} else if( ! ss.eof() ) {

@@ -2114,8 +2114,10 @@ namespace grb {
 		grb::internal::SPA_BufferMetaData< NIT1, OutputType > bufferMD(
 			m, n, nnz_based_nthreads );
 		const size_t nthreads = bufferMD.threads();
+ #ifdef _DEBUG_REFERENCE_IO
 		std::cout << "\t set( matrix, matrix, matrix ) will use " << nthreads
-			<< " threads\n";
+			<< " threads" << std::endl;
+ #endif
 #else
 		const size_t nthreads = 1;
 #endif
@@ -2208,11 +2210,13 @@ namespace grb {
 		}
 
 		// get output CRS and CCS structures
-		// TODO: check for crs_only descriptor, also in the code that follows
 		auto &CRS_raw = internal::getCRS( C );
 		auto &CCS_raw = internal::getCCS( C );
-		config::NonzeroIndexType * const C_col_index = internal::template
-			getReferenceBuffer< typename config::NonzeroIndexType >( ncols + 1 );
+		config::NonzeroIndexType * const C_col_index =
+			(descr & descriptors::force_row_major)
+				?  nullptr
+				: internal::template
+					getReferenceBuffer< typename config::NonzeroIndexType >( ncols + 1 );
 		CRS_raw.col_start[ 0 ] = 0;
 
 		#pragma omp parallel num_threads( nthreads )
@@ -2231,9 +2235,11 @@ namespace grb {
 			start = 0;
 			end = ncols + 1;
 #endif
-			for( size_t j = start; j < end; ++j ) {
-				CCS_raw.col_start[ j ] = 0;
-				C_col_index[ j ] = 0;
+			if( !(descr & descriptors::force_row_major) ) {
+				for( size_t j = start; j < end; ++j ) {
+					CCS_raw.col_start[ j ] = 0;
+					C_col_index[ j ] = 0;
+				}
 			}
 
 			// get thread-local buffers to initialise thread-local SPA and value buffer
@@ -2248,8 +2254,6 @@ namespace grb {
 				coors.set( arr, false, buf, ncols );
 #ifdef _H_GRB_REFERENCE_OMP_IO
 			} else {
-				// TODO check if this also uses the "sequential" buffers, I forgot
-				// (if not, then we're not using all available buffer space)
 				char * arr = nullptr;
 				char * buf = nullptr;
 				internal::spa_ompPar_getBuffers( arr, buf, valbuf, bufferMD, C );
@@ -2287,12 +2291,14 @@ namespace grb {
 							<< std::endl;
 #endif
 						(void) ++local_nzc;
+						if( !(descr & descriptors::force_row_major) ) {
 #ifdef _H_GRB_REFERENCE_OMP_IO
-						#pragma omp atomic update
+							#pragma omp atomic update
 #else
-						(void)
+							(void)
 #endif
-							++(CCS_raw.col_start[ k_col + 1 ]);
+								++(CCS_raw.col_start[ k_col + 1 ]);
+						}
 					}
 				}
 #ifdef _DEBUG_REFERENCE_IO
@@ -2319,23 +2325,31 @@ namespace grb {
 			// preceding barrier is required)
 			utils::template prefixSum_ompPar_phase2< false >(
 				CRS_raw.col_start + 1, nrows, crs_ws );
-			utils::template prefixSum_ompPar_phase1< false >(
-				CCS_raw.col_start, ncols + 1, ccs_ws );
+			if( !(descr & descriptors::force_row_major) ) {
+				utils::template prefixSum_ompPar_phase1< false >(
+					CCS_raw.col_start, ncols + 1, ccs_ws );
+			}
 			#pragma omp barrier
 
 			// followed by phase 3 and 2 of the prefix-sum of CRS_raw and CCS_raw,
 			// respectively
 			utils::template prefixSum_ompPar_phase3< false >(
 				CRS_raw.col_start + 1, nrows, crs_ws );
-			utils::template prefixSum_ompPar_phase2< false >(
-				CCS_raw.col_start, ncols + 1, ccs_ws );
+			if( !(descr & descriptors::force_row_major) ) {
+				utils::template prefixSum_ompPar_phase2< false >(
+					CCS_raw.col_start, ncols + 1, ccs_ws );
+			}
 
 			//followed by phase 3 of the prefix-sum of CCS_raw
-			#pragma omp barrier
-			utils::template prefixSum_ompPar_phase3< false >(
-				CCS_raw.col_start, ncols + 1, ccs_ws );
+			if( !(descr & descriptors::force_row_major) ) {
+				#pragma omp barrier
+				utils::template prefixSum_ompPar_phase3< false >(
+					CCS_raw.col_start, ncols + 1, ccs_ws );
+			}
 #else
-			utils::template prefixSum_seq< false >( CCS_raw.col_start, ncols + 1 );
+			if( !(descr & descriptors::force_row_major) ) {
+				utils::template prefixSum_seq< false >( CCS_raw.col_start, ncols + 1 );
+			}
 #endif
 #ifdef _DEBUG_REFERENCE_IO
  #ifdef _H_GRB_REFERENCE_OMP_IO
@@ -2347,10 +2361,12 @@ namespace grb {
 				for( size_t i = 1; i <= nrows; ++i ) {
 					std::cout << ", " << CRS_raw.col_start[ i ];
 				}
-				std::cout << std::endl << "\t CCS start array: "
-					<< CCS_raw.col_start[ 0 ];
-				for( size_t i = 1; i <= ncols; ++i ) {
-					std::cout << ", " << CCS_raw.col_start[ i ];
+				if( !(descr & descriptors::force_row_major) ) {
+					std::cout << std::endl << "\t CCS start array: "
+						<< CCS_raw.col_start[ 0 ];
+					for( size_t i = 1; i <= ncols; ++i ) {
+						std::cout << ", " << CCS_raw.col_start[ i ];
+					}
 				}
 				std::cout << std::endl;
 			}
@@ -2383,21 +2399,22 @@ namespace grb {
 						CRS_raw.setValue( CRS_raw.col_start[ start ] + local_nzc,
 							A_raw.getValue( k, zero ) );
 						// update CCS
-						size_t atomic_offset;
+						if( !(descr & descriptors::force_row_major) ) {
+							size_t atomic_offset;
 #ifdef _H_GRB_REFERENCE_OMP_IO
-						#pragma omp atomic capture
+							#pragma omp atomic capture
 #endif
-						{
-							atomic_offset = C_col_index[ k_col ];
+							{
+								atomic_offset = C_col_index[ k_col ];
 #ifndef _H_GRB_REFERENCE_OMP_IO
-							(void)
+								(void)
 #endif
-								++(C_col_index[ k_col ]);
+									++(C_col_index[ k_col ]);
+							}
+							const size_t CCS_index = atomic_offset + CCS_raw.col_start[ k_col ];
+							CCS_raw.row_index[ CCS_index ] = i;
+							CCS_raw.setValue( CCS_index, A_raw.getValue( k, zero ) );
 						}
-						const size_t CCS_index = atomic_offset + CCS_raw.col_start[ k_col ];
-						CCS_raw.row_index[ CCS_index ] = i;
-						CCS_raw.setValue( CCS_index, A_raw.getValue( k, zero ) );
-
 						// move to next nonzero
 						(void) ++local_nzc;
 					}
@@ -2405,12 +2422,14 @@ namespace grb {
 			}
 		}
 #ifndef NDEBUG
+		if( !(descr & descriptors::force_row_major) ) {
  #ifdef _H_GRB_REFERENCE_OMP_IO
-		#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+			#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
  #endif
-		for( size_t j = 0; j < ncols; ++j ) {
-			assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] ==
-				C_col_index[ j ] );
+			for( size_t j = 0; j < ncols; ++j ) {
+				assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] ==
+					C_col_index[ j ] );
+			}
 		}
 #endif
 		internal::setCurrentNonzeroes( C, CRS_raw.col_start[ nrows ] );
