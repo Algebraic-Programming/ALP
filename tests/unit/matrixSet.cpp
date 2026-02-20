@@ -28,6 +28,22 @@ static const int data1[ 15 ] = { 4, 7, 4, 6, 4, 7, 1, 7, 3, 6, 7, 5, 1, 8, 7 };
 static const size_t I[ 15 ] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9, 9, 8, 7, 6 };
 static const size_t J[ 15 ] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 5, 7, 5, 1 };
 
+/*
+ * The above two arrays describe the following sparse structure:
+ *
+ * x
+ *   x
+ *     x
+ *       x
+ *         x
+ *           x
+ *   x         x
+ *           x   x
+ *               x x
+ * x         x       x
+ *
+ */
+
 /** Generic implementation of masked tests */
 template<
 	Descriptor descr = descriptors::no_operation,
