@@ -2106,8 +2106,8 @@ namespace grb {
 #ifdef _H_GRB_REFERENCE_OMP_IO
 		const size_t nnz_based_nthreads = std::max( config::OMP::threads(),
 			grb::nnz( A ) / config::CACHE_LINE_SIZE::value() );
-		grb::internal::SPA_BufferMetaData< NIT1, OutputType > bufferMD( m, n,
-			nnz_based_nthreads );
+		grb::internal::SPA_BufferMetaData< NIT1, OutputType > bufferMD(
+			m, n, nnz_based_nthreads );
 		const size_t nthreads = bufferMD.threads();
 		std::cout << "\t set( matrix, matrix, matrix ) will use " << nthreads
 			<< " threads\n";
@@ -2309,9 +2309,11 @@ namespace grb {
 
 			// start to prefix-sum CCS_raw.col_start (phase 1), interleaved with that of
 			// phase 2 of prefix-summing CRS_raw.col_start. Note that both operations,
-			// while concurrent, employ different distributions
+			// while concurrent, employ different distributions-- and also that these
+			// distributions are different from the previous superstep (i.e., the
+			// preceding barrier is required)
 			utils::template prefixSum_ompPar_phase2< false >(
-				CRS_raw.col_start, nrows + 1, crs_ws );
+				CRS_raw.col_start + 1, nrows, crs_ws );
 			utils::template prefixSum_ompPar_phase1< false >(
 				CCS_raw.col_start, ncols + 1, ccs_ws );
 			#pragma omp barrier
@@ -2319,14 +2321,14 @@ namespace grb {
 			// followed by phase 3 and 2 of the prefix-sum of CRS_raw and CCS_raw,
 			// respectively
 			utils::template prefixSum_ompPar_phase3< false >(
-				CRS_raw.col_start, nrows + 1, crs_ws );
+				CRS_raw.col_start + 1, nrows, crs_ws );
 			utils::template prefixSum_ompPar_phase2< false >(
 				CCS_raw.col_start, ncols + 1, ccs_ws );
 
 			//followed by phase 3 of the prefix-sum of CCS_raw
 			#pragma omp barrier
 			utils::template prefixSum_ompPar_phase3< false >(
-				CCS_raw.col_start, ncols, ccs_ws );
+				CCS_raw.col_start, ncols + 1, ccs_ws );
 #else
 			utils::template prefixSum_seq< false >( CCS_raw.col_start, ncols + 1 );
 #endif
