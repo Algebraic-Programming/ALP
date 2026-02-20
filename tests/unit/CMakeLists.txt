@@ -86,6 +86,10 @@ add_grb_executables( dot dot.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
+add_grb_executables( norm2 norm2.cpp
+	BACKENDS reference reference_omp nonblocking
+)
+
 add_grb_executables( emptyVector emptyVector.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )

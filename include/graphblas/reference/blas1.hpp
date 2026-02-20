@@ -9339,6 +9339,13 @@ namespace grb {
 					const InputType1 * __restrict__ a = internal::getRaw( x );
 					const InputType2 * __restrict__ b = internal::getRaw( y );
 
+					// Check for aliasing: dot(z, x, x) is not allowed due to __restrict__
+					// semantics which assume non-overlapping memory regions for optimization
+					assert( static_cast<const void*>(a) != static_cast<const void*>(b) &&
+						"Aliased input vectors detected in dot product. "
+						"Passing the same vector as both inputs (e.g., dot(z, x, x)) is not "
+						"permitted. Use a dedicated norm function instead." );
+
 					// overwrite z with first multiplicant, if available-- otherwise, initialise
 					// to zero:
 					typename AddMonoid::D3 reduced =
@@ -9490,6 +9497,13 @@ namespace grb {
 	/**
 	 * Calculates the dot product, \f$ z += (x,y) \f$, under a given additive
 	 * monoid and multiplicative operator.
+	 *
+	 * \warning The input vectors \a x and \a y must not alias (i.e., they must
+	 *          reference different vector objects). Passing the same vector for
+	 *          both inputs, such as <tt>dot(z, x, x)</tt>, results in undefined
+	 *          behavior. To compute the squared norm of a vector, use a dedicated
+	 *          norm function or compute <tt>dot(z, x, y)</tt> where \a y is a
+	 *          separate copy of \a x.
 	 *
 	 * \parblock
 	 * \par Performance semantics

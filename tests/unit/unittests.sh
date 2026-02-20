@@ -330,6 +330,13 @@ for MODE in ${MODES}; do
 				grep 'Test OK' ${TEST_OUT_DIR}/dot_large_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
 				echo " "
 
+				echo ">>>      [x]           [ ]       Testing grb::norm2 on vectors of doubles of"
+				echo "                                 various sizes and sparsity patterns."
+				$runner ${TEST_BIN_DIR}/norm2_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/norm2_${MODE}_${BACKEND}_${P}_${T}
+				head -1 ${TEST_OUT_DIR}/norm2_${MODE}_${BACKEND}_${P}_${T}
+				grep 'Test OK' ${TEST_OUT_DIR}/norm2_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
+				echo " "
+
 				echo ">>>      [x]           [ ]       Testing std::swap on two vectors of doubles of"
 				echo "                                 size 100."
 				$runner ${TEST_BIN_DIR}/swapVector_${MODE}_${BACKEND} 100 &> ${TEST_OUT_DIR}/swapVector_${MODE}_${BACKEND}_${P}_${T}

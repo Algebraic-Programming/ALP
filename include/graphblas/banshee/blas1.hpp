@@ -3891,6 +3891,12 @@ namespace grb {
 				const InputType1 * __restrict__ a = internal::getRaw( x );
 				const InputType2 * __restrict__ b = internal::getRaw( y );
 
+				// Check for vector aliasing (Issue #387)
+				assert( static_cast<const void*>(a) != static_cast<const void*>(b) &&
+					"Aliased input vectors detected in dot product. "
+					"Passing the same vector as both inputs (e.g., dot(z, x, x)) is not "
+					"permitted. Use a dedicated norm function instead." );
+
 				// overwrite z with first multiplicant
 				typename AddMonoid::D3 reduced;
 				if( dense ) {
