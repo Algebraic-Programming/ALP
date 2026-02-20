@@ -213,14 +213,14 @@ namespace grb {
 		Vector< InputType, reference, Coords > &x,
 		const size_t new_nz
 	) noexcept {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_IO
 		std::cerr << "In grb::resize (vector, reference)\n";
 #endif
 		if( grb::size( x ) == 0 ) { return grb::SUCCESS; }
 
 		// check if we have a mismatch
 		if( new_nz > grb::size( x ) ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_IO
 			std::cerr << "\t requested capacity of " << new_nz << ", "
 				<< "expected a value smaller than or equal to "
 				<< size( x ) << "\n";
@@ -228,7 +228,7 @@ namespace grb {
 			return grb::ILLEGAL;
 		}
 		if( new_nz < grb::nnz( x ) ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_IO
 			std::cerr << "\t requested capacity of " << new_nz << ", "
 				<< "expected a value larger than or equal to "
 				<< grb::nnz( x ) << "\n";
@@ -276,7 +276,7 @@ namespace grb {
 		Matrix< InputType, reference, RIT, CIT, NIT > &A,
 		const size_t new_nz
 	) noexcept {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_IO
 		std::cerr << "In grb::resize (matrix, reference)\n"
 			<< "\t matrix is " << nrows(A) << " by " << ncols(A) << "\n"
 			<< "\t requested capacity is " << new_nz << "\n";
@@ -295,7 +295,7 @@ namespace grb {
 			(new_nz / m == n && (new_nz % m > 0)) ||
 			(new_nz / n == m && (new_nz % n > 0))
 		) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_IO
 			std::cerr << "\t requesting higher capacity than could be stored in a "
 				<< "matrix of the current size\n";
 #endif
@@ -304,7 +304,7 @@ namespace grb {
 
 		// catch illegal (underflow)
 		if( new_nz < grb::nnz( A ) ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_IO
 			std::cerr << "\t requesting lower capacity than required by current "
 				<< "contents\n";
 #endif
@@ -415,7 +415,7 @@ namespace grb {
 		(void) internal::getCoordinates( x ).assign( i );
 		internal::getRaw( x )[ i ] = static_cast< DataType >( val );
 
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_IO
 		std::cout << "setElement (reference) set index " << i << " to value "
 			<< internal::getRaw( x )[ i ] << "\n";
 #endif
@@ -489,7 +489,7 @@ namespace grb {
 				return SUCCESS;
 			}
 			if( nz == 0 ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_IO
 				std::cout << "\t mask has no nonzeroes, simply clearing output matrix...\n";
 #endif
 				return grb::clear( A );
@@ -2190,7 +2190,7 @@ namespace grb {
 		// otherwise, we now compute the output. We start with checking capacity
 		assert( phase == EXECUTE );
 		if( capacity( C ) < nzc ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_IO
 			std::cout << "\t insufficient capacity to complete "
 				"requested masked set matrix to matrix computation\n";
 #endif
@@ -2210,11 +2210,14 @@ namespace grb {
 			getReferenceBuffer< typename config::NonzeroIndexType >( ncols + 1 );
 		CRS_raw.col_start[ 0 ] = 0;
 
+		#pragma omp parallel num_threads( nthreads )
 #ifdef _H_GRB_REFERENCE_OMP_IO
-		#pragma omp parallel
 #endif
 		{
-			NIT crs_ws, ccs_ws; // workspace for prefix sum (CCS start array)
+#ifdef _H_GRB_REFERENCE_OMP_IO
+			// workspace for parallel prefix sums
+			NIT1 crs_ws, ccs_ws;
+#endif
 			// initialise CCS_raw.col_start and C_col_index
 			size_t start, end;
 #ifdef _H_GRB_REFERENCE_OMP_IO
@@ -2230,20 +2233,25 @@ namespace grb {
 
 			// get thread-local buffers to initialise thread-local SPA and value buffer
 			internal::Coordinates< reference > coors;
-			MaskType * valbuf = nullptr;
+			OutputType * valbuf = nullptr;
+#ifdef _H_GRB_REFERENCE_OMP_IO
 			if( nthreads == 1 ) {
+#endif
 				char * arr = nullptr;
 				char * buf = nullptr;
-				internal::getMatrixBuffers( arr, buf, valbuf, 1, M );
+				internal::getMatrixBuffers( arr, buf, valbuf, 1, C );
 				coors.set( arr, false, buf, ncols );
+#ifdef _H_GRB_REFERENCE_OMP_IO
 			} else {
 				// TODO check if this also uses the "sequential" buffers, I forgot
 				// (if not, then we're not using all available buffer space)
 				char * arr = nullptr;
 				char * buf = nullptr;
-				internal::spa_ompPar_getBuffers( arr, buf, valbuf, bufferMD, M );
+				internal::spa_ompPar_getBuffers( arr, buf, valbuf, bufferMD, C );
 				coors.set_seq( arr, false, buf, n );
 			}
+#endif
+
 
 			// we will be using the initialised arrays from this "superstep" using a
 			// different distribution in the following, therefore need to sync
@@ -2269,6 +2277,10 @@ namespace grb {
 				for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
 					const auto k_col = A_raw.row_index[ k ];
 					if( coors.assigned( k_col ) ) {
+#ifdef _DEBUG_REFERENCE_IO
+						std::cout << "\t\t nonzero will be output at " << i << ", " << k_col
+							<< std::endl;
+#endif
 						(void) ++local_nzc;
 #ifdef _H_GRB_REFERENCE_OMP_IO
 						#pragma omp atomic update
@@ -2278,30 +2290,64 @@ namespace grb {
 							++(CCS_raw.col_start[ k_col + 1 ]);
 					}
 				}
+#ifdef _DEBUG_REFERENCE_IO
+				std::cout << "\t row " << i << " has " << (local_nzc-CRS_raw.col_start[ i ])
+					<< " nonzeroes" << std::endl;
+#endif
 				CRS_raw.col_start[ i + 1 ] = local_nzc;
+#ifdef _DEBUG_REFERENCE_IO
+				std::cout << "\t CRS_raw.col_start[ " << i << " ] = "
+					<< CRS_raw.col_start[ i ] << "; "
+					<< "CRS_raw.col_start[ " << (i+1) << " ] = "
+					<< CRS_raw.col_start[ i + 1 ] << std::endl;
+#endif
 			}
 
-			// finish updating CCS_raw.col_start, while finishing prefix-sum of
-			// CRS_raw.col_start
-			utils::template prefixSum_ompPar_phase2< true >(
-				CRS_raw.col_start, nrows, crs_ws );
+#ifdef _H_GRB_REFERENCE_OMP_IO
+			// finish updating {CRS_raw,CCS_raw}.col_start
 			#pragma omp barrier
 
-			// also start to prefix-sum CCS_raw.col_start, interleaved with that of
-			// the last phase of prefix-summing CRS_raw.col_start. Note that both
-			// operations while concurrent employ different distributions
-			utils::template prefixSum_ompPar_phase3< true >(
-				CRS_raw.col_start, nrows, crs_ws );
-			utils::template prefixSum_ompPar_phase1< true >(
-				CCS_raw.col_start, ncols, ccs_ws );
+			// start to prefix-sum CCS_raw.col_start (phase 1), interleaved with that of
+			// phase 2 of prefix-summing CRS_raw.col_start. Note that both operations,
+			// while concurrent, employ different distributions
+			utils::template prefixSum_ompPar_phase2< false >(
+				CRS_raw.col_start, nrows + 1, crs_ws );
+			utils::template prefixSum_ompPar_phase1< false >(
+				CCS_raw.col_start, ncols + 1, ccs_ws );
 			#pragma omp barrier
 
-			// followed by the last two phases of the prefix-sum of CCS_raw.col_start
-			utils::template prefixSum_ompPar_phase2< true >(
-				CCS_raw.col_start, ncols, ccs_ws );
+			// followed by phase 3 and 2 of the prefix-sum of CRS_raw and CCS_raw,
+			// respectively
+			utils::template prefixSum_ompPar_phase3< false >(
+				CRS_raw.col_start, nrows + 1, crs_ws );
+			utils::template prefixSum_ompPar_phase2< false >(
+				CCS_raw.col_start, ncols + 1, ccs_ws );
+
+			//followed by phase 3 of the prefix-sum of CCS_raw
 			#pragma omp barrier
-			utils::template prefixSum_ompPar_phase3< true >(
+			utils::template prefixSum_ompPar_phase3< false >(
 				CCS_raw.col_start, ncols, ccs_ws );
+#else
+			utils::template prefixSum_seq< false >( CCS_raw.col_start, ncols + 1 );
+#endif
+#ifdef _DEBUG_REFERENCE_IO
+ #ifdef _H_GRB_REFERENCE_OMP_IO
+			#pragma omp single
+ #endif
+			{
+				std::cout << "\t CRS start array, post prefix-sum: "
+					<< CRS_raw.col_start[ 0 ];
+				for( size_t i = 1; i <= nrows; ++i ) {
+					std::cout << ", " << CRS_raw.col_start[ i ];
+				}
+				std::cout << std::endl << "\t CCS start array: "
+					<< CCS_raw.col_start[ 0 ];
+				for( size_t i = 1; i <= ncols; ++i ) {
+					std::cout << ", " << CCS_raw.col_start[ i ];
+				}
+				std::cout << std::endl;
+			}
+#endif
 
 			// do counting sort, phase 2 -- use previously computed CCS offset array to
 			// update CCS during the computational phase. This loop employs the same
@@ -2326,8 +2372,8 @@ namespace grb {
 					if( coors.assigned( k_col ) ) {
 						constexpr int zero = 0;
 						// update CRS
-						CRS_raw.row_index[ CRS_raw.col_start[ start + 1 ] + local_nzc ] = k_col;
-						CRS_raw.setValue( CRS_raw.col_start[ start + 1 ] + local_nzc,
+						CRS_raw.row_index[ CRS_raw.col_start[ start ] + local_nzc ] = k_col;
+						CRS_raw.setValue( CRS_raw.col_start[ start ] + local_nzc,
 							A_raw.getValue( k, zero ) );
 						// update CCS
 						size_t atomic_offset;
@@ -2337,9 +2383,9 @@ namespace grb {
 						{
 							atomic_offset = C_col_index[ k_col ];
 #ifndef _H_GRB_REFERENCE_OMP_IO
-						(void)
+							(void)
 #endif
-							++(C_col_index[ k_col ]);
+								++(C_col_index[ k_col ]);
 						}
 						const size_t CCS_index = atomic_offset + CCS_raw.col_start[ k_col ];
 						CCS_raw.row_index[ CCS_index ] = i;
@@ -2353,14 +2399,14 @@ namespace grb {
 		}
 #ifndef NDEBUG
  #ifdef _H_GRB_REFERENCE_OMP_IO
-		#pragma omp parallel schedule( static, config::CACHE_LINE_SIZE::value() )
+		#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
  #endif
 		for( size_t j = 0; j < ncols; ++j ) {
 			assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] ==
 				C_col_index[ j ] );
 		}
 #endif
-		internal::setCurrentNonzeroes( C, CRS_raw.col_start[ rows ] );
+		internal::setCurrentNonzeroes( C, CRS_raw.col_start[ nrows ] );
 
 		// done
 		return SUCCESS;
@@ -2770,7 +2816,7 @@ namespace grb {
 #ifdef NDEBUG
 		(void)mode;
 #endif
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_IO
 		std::cout << "buildMatrixUnique (reference) called, delegating to matrix class\n";
 #endif
 		return A.template buildMatrixUnique< descr >( start, end, mode );
@@ -2789,7 +2835,7 @@ namespace grb {
 	uintptr_t getID( const Vector< InputType, reference, Coords > &x ) {
 		assert( grb::size( x ) != 0 );
 		const uintptr_t ret = x._id;
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_IO
 		std::cerr << "In grb::getID (reference, vector).\n"
 			<< "\t returning deterministic ID " << ret << "\n";
 #endif
