@@ -2219,8 +2219,8 @@ namespace grb {
 					getReferenceBuffer< typename config::NonzeroIndexType >( ncols + 1 );
 		CRS_raw.col_start[ 0 ] = 0;
 
-		#pragma omp parallel num_threads( nthreads )
 #ifdef _H_GRB_REFERENCE_OMP_IO
+		#pragma omp parallel num_threads( nthreads )
 #endif
 		{
 #ifdef _H_GRB_REFERENCE_OMP_IO
@@ -2340,8 +2340,12 @@ namespace grb {
 			}
 
 			//followed by phase 3 of the prefix-sum of CCS_raw
+
+			//note that with force_row_major, we still need this barrier because the
+			//distribution on CRS_raw.col_start in the last prefix-sum phase differs
+			//from the distribution assumed in the next superstep
+			#pragma omp barrier
 			if( !(descr & descriptors::force_row_major) ) {
-				#pragma omp barrier
 				utils::template prefixSum_ompPar_phase3< false >(
 					CCS_raw.col_start, ncols + 1, ccs_ws );
 			}
