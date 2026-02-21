@@ -1219,15 +1219,17 @@ namespace grb {
 	 *   -# #grb::descriptors::invert_mask, and
 	 *   -# #grb::descriptors::structural.
 	 *
-	 * However, and differently from most ALP primtivies, the
+	 * However, and differently from most ALP/GraphBLAS primitivies, the
 	 * #grb::descriptors::invert_mask and #grb::descriptors::structural are
 	 * mutually exclusive for this primitive.
 	 * \endparblock
 	 *
 	 * @tparam OutputType The type of each element in the given matrix.
 	 * @tparam MaskType   The type of each element in the given mask.
-	 * @tparam ValueType  The type of the given value. Should be convertible
-	 *                    to \a OutputType.
+	 * @tparam ValueType  The type of the given value.
+	 *
+	 * The given \a ValueType must be convertible to \a OutputType.
+	 *
 	 * @tparam RIT       The integer type for encoding row indices.
 	 * @tparam CIT       The integer type for encoding column indices.
 	 * @tparam NIT       The integer type for encoding nonzero indices.
@@ -1245,51 +1247,50 @@ namespace grb {
 	 *                  the default is #grb::EXECUTE.
 	 *
 	 * In #grb::RESIZE mode:
-	 * @returns #grb::SUCCESS  When the capacity of \a C has been (made) sufficient
-	 *                         to store the requested output.
+	 *
+	 * @returns #grb::SUCCESS  When the capacity of \a C (has been made or already
+	 *                         was) sufficient to store the requested output.
 	 * @returns #grb::OUTOFMEM When out-of-memory conditions have been met while
-	 *                         executing. If this error code is returned, \a C
+	 *                         resizing \a C. If this error code is returned, \a C
 	 *                         shall be unmodified compared to its state at
 	 *                         function entry.
 	 *
 	 * In #grb::EXECUTE mode:
-	 * @returns #grb::SUCCESS When the call completes successfully.
+	 *
+	 * @returns #grb::SUCCESS When the computation has completed or will execute
+	 *                        successfully.
 	 * @returns #grb::ILLEGAL When \a C did not have enough capacity to store the
 	 *                        output of the requested computation.
 	 *
 	 * Either mode may additionally return:
-	 * @returns #grb::ILLEGAL  In case the given \a mask was empty.
+	 *
 	 * @returns #grb::MISMATCH In case \a C and \a mask have mismatching sizes.
 	 * @returns #grb::PANIC    In case an unmitigable error was encountered. The
-	 *                         caller is suggested to exit gracefully, and in any
-	 *                         case to not make any further calls to ALP.
+	 *                         caller, when encountering this return code, is
+	 *                         suggested to exit gracefully and to not make any
+	 *                         further calls to ALP.
 	 *
 	 * When \a descr includes #grb::descriptors::no_casting then code shall not
 	 * compile if one of the following conditions are met:
 	 *  -# \a ValueType does not match \a OutputType; or
 	 *  -# \a MaskType does not match <tt>bool</tt>.
 	 *
-	 * In these cases, the code shall not compile: implementations must throw
-	 * a static assertion failure in this case.
-	 *
 	 * Similarly, it is forbidden to call this function with both following
 	 * descriptors simultaneously:
 	 *  - #grb::descriptors::invert_mask \em and #grb::descriptors::structural.
 	 *
 	 * The use of the #grb::descriptors::structural_complement descriptor hence is
-	 * is forbidden also. Implementations shall throw a static assertion failure
-	 * if the user nonetheless asks for structural mask inversion.
+	 * is forbidden also. These conditions, when encountered, should lead to
+	 * compile-time errors also.
+	 *
+	 * \note One vehicle to ensure compilation does not occur in these cases is via
+	 *       <tt>static_assert</tt>.
 	 *
 	 * \parblock
 	 * \par Performance semantics
 	 * Each backend must define performance semantics for this primitive.
 	 *
 	 * @see perfSemantics
-	 *
-	 * \warning Generally, if \a mask equals \a C and the mask is non-structural,
-	 *          then optimised implementations will assign higher costs than when
-	 *          \a mask does not equal \a C. This is because the nonzero structure
-	 *          update cannot be done in-place.
 	 * \endparblock
 	 */
 	template<
@@ -1317,6 +1318,128 @@ namespace grb {
 		(void) C;
 		(void) mask;
 		(void) val;
+		(void) phase;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Sets all values of a matrix to that of a given source matrix, if and only if
+	 * the corresponding value coordinates evaluate <tt>true</tt> at the given mask
+	 * matrix.
+	 *
+	 * @tparam descr The descriptor used for this operation.
+	 *
+	 * \parblock
+	 * \par Accepted descriptors
+	 *   -# #grb::descriptors::no_operation,
+	 *   -# #grb::descriptors::no_casting,
+	 *   -# #grb::descriptors::invert_mask,
+	 *   -# #grb::descriptors::structural
+	 *
+	 * However, and differently from most ALP primtivies, the
+	 * #grb::descriptors::invert_mask and #grb::descriptors::structural are
+	 * mutually exclusive for this primitive.
+	 * \endparblock
+	 *
+	 * @tparam OutputType The type of each element in the destination matrix.
+	 * @tparam MaskType   The type of each element in the output mask.
+	 * @tparam ValueType  The type of each element in the source matrix.
+	 *
+	 * The given \a ValueType must be convertible to \a OutputType.
+	 *
+	 * \internal
+	 * @tparam RIT1       The integer type for encoding row indices in \a C.
+	 * @tparam CIT1       The integer type for encoding column indices in \a C.
+	 * @tparam NIT1       The integer type for encoding nonzero indices in \a C.
+	 * @tparam RIT2       The integer type for encoding row indices in \a mask.
+	 * @tparam CIT2       The integer type for encoding column indices in \a mask.
+	 * @tparam NIT2       The integer type for encoding nonzero indices in \a mask.
+	 * @tparam RIT3       The integer type for encoding row indices in \a A.
+	 * @tparam CIT3       The integer type for encoding column indices in \a A.
+	 * @tparam NIT3       The integer type for encoding nonzero indices in \a A.
+	 * @tparam backend    The backend selected for executing this primitive.
+	 * \endinternal
+	 *
+	 * @param[out] C     The matrix that will be a masked copy of \a A.
+	 * @param[in]  mask  Matrix that acts as output mask on \a C.
+	 * @param[in]  A     The source matrix which will (partially) be copied to
+	 *                   \a A.
+	 * @param[in]  phase Which #grb::Phase of the operation is requested. Optional;
+	 *                   the default is #grb::EXECUTE.
+	 *
+	 * In #grb::RESIZE mode:
+	 *
+	 * @returns #grb::SUCCESS  When the capacity of \a C (has been made or already
+	 *                         was) sufficient to store the requested output.
+	 * @returns #grb::OUTOFMEM When out-of-memory conditions were met while
+	 *                         resizing \a C. If this error code is returned, \a C
+	 *                         shall be left unmodified compared to its state at
+	 *                         function entry.
+	 *
+	 * In #grb::EXECUTE mode:
+	 *
+	 * @returns #grb::SUCCESS When the computation has completed or will execute
+	 *                        successfully.
+	 * @returns #grb::ILLEGAL When \a C did not have enough capacity to store the
+	 *                        output of the requested computation.
+	 *
+	 * Either mode may additionally return:
+	 *
+	 * @returns #grb::MISMATCH When \a A and \a C have mismatching sizes.
+	 * @returns #grb::MISMATCH When \a C and \a mask have mismatching sizes.
+	 * @returns #grb::PANIC    In case an unmitigable error was encountered. The
+	 *                         caller, when encountering this return code, is
+	 *                         suggested to exit the program gracefully and to not
+	 *                         make any further calls to ALP.
+	 *
+	 * When \a descr includes #grb::descriptors::no_casting, then code shall not
+	 * comile if one of the following conditions are met:
+	 *  -# \a ValueType does not match \a OutputType; or
+	 *  -# \a MaskType does not match <tt>bool</tt>.
+	 *
+	 * Similarly, it is forbidden to call this function with both following
+	 * descriptors simultaneously:
+	 *  - #grb::descriptors::invert_mask \em and #grb::descriptors::structural.
+	 *
+	 * The use of the #grb::descriptors::structural_complement descriptor hence is
+	 * is forbidden also. These conditions should lead to compile-time errors also.
+	 *
+	 * \note One vehicle to ensure compilation does not occur in these cases is via
+	 *       <tt>static_assert</tt>.
+	 *
+	 * \parblock
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 * \endparblock
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename MaskType, typename ValueType,
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2,
+		typename RIT3, typename CIT3, typename NIT3,
+		Backend backend
+	>
+	RC set(
+		Matrix< OutputType, backend, RIT1, CIT1, NIT1 > &C,
+		const Matrix< MaskType, backend, RIT2, CIT2, NIT2 > &mask,
+		const Matrix< ValueType, backend, RIT3, CIT3, NIT3 > &A,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< ValueType >::value &&
+			!grb::is_object< MaskType >::value,
+		void >::type * const = nullptr
+	) noexcept {
+#ifndef NDEBUG
+		const bool should_not_call_base_matrix_masked_matrix_set = false;
+		assert( should_not_call_base_matrix_masked_matrix_set );
+#endif
+		(void) C;
+		(void) mask;
+		(void) A;
 		(void) phase;
 		return UNSUPPORTED;
 	}
@@ -1764,7 +1887,7 @@ namespace grb {
 	 * successfully, then a call to this function shall return #grb::SUCCESS.
 	 *
 	 * The are several other cases in which the computation of nonblocking
-	 * primtives is forced:
+	 * primitives is forced:
 	 *   -# whenever an output iterator of an output container of any of the non-
 	 *      blocking primitives is requested; and
 	 *   -# whenever an output container of any of the non-blocking primitives is

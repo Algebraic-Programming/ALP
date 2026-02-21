@@ -992,20 +992,17 @@ namespace grb {
 #ifdef _BSP1D_IO_DEBUG
 		std::cout << "Called grb::set( matrix, mask, value ) (BSP1D)\n";
 #endif
+		// catch trivial cases
 		const size_t m = nrows( C );
 		const size_t n = ncols( C );
-
-		// dynamic checks (I)
-		if( m != nrows( mask ) || n != ncols( mask ) ) {
-			return MISMATCH;
-		}
-
-		// catch trivial case
 		if( m == 0 || n == 0 ) { return SUCCESS; }
 
-		// dynamic checks (II)
+		// dynamic checks
 		if( nrows( mask ) == 0 || ncols( mask ) == 0 ) {
 			return ILLEGAL;
+		}
+		if( m != nrows( mask ) || n != ncols( mask ) ) {
+			return MISMATCH;
 		}
 
 #ifdef _BSP1D_IO_DEBUG
@@ -1023,6 +1020,158 @@ namespace grb {
 			assert( local_n == ncols( local_mask ) );
 			if( local_m > 0 && local_n > 0 ) {
 				ret = set< descr >( local_C, local_mask, val, phase );
+			}
+		}
+
+		// in the self-masked case, there is no way an error could occur
+		if( (descr & descriptors::structural) && getID( C ) == getID( mask ) ) {
+#ifdef _BSP1D_IO_DEBUG
+			std::cout << "\t structural self-masking detected, which allows trivial "
+				"exit\n"; // since the nnz nor capacity would never change
+#endif
+			assert( ret == SUCCESS );
+			return ret;
+		}
+
+		// in all other cases, in either mode (resize or execute), we must check for
+		// errors
+#ifdef _BSP1D_IO_DEBUG
+		std::cout << "\t all-reducing error code\n";
+#endif
+		if( collectives< BSP1D >::allreduce( ret, operators::any_or< RC >() )
+			!= SUCCESS
+		) {
+			return PANIC;
+		}
+
+#ifdef _BSP1D_IO_DEBUG
+		std::cout << "\t all-reduced error code is " << toString( ret ) << "\n";
+#endif
+		if( phase == RESIZE ) {
+			if( ret == SUCCESS ) {
+#ifdef _BSP1D_IO_DEBUG
+				std::cout << "\t resize phase detected -- synchronising capacity\n";
+#endif
+				ret = internal::updateCap( C );
+				if( ret != SUCCESS ) {
+					std::cerr << "Error updating capacity: " << toString( ret ) << "\n";
+				}
+			}
+		} else {
+			assert( phase == EXECUTE );
+			if( ret == SUCCESS ) {
+#ifdef _BSP1D_IO_DEBUG
+				std::cout << "\t execute phase detected -- synchronising nnz count\n";
+#endif
+				ret = internal::updateNnz( C );
+				if( ret != SUCCESS ) {
+					std::cerr << "Error updating output number of nonzeroes: "
+						<< toString( ret ) << "\n";
+				}
+			} else if( ret == ILLEGAL ) {
+#ifdef _BSP1D_IO_DEBUG
+				std::cout << "\t delegate returns ILLEGAL, clearing output\n";
+#endif
+				const RC clear_rc = clear( C );
+				if( clear_rc != SUCCESS ) {
+					ret = PANIC;
+				}
+			} else {
+				if( ret != PANIC ) {
+					std::cerr << "Warning: unexpected error code in grb::set( matrix, mask, "
+						<< "value ) (BSP1D). Please submit a bug report.\n";
+				}
+				assert( ret == PANIC );
+			}
+		}
+
+#ifdef _BSP1D_IO_DEBUG
+		std::cout << "\t done; returning " << toString( ret ) << "\n";
+#endif
+
+		// done
+		return ret;
+	}
+
+	/**
+	 * The implementation can trivially rely on the final backend, however, the
+	 * capacity or nonzero count of the output can in some cases differ. The below
+	 * implementation mostly deals with that logic.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename DataType, typename RIT1, typename CIT1, typename NIT1,
+		typename MaskType, typename RIT2, typename CIT2, typename NIT2,
+		typename ValueType = DataType, typename RIT3, typename CIT3, typename NIT3
+	>
+	RC set(
+		Matrix< DataType, BSP1D, RIT1, CIT1, NIT1 > &C,
+		const Matrix< MaskType, BSP1D, RIT2, CIT2, NIT2 > &mask,
+		const Matrix< ValueType, BSP1D, RIT3, CIT3, NIT3 > &A,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< DataType >::value &&
+			!grb::is_object< ValueType >::value &&
+			!grb::is_object< MaskType >::value
+		>::type * const = nullptr
+	) noexcept {
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< ValueType, DataType >::value
+			), "grb::set( matrix, mask, matrix ) (BSP1D)",
+			"called with non-matching value types"
+		);
+		NO_CAST_ASSERT(
+			( !(descr & descriptors::no_casting) ||
+				std::is_same< MaskType, bool >::value ),
+			"grb::set( matrix, mask, matrix ) (BSP1D)",
+			"called with non-Boolean mask value type"
+		);
+		static_assert( !( (descr & descriptors::structural) &&
+				(descr & descriptors::invert_mask)
+			), "grb::set( matrix, mask, matrix ) (BSP1D): Primitives with matrix "
+			"outputs may not employ structurally inverted masking"
+		);
+#ifdef _BSP1D_IO_DEBUG
+		std::cout << "Called grb::set( matrix, mask, matrix ) (BSP1D)\n";
+#endif
+		const size_t m = nrows( C );
+		const size_t n = ncols( C );
+
+		// dynamic checks (I)
+		if( m != nrows( A ) || n != ncols( A ) ) {
+			return MISMATCH;
+		}
+
+		// catch trivial cases
+		if( m == 0 || n == 0 ) { return SUCCESS; }
+		if( nrows( mask ) == 0 || ncols( mask ) == 0 ) {
+			return set< descr >( C, A, phase );
+		}
+
+		// dynamic checks (II)
+		if( m != nrows( mask ) || n != ncols( mask ) ) {
+			return MISMATCH;
+		}
+
+#ifdef _BSP1D_IO_DEBUG
+		std::cout << "\t delegating to final backend\n";
+#endif
+		RC ret = SUCCESS;
+		// Take care that local matrices may be empty, even if the global matrix is
+		// not. Processes with empty local matrices will not delegate (no-op).
+		{
+			auto &local_C = internal::getLocal( C );
+			const auto &local_A = internal::getLocal( A );
+			const auto &local_mask = internal::getLocal( mask );
+			const size_t local_m = nrows( local_C );
+			const size_t local_n = ncols( local_C );
+			assert( local_m == nrows( local_mask ) );
+			assert( local_n == ncols( local_mask ) );
+			assert( local_m == nrows( local_A ) );
+			assert( local_n == ncols( local_A ) );
+			if( local_m > 0 && local_n > 0 ) {
+				ret = set< descr >( local_C, local_mask, local_A, phase );
 			}
 		}
 

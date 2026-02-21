@@ -213,14 +213,14 @@ namespace grb {
 		Vector< InputType, reference, Coords > &x,
 		const size_t new_nz
 	) noexcept {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_IO
 		std::cerr << "In grb::resize (vector, reference)\n";
 #endif
 		if( grb::size( x ) == 0 ) { return grb::SUCCESS; }
 
 		// check if we have a mismatch
 		if( new_nz > grb::size( x ) ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_IO
 			std::cerr << "\t requested capacity of " << new_nz << ", "
 				<< "expected a value smaller than or equal to "
 				<< size( x ) << "\n";
@@ -228,7 +228,7 @@ namespace grb {
 			return grb::ILLEGAL;
 		}
 		if( new_nz < grb::nnz( x ) ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_IO
 			std::cerr << "\t requested capacity of " << new_nz << ", "
 				<< "expected a value larger than or equal to "
 				<< grb::nnz( x ) << "\n";
@@ -276,7 +276,7 @@ namespace grb {
 		Matrix< InputType, reference, RIT, CIT, NIT > &A,
 		const size_t new_nz
 	) noexcept {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_IO
 		std::cerr << "In grb::resize (matrix, reference)\n"
 			<< "\t matrix is " << nrows(A) << " by " << ncols(A) << "\n"
 			<< "\t requested capacity is " << new_nz << "\n";
@@ -295,7 +295,7 @@ namespace grb {
 			(new_nz / m == n && (new_nz % m > 0)) ||
 			(new_nz / n == m && (new_nz % n > 0))
 		) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_IO
 			std::cerr << "\t requesting higher capacity than could be stored in a "
 				<< "matrix of the current size\n";
 #endif
@@ -304,7 +304,7 @@ namespace grb {
 
 		// catch illegal (underflow)
 		if( new_nz < grb::nnz( A ) ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_IO
 			std::cerr << "\t requesting lower capacity than required by current "
 				<< "contents\n";
 #endif
@@ -415,7 +415,7 @@ namespace grb {
 		(void) internal::getCoordinates( x ).assign( i );
 		internal::getRaw( x )[ i ] = static_cast< DataType >( val );
 
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_IO
 		std::cout << "setElement (reference) set index " << i << " to value "
 			<< internal::getRaw( x )[ i ] << "\n";
 #endif
@@ -489,7 +489,7 @@ namespace grb {
 				return SUCCESS;
 			}
 			if( nz == 0 ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_IO
 				std::cout << "\t mask has no nonzeroes, simply clearing output matrix...\n";
 #endif
 				return grb::clear( A );
@@ -944,21 +944,22 @@ namespace grb {
 #endif
 			// static checks
 			static_assert(
+				( !(descr & descriptors::no_casting) || !A_is_mask ||
+					std::is_same< InputType1, bool >::value ),
+				"grb::internal::set_copy called with non-Boolean mask types. This is an "
+				"internal error. Please submit a bug report."
+			);
+			static_assert(
 				( !(descr & descriptors::no_casting) ||
+					( A_is_mask && std::is_same< InputType2, OutputType >::value ) ||
 					( !A_is_mask && std::is_same< InputType1, OutputType >::value ) ),
 				"grb::internal::set_copy called with non-matching value types. This is an "
 				"internal error. Please submit a bug report."
 			);
 			static_assert(
-				( !(descr & descriptors::no_casting) ||
-					( A_is_mask && std::is_same< InputType2, OutputType >::value ) ),
-				"grb::internal::set_copy called with non-matching value types. This is an "
-				"internal error. Please submit a bug report."
-			);
-			static_assert(
-				!(descr & descriptors::invert_mask), "internal::grb::set_copy called with "
-				"the invert_mask descriptor. This is an internal error; please submit a "
-				"bug report."
+				!A_is_mask || !(descr & descriptors::invert_mask),
+				"internal::grb::set_copy called with the invert_mask descriptor. This is "
+				"an internal error; please submit a bug report."
 			);
 
 			// run-time checks
@@ -2028,6 +2029,418 @@ namespace grb {
 		}
 	}
 
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename MaskType, typename InputType,
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2,
+		typename RIT3, typename CIT3, typename NIT3
+	>
+	RC set(
+		Matrix< OutputType, reference, RIT1, CIT1, NIT1 > &C,
+		const Matrix< MaskType, reference, RIT2, CIT2, NIT2 > &M,
+		const Matrix< InputType, reference, RIT3, CIT3, NIT3 > &A,
+		const Phase &phase = EXECUTE
+	) noexcept {
+		// static checks
+		static_assert(
+			!std::is_void< InputType >::value ||
+				std::is_void< OutputType >::value, "grb::set( masked set to matrix ): "
+			"cannot have a pattern matrix as input unless the output is also a pattern "
+			"matrix"
+		);
+		static_assert(
+			std::is_convertible< InputType, OutputType >::value ||
+				std::is_void< OutputType >::value,
+			"grb::set (masked set to matrix): input type cannot be "
+			"converted to output type"
+		);
+		static_assert(
+			!(descr & descriptors::structural && (descr & descriptors::invert_mask)),
+			"grb::set (masked set to matrix) may not be called with both the structural "
+			"and invert_mask descriptors set"
+		);
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< InputType, OutputType >::value
+			), "grb::set",
+			"called with non-matching value types"
+		);
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< MaskType, bool >::value
+			), "grb::set",
+			"called with non-Boolean mask types"
+		);
+
+		// dynamic checks
+#ifdef _DEBUG_REFERENCE_IO
+		std::cout << "Called grb::set (matrix-to-matrix-masked, reference)\n";
+#endif
+		assert( phase != TRY );
+		const size_t nrows = grb::nrows( C );
+		const size_t ncols = grb::ncols( C );
+		const size_t m = grb::nrows( M );
+		const size_t n = grb::ncols( M );
+
+		// check for trivial dispatch first (otherwise the below checks fail when they
+		// should not)
+		if( m == 0 || n == 0 ) {
+#ifdef _DEBUG_REFERENCE_IO
+			std::cout << "\t delegating to unmasked matrix-to-matrix set, reference\n";
+#endif
+			// If the mask is empty, ignore it
+			return set< descr >( C, A, phase );
+		}
+
+		// dynamic checks, continued
+		if( nrows != grb::nrows( A ) || nrows != m ) {
+			return MISMATCH;
+		}
+
+		if( ncols != grb::ncols( A ) || ncols != n ) {
+			return MISMATCH;
+		}
+
+		// go for implementation, preliminaries:
+		size_t nzc = 0;
+		const auto &A_raw = internal::getCRS( A );
+		const auto &mask_raw = internal::getCRS( M );
+		// we now have one (guaranteed) SPA, which is mask_coors. We now are going to
+		// check how many more SPAs ideally we would like (for reference_omp), and
+		// then go about trying to get those. If, finally, we get just this one SPA,
+		// we will go into this mostly-sequential code (essentially, big-Omega nrows):
+#ifdef _H_GRB_REFERENCE_OMP_IO
+		const size_t nnz_based_nthreads = std::max( config::OMP::threads(),
+			grb::nnz( A ) / config::CACHE_LINE_SIZE::value() );
+		grb::internal::SPA_BufferMetaData< NIT1, OutputType > bufferMD(
+			m, n, nnz_based_nthreads );
+		const size_t nthreads = bufferMD.threads();
+ #ifdef _DEBUG_REFERENCE_IO
+		std::cout << "\t set( matrix, matrix, matrix ) will use " << nthreads
+			<< " threads" << std::endl;
+ #endif
+#else
+		const size_t nthreads = 1;
+#endif
+		if( nthreads == 1 ) {
+			char * arr = nullptr;
+			char * buf = nullptr;
+			OutputType * valbuf = nullptr;
+			internal::Coordinates< reference > coors;
+			internal::getMatrixBuffers( arr, buf, valbuf, 1, C );
+			coors.set( arr, false, buf, ncols );
+			for( size_t i = 0; i < nrows; ++i ) {
+				coors.clear();
+				for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
+					const auto k_col = mask_raw.row_index[ k ];
+					if( utils::interpretMatrixMask< descr, MaskType >( true, mask_raw.getValues(), k ) ) {
+						coors.assign( k_col );
+					}
+				}
+#ifdef _H_GRB_REFERENCE_OMP_IO
+				#pragma omp parallel for reduction( +: nzc ) \
+					schedule( dynamic, config::CACHE_LINE_SIZE::value() )
+#endif
+				for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+					const auto k_col = A_raw.row_index[ k ];
+					if( coors.assigned( k_col ) ) {
+						(void) ++nzc;
+					}
+				}
+			}
+		} else {
+#ifdef _H_GRB_REFERENCE_OMP_IO
+			#pragma omp parallel num_threads( nthreads ) reduction( +: nzc )
+			{
+				// get thread-local buffers
+				size_t local_nz = 0;
+				char * arr = nullptr;
+				char * buf = nullptr;
+				OutputType * valbuf = nullptr;
+				internal::spa_ompPar_getBuffers( arr, buf, valbuf, bufferMD, C );
+				internal::Coordinates< reference > coors;
+				coors.set_seq( arr, false, buf, n );
+				// follow dynamic schedule since we cannot predict sparsity structure
+				#pragma omp for schedule( dynamic, config::CACHE_LINE_SIZE::value() )
+				for( size_t i = 0; i < nrows; ++i ) {
+					coors.clear();
+					for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
+						const auto k_col = mask_raw.row_index[ k ];
+						if( utils::interpretMatrixMask< descr, MaskType >( true, mask_raw.getValues(), k ) ) {
+							coors.assign( k_col );
+						}
+					}
+					for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+						const auto k_col = A_raw.row_index[ k ];
+						if( coors.assigned( k_col ) ) {
+							(void) ++local_nz;
+						}
+					}
+				}
+				nzc += local_nz;
+			}
+#else
+			const bool code_path_should_not_be_reached = false;
+			std::cerr << "\t logic error in grb::set( matrix, matrix, matrix ): "
+				<< "code path should not reach here. Please submit a bug report\n";
+			assert( code_path_should_not_be_reached );
+ #ifdef NDEBUG
+			(void) code_path_should_not_be_reached;
+ #endif
+#endif
+		}
+
+		// we now have a count. If we're in the resize phase that means we're done:
+		if( phase == RESIZE ) {
+			return resize( C, nzc );
+		}
+
+		// otherwise, we now compute the output. We start with checking capacity
+		assert( phase == EXECUTE );
+		if( capacity( C ) < nzc ) {
+#ifdef _DEBUG_REFERENCE_IO
+			std::cout << "\t insufficient capacity to complete "
+				"requested masked set matrix to matrix computation\n";
+#endif
+			const RC clear_rc = clear( C );
+			if( clear_rc != SUCCESS ) {
+				return PANIC;
+			} else {
+				return ILLEGAL;
+			}
+		}
+
+		// get output CRS and CCS structures
+		auto &CRS_raw = internal::getCRS( C );
+		auto &CCS_raw = internal::getCCS( C );
+		config::NonzeroIndexType * const C_col_index =
+			(descr & descriptors::force_row_major)
+				?  nullptr
+				: internal::template
+					getReferenceBuffer< typename config::NonzeroIndexType >( ncols + 1 );
+		CRS_raw.col_start[ 0 ] = 0;
+
+#ifdef _H_GRB_REFERENCE_OMP_IO
+		#pragma omp parallel num_threads( nthreads )
+#endif
+		{
+#ifdef _H_GRB_REFERENCE_OMP_IO
+			// workspace for parallel prefix sums
+			NIT1 crs_ws, ccs_ws;
+#endif
+			// initialise CCS_raw.col_start and C_col_index
+			size_t start, end;
+#ifdef _H_GRB_REFERENCE_OMP_IO
+			config::OMP::localRange( start, end, 0, ncols + 1 );
+#else
+			start = 0;
+			end = ncols + 1;
+#endif
+			if( !(descr & descriptors::force_row_major) ) {
+				for( size_t j = start; j < end; ++j ) {
+					CCS_raw.col_start[ j ] = 0;
+					C_col_index[ j ] = 0;
+				}
+			}
+
+			// get thread-local buffers to initialise thread-local SPA and value buffer
+			internal::Coordinates< reference > coors;
+			OutputType * valbuf = nullptr;
+#ifdef _H_GRB_REFERENCE_OMP_IO
+			if( nthreads == 1 ) {
+#endif
+				char * arr = nullptr;
+				char * buf = nullptr;
+				internal::getMatrixBuffers( arr, buf, valbuf, 1, C );
+				coors.set( arr, false, buf, ncols );
+#ifdef _H_GRB_REFERENCE_OMP_IO
+			} else {
+				char * arr = nullptr;
+				char * buf = nullptr;
+				internal::spa_ompPar_getBuffers( arr, buf, valbuf, bufferMD, C );
+				coors.set_seq( arr, false, buf, n );
+			}
+#endif
+
+			// we will be using the initialised arrays from this "superstep" using a
+			// different distribution in the following, therefore need to sync
+			#pragma omp barrier
+
+			// do counting sort, phase 1 -- also this loop should employ the same
+			// parallelisation strategy during counting
+			size_t local_nzc = 0;
+#ifdef _H_GRB_REFERENCE_OMP_IO
+			config::OMP::localRange( start, end, 0, nrows );
+#else
+			start = 0;
+			end = nrows;
+#endif
+			for( size_t i = start; i < end; ++i ) {
+				coors.clear();
+				for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
+					const auto k_col = mask_raw.row_index[ k ];
+					if( utils::interpretMask< descr, MaskType >( true, mask_raw.getValues(), k ) ) {
+						coors.assign( k_col );
+					}
+				}
+				for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+					const auto k_col = A_raw.row_index[ k ];
+					if( coors.assigned( k_col ) ) {
+#ifdef _DEBUG_REFERENCE_IO
+						std::cout << "\t\t nonzero will be output at " << i << ", " << k_col
+							<< std::endl;
+#endif
+						(void) ++local_nzc;
+						if( !(descr & descriptors::force_row_major) ) {
+#ifdef _H_GRB_REFERENCE_OMP_IO
+							#pragma omp atomic update
+#else
+							(void)
+#endif
+								++(CCS_raw.col_start[ k_col + 1 ]);
+						}
+					}
+				}
+#ifdef _DEBUG_REFERENCE_IO
+				std::cout << "\t row " << i << " has " << (local_nzc-CRS_raw.col_start[ i ])
+					<< " nonzeroes" << std::endl;
+#endif
+				CRS_raw.col_start[ i + 1 ] = local_nzc;
+#ifdef _DEBUG_REFERENCE_IO
+				std::cout << "\t CRS_raw.col_start[ " << i << " ] = "
+					<< CRS_raw.col_start[ i ] << "; "
+					<< "CRS_raw.col_start[ " << (i+1) << " ] = "
+					<< CRS_raw.col_start[ i + 1 ] << std::endl;
+#endif
+			}
+
+#ifdef _H_GRB_REFERENCE_OMP_IO
+			// finish updating {CRS_raw,CCS_raw}.col_start
+			#pragma omp barrier
+
+			// start to prefix-sum CCS_raw.col_start (phase 1), interleaved with that of
+			// phase 2 of prefix-summing CRS_raw.col_start. Note that both operations,
+			// while concurrent, employ different distributions-- and also that these
+			// distributions are different from the previous superstep (i.e., the
+			// preceding barrier is required)
+			utils::template prefixSum_ompPar_phase2< false >(
+				CRS_raw.col_start + 1, nrows, crs_ws );
+			if( !(descr & descriptors::force_row_major) ) {
+				utils::template prefixSum_ompPar_phase1< false >(
+					CCS_raw.col_start, ncols + 1, ccs_ws );
+			}
+			#pragma omp barrier
+
+			// followed by phase 3 and 2 of the prefix-sum of CRS_raw and CCS_raw,
+			// respectively
+			utils::template prefixSum_ompPar_phase3< false >(
+				CRS_raw.col_start + 1, nrows, crs_ws );
+			if( !(descr & descriptors::force_row_major) ) {
+				utils::template prefixSum_ompPar_phase2< false >(
+					CCS_raw.col_start, ncols + 1, ccs_ws );
+			}
+
+			//followed by phase 3 of the prefix-sum of CCS_raw
+
+			//note that with force_row_major, we still need this barrier because the
+			//distribution on CRS_raw.col_start in the last prefix-sum phase differs
+			//from the distribution assumed in the next superstep
+			#pragma omp barrier
+			if( !(descr & descriptors::force_row_major) ) {
+				utils::template prefixSum_ompPar_phase3< false >(
+					CCS_raw.col_start, ncols + 1, ccs_ws );
+			}
+#else
+			if( !(descr & descriptors::force_row_major) ) {
+				utils::template prefixSum_seq< false >( CCS_raw.col_start, ncols + 1 );
+			}
+#endif
+#ifdef _DEBUG_REFERENCE_IO
+ #ifdef _H_GRB_REFERENCE_OMP_IO
+			#pragma omp single
+ #endif
+			{
+				std::cout << "\t CRS start array, post prefix-sum: "
+					<< CRS_raw.col_start[ 0 ];
+				for( size_t i = 1; i <= nrows; ++i ) {
+					std::cout << ", " << CRS_raw.col_start[ i ];
+				}
+				if( !(descr & descriptors::force_row_major) ) {
+					std::cout << std::endl << "\t CCS start array: "
+						<< CCS_raw.col_start[ 0 ];
+					for( size_t i = 1; i <= ncols; ++i ) {
+						std::cout << ", " << CCS_raw.col_start[ i ];
+					}
+				}
+				std::cout << std::endl;
+			}
+#endif
+
+			// do counting sort, phase 2 -- use previously computed CCS offset array to
+			// update CCS during the computational phase. This loop employs the same
+			// (multiple-SPA) parallelisation strategy as above
+			local_nzc = 0;
+			for( size_t i = start; i < end; ++i ) {
+				coors.clear();
+				for(
+					auto k = mask_raw.col_start[ i ];
+					k < mask_raw.col_start[ i + 1 ];
+					++k
+				) {
+					const auto k_col = mask_raw.row_index[ k ];
+					if( utils::interpretMatrixMask< descr, MaskType >(
+						true, mask_raw.getValues(), k )
+					) {
+						coors.assign( k_col );
+					}
+				}
+				for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+					const auto k_col = A_raw.row_index[ k ];
+					if( coors.assigned( k_col ) ) {
+						constexpr int zero = 0;
+						// update CRS
+						CRS_raw.row_index[ CRS_raw.col_start[ start ] + local_nzc ] = k_col;
+						CRS_raw.setValue( CRS_raw.col_start[ start ] + local_nzc,
+							A_raw.getValue( k, zero ) );
+						// update CCS
+						if( !(descr & descriptors::force_row_major) ) {
+							size_t atomic_offset;
+#ifdef _H_GRB_REFERENCE_OMP_IO
+							#pragma omp atomic capture
+#endif
+							{
+								atomic_offset = C_col_index[ k_col ];
+#ifndef _H_GRB_REFERENCE_OMP_IO
+								(void)
+#endif
+									++(C_col_index[ k_col ]);
+							}
+							const size_t CCS_index = atomic_offset + CCS_raw.col_start[ k_col ];
+							CCS_raw.row_index[ CCS_index ] = i;
+							CCS_raw.setValue( CCS_index, A_raw.getValue( k, zero ) );
+						}
+						// move to next nonzero
+						(void) ++local_nzc;
+					}
+				}
+			}
+		}
+#ifndef NDEBUG
+		if( !(descr & descriptors::force_row_major) ) {
+ #ifdef _H_GRB_REFERENCE_OMP_IO
+			#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+ #endif
+			for( size_t j = 0; j < ncols; ++j ) {
+				assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] ==
+					C_col_index[ j ] );
+			}
+		}
+#endif
+		internal::setCurrentNonzeroes( C, CRS_raw.col_start[ nrows ] );
+
+		// done
+		return SUCCESS;
+	}
+
 	/**
 	 * Ingests raw data into a GraphBLAS vector.
 	 *
@@ -2432,7 +2845,7 @@ namespace grb {
 #ifdef NDEBUG
 		(void)mode;
 #endif
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_IO
 		std::cout << "buildMatrixUnique (reference) called, delegating to matrix class\n";
 #endif
 		return A.template buildMatrixUnique< descr >( start, end, mode );
@@ -2451,7 +2864,7 @@ namespace grb {
 	uintptr_t getID( const Vector< InputType, reference, Coords > &x ) {
 		assert( grb::size( x ) != 0 );
 		const uintptr_t ret = x._id;
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_IO
 		std::cerr << "In grb::getID (reference, vector).\n"
 			<< "\t returning deterministic ID " << ret << "\n";
 #endif

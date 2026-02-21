@@ -28,6 +28,10 @@
 
 #include <array>
 
+#ifdef _DEBUG
+ #define _DEBUG_HYPERDAGS_IO
+#endif
+
 
 namespace grb {
 
@@ -437,6 +441,110 @@ namespace grb {
 			sourcesC.begin(), sourcesC.end(),
 			destinations.begin(), destinations.end()
 		);
+		return ret;
+	}
+
+	/**
+	 * This function inherits the performance semantics of the underlying backend.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename MaskType, typename InputType,
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2,
+		typename RIT3, typename CIT3, typename NIT3
+	>
+	RC set(
+		Matrix< OutputType, hyperdags, RIT1, CIT1, NIT1 > &C,
+		const Matrix< MaskType, hyperdags, RIT2, CIT2, NIT2 > &M,
+		const Matrix< InputType, hyperdags, RIT3, CIT3, NIT3 > &A,
+		const Phase &phase = EXECUTE
+	) {
+#ifdef _DEBUG_HYPERDAGS_IO
+		std::cout << "Entering set(matrix, matrix, matrix), hyperdags backend\n";
+#endif
+		// first, check for dynamic errors
+		const size_t m = nrows( C );
+		const size_t n = ncols( C );
+		if( m != nrows( A ) || n != ncols( A ) ) {
+#ifdef _DEBUG_HYPERDAGS_IO
+			std::cerr << "\t set( matrix, matrix, matrix ): dimension mismatch (I)\n";
+#endif
+			return MISMATCH;
+		}
+		if( m != nrows( M ) && nrows( M ) != 0 ) {
+#ifdef _DEBUG_HYPERDAGS_IO
+			std::cerr << "\t set( matrix, matrix, matrix ): dimension mismatch (II)\n";
+#endif
+			return MISMATCH;
+		}
+		if( n != ncols( M ) && ncols( M ) != 0 ) {
+#ifdef _DEBUG_HYPERDAGS_IO
+			std::cerr << "\t set( matrix, matrix, matrix ): dimension mismatch (III)\n";
+#endif
+			return MISMATCH;
+		}
+		// second, check for trivial op
+		if( m == 0 || n == 0 ) {
+#ifdef _DEBUG_HYPERDAGS_IO
+			std::cerr << "\t WARNING set( matrix, matrix, matrix ), hyperdags: "
+				<< "trivial op detected (all containers empty). No operation will be "
+				<< "recorded\n";
+#endif
+			return SUCCESS;
+		}
+		// third, execute
+#ifdef _DEBUG_HYPERDAGS_IO
+		std::cerr << "\t set( matrix, matrix, matrix ), hyperdags: forwarding to "
+			<< "execution backend\n";
+#endif
+		const RC ret = set< descr >(
+			internal::getMatrix( C ), internal::getMatrix( M ),
+			internal::getMatrix( A ), phase
+		);
+		// fourth, forward any errors
+		if( ret != SUCCESS ) { return ret; }
+		if( phase != EXECUTE ) { return ret; }
+		// fifth, record operation
+#ifdef _DEBUG_HYPERDAGS_IO
+		std::cerr << "\t set( matrix, matrix, matrix ), hyperdags: execution had no "
+			<< "error; recording operation\n";
+#endif
+		std::array< const void *, 0 > sourcesP{};
+		std::array< uintptr_t, 1 > destinations{ getID( internal::getMatrix(C) ) };
+		if( nrows( M ) == 0 || ncols( M ) == 0 ) {
+#ifdef _DEBUG_HYPERDAGS_IO
+			std::cerr << "\t WARNING set( matrix, matrix, matrix ), hyperdags: "
+				<< "empty mask detected; hyperDAG will not (cannot) record it\n";
+#endif
+			std::array< uintptr_t, 2 > sourcesC{
+				getID( internal::getMatrix(A) ),
+				getID( internal::getMatrix(C) )
+			};
+			internal::hyperdags::generator.addOperation(
+				internal::hyperdags::SET_MATRIX_MATRIX_MASKED,
+				sourcesP.begin(), sourcesP.end(),
+				sourcesC.begin(), sourcesC.end(),
+				destinations.begin(), destinations.end()
+			);
+		} else {
+			std::array< uintptr_t, 3 > sourcesC{
+				getID( internal::getMatrix(A) ),
+				getID( internal::getMatrix(M) ),
+				getID( internal::getMatrix(C) )
+			};
+			internal::hyperdags::generator.addOperation(
+				internal::hyperdags::SET_MATRIX_MATRIX_MASKED,
+				sourcesP.begin(), sourcesP.end(),
+				sourcesC.begin(), sourcesC.end(),
+				destinations.begin(), destinations.end()
+			);
+		}
+
+		// done
+#ifdef _DEBUG_HYPERDAGS_IO
+		std::cerr << "\t set( matrix, matrix, matrix ), hyperdags: exiting\n";
+#endif
 		return ret;
 	}
 
