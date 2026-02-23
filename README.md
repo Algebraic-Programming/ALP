@@ -126,14 +126,10 @@ grbrun ./a.out
 
 In more detail, the steps to follow are:
 
-1. Edit the `include/graphblas/base/config.hpp`. In particular, please ensure
-   that `config::SIMD_SIZE::bytes` defined in that file is set correctly with
-   respect to the target architecture.
-
-2. Create an empty directory for building ALP and move into it:
+1. Create an empty directory for building ALP and move into it:
    `mkdir build && cd build`.
 
-3. Invoke the `bootstrap.sh` script located inside the ALP root directory
+2. Invoke the `bootstrap.sh` script located inside the ALP root directory
    `<ALP/root/dir>` to generate the build infrastructure via CMake inside the
    the current directory:
 
@@ -142,9 +138,9 @@ In more detail, the steps to follow are:
     - note: add `--with-lpf=/path/to/lpf/install/dir` if you have LPF installed
             and would like to use it.
 
-4. Issue `make -j` to compile the C++11 ALP library for the configured backends.
+3. Issue `make -j` to compile the C++11 ALP library for the configured backends.
 
-5. (*Optional*) To later run all unit tests, several datasets must be made
+4. (*Optional*) To later run all unit tests, several datasets must be made
    available. Please run the `<ALP/root/dir>/tools/downloadDatasets.sh`
    script for
 
@@ -152,7 +148,7 @@ In more detail, the steps to follow are:
 
     b. the option to automatically download them.
 
-6. (*Optional*) To make the ALP documentation, issue `make userdocs`. This
+5. (*Optional*) To make the ALP documentation, issue `make userdocs`. This
    generates both
 
     a. LaTeX in `<ALP build dir>/docs/user/latex/refman.tex`, and
@@ -162,7 +158,7 @@ In more detail, the steps to follow are:
    To build a PDF from the LaTeX sources, cd into the directory mentioned, and
    issue `make`.
 
-7. (*Optional*) Issue `make -j smoketests` to run a quick set of functional
+6. (*Optional*) Issue `make -j smoketests` to run a quick set of functional
    tests. Please scan the output for any failed tests.
    If you do this with LPF enabled, and LPF was configured to use an MPI engine
    (which is the default), and the MPI implementation used is _not_ MPICH, then
@@ -171,15 +167,15 @@ In more detail, the steps to follow are:
    implementation you used, and uncomment the lines directly below each
    occurrence.
 
-8. (*Optional*) Issue `make -j unittests` to run an exhaustive set of unit
+7. (*Optional*) Issue `make -j unittests` to run an exhaustive set of unit
    tests. Please scan the output for any failed tests.
    If you do this with LPF enabled, please edit `tests/parse_env.sh` if required
    as described in step 5.
 
-9. Issue `make -j install` to install ALP into the install directory configured
+8. Issue `make -j install` to install ALP into the install directory configured
    during step 1.
 
-10. (*Optional*) Issue `source </path/to/install/dir>/bin/setenv` to make
+9. (*Optional*) Issue `source </path/to/install/dir>/bin/setenv` to make
     available the `grbcxx` and `grbrun` compiler wrapper and runner.
 
 Congratulations, you are now ready for developing and integrating ALP
@@ -230,6 +226,8 @@ and lists technical papers.
 - [Development in ALP](#development-in-alp)
 - [Acknowledgements](#acknowledgements)
 - [Citing ALP, ALP/GraphBLAS, and ALP/Pregel](#citing-alp-alpgraphblas-and-alppregel)
+  - [ALP and ALP/GraphBLAS](#alp-and-alpgraphblas)
+  - [ALP/Pregel](#alppregel)
 
 
 # Configuration
@@ -259,6 +257,8 @@ classes of backends. The main configuration file is found in
 8. type used for indexing nonzeroes, as the `NonzeroIndexType` typedef;
 9. index type used for vector coordinates, as the `VectorIndexType` typedef.
 
+The most important parameters are automatically detected during the CMake
+configuration (vector size, cache line size, L1 Data cache size).
 Other configuration values in this file are automatically inferred, are fixed
 non-configurable settings, or are presently not used by any ALP backend.
 
@@ -418,10 +418,11 @@ large outputs is strongly advisable.
 
 ### Compilation
 
-Our backends auto-vectorise, hence please recall step 1 from the quick start
-guide, and make sure the `include/graphblas/base/config.hpp` file reflects the
-correct value for `config::SIMD_SIZE::bytes`. This value must be updated prior
-to the compilation and installation of ALP.
+Our backends auto-vectorise using the information in the
+`include/graphblas/base/config.hpp`, especially `config::SIMD_SIZE::bytes`.
+This and other values are automatically detected for the CPU the CMake
+configuration runs on; the user may however want to set it to a different value
+manually prior to the compilation and installation of ALP.
 
 When targeting different architectures with differing SIMD widths, different
 ALP installations for different architectures could be maintained.

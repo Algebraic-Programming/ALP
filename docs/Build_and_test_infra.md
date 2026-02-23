@@ -75,6 +75,17 @@ The building infrastructure allows users to select which backends are to be
 built together with the relevant build options (dependencies,
 additional compilation/optimization flags, ...).
 
+As part of the CMake configuration, several architecture-dependent features are
+detected automatically and reported (e.g., SIMD vector size, L!Data cache size,
+...), which are used to optimize the performance of ALP/GraphBLAS-based
+applications.
+In case of issues (e.g., failed detection of a feature), a warning
+is displayed and sensible defaults are used to let users try ALP/GraphBLAS, even
+without optimal settings.
+Users should check the configuration output and verify the presence of warnings;
+they are also invited to check the normal messages of the configuration output
+to make sure the reported information is accurate.
+
 There are **two ways to create the building infrastructure**, depending on the
 level of control you want over the build options.
 
