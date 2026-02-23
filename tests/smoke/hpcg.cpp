@@ -96,7 +96,8 @@ using namespace grb;
 using namespace algorithms;
 
 static const char * const TEXT_HIGHLIGHT = "===> ";
-#define thcout ( std::cout << TEXT_HIGHLIGHT )
+// Note: Use stderr for all test output to keep stdout clean for HyperDAG data
+#define thcout ( std::cerr << TEXT_HIGHLIGHT )
 #define thcerr ( std::cerr << TEXT_HIGHLIGHT )
 
 
@@ -207,11 +208,11 @@ void print_norm(
 	(void) ret;
 #endif
 	assert( ret == SUCCESS );
-	std::cout << ">>> ";
+	std::cerr << ">>> ";
 	if( head != nullptr ) {
-		std::cout << head << ": ";
+		std::cerr << head << ": ";
 	}
-	std::cout << norm << std::endl;
+	std::cerr << norm << std::endl;
 }
 #endif
 
@@ -262,8 +263,8 @@ void grbProgram( const simulation_input &in, struct output &out ) {
 
 #ifdef HPCG_PRINT_SYSTEM
 	if( spmd<>::pid() == 0 ) {
-		print_vector( x, 50, "X" );
-		print_vector( b, 50, "B" );
+		print_vector( x, 50, "X", std::cerr );
+		print_vector( b, 50, "B", std::cerr );
 	}
 #endif
 
@@ -309,13 +310,13 @@ void grbProgram( const simulation_input &in, struct output &out ) {
 	if( spmd<>::pid() == 0 ) {
 		if( rc == SUCCESS ) {
 			if( in.evaluation_run ) {
-				std::cout << "Info: cold HPCG completed within " << out.performed_iterations
+				std::cerr << "Info: cold HPCG completed within " << out.performed_iterations
 					<< " iterations. Last computed residual is " << out.residual << ". "
 					<< "Time taken was " << out.times.useful << " ms. "
 					<< "Deduced inner repetitions parameter of " << out.test_repetitions << " "
 					<< "to take 1 second or more per inner benchmark." << std::endl;
 			} else {
-				std::cout << "Average time taken for each of " << out.test_repetitions
+				std::cerr << "Average time taken for each of " << out.test_repetitions
 					<< " HPCG calls (hot start): " << out.times.useful << std::endl;
 			}
 		} else {
@@ -415,7 +416,7 @@ int main( int argc, char ** argv ) {
 		const PinnedVector< double > &solution = *(out.pinnedVector);
 		thcout << "Size of x is " << solution.size() << std::endl;
 		if( solution.size() > 0 ) {
-			print_vector( solution, 30, "SOLUTION" );
+			print_vector( solution, 30, "SOLUTION", std::cerr );
 		} else {
 			thcerr << "ERROR: solution contains no values" << std::endl;
 		}
@@ -435,8 +436,9 @@ static void parse_arguments(
 	simulation_input &sim_in, size_t &outer_iterations, double &max_residual_norm,
 	int argc, char ** argv
 ) {
-	argument_parser parser;
-	parser.add_optional_argument( "--nx", sim_in.nx, PHYS_SYSTEM_SIZE_DEF, "physical system size along x" )
+	// Note: heap-allocate to avoid destructor crash with hyperdags backend
+	argument_parser* parser = new argument_parser();
+	parser->add_optional_argument( "--nx", sim_in.nx, PHYS_SYSTEM_SIZE_DEF, "physical system size along x" )
 		.add_optional_argument( "--ny", sim_in.ny, PHYS_SYSTEM_SIZE_DEF, "physical system size along y" )
 		.add_optional_argument( "--nz", sim_in.nz, PHYS_SYSTEM_SIZE_DEF, "physical system size along z" )
 		.add_optional_argument( "--max_coarse-levels", sim_in.max_coarsening_levels, DEF_COARSENING_LEVELS,
@@ -455,29 +457,29 @@ static void parse_arguments(
 			"repetitions)" )
 		.add_option( "--no-preconditioning", sim_in.no_preconditioning, false, "do not apply pre-conditioning via multi-grid V cycle" );
 
-	parser.parse( argc, argv );
+	parser->parse( argc, argv );
 
 	// check for valid values
 	size_t ssize = std::max( next_pow_2( sim_in.nx ), PHYS_SYSTEM_SIZE_MIN );
 	if( ssize != sim_in.nx ) {
-		std::cout << "Setting system size x to " << ssize << " instead of "
+		std::cerr << "Setting system size x to " << ssize << " instead of "
 			<< sim_in.nx << std::endl;
 		sim_in.nx = ssize;
 	}
 	ssize = std::max( next_pow_2( sim_in.ny ), PHYS_SYSTEM_SIZE_MIN );
 	if( ssize != sim_in.ny ) {
-		std::cout << "Setting system size y to " << ssize << " instead of "
+		std::cerr << "Setting system size y to " << ssize << " instead of "
 			<< sim_in.ny << std::endl;
 		sim_in.ny = ssize;
 	}
 	ssize = std::max( next_pow_2( sim_in.nz ), PHYS_SYSTEM_SIZE_MIN );
 	if( ssize != sim_in.nz ) {
-		std::cout << "Setting system size z to " << ssize << " instead of "
+		std::cerr << "Setting system size z to " << ssize << " instead of "
 			<< sim_in.nz << std::endl;
 		sim_in.nz = ssize;
 	}
 	if( sim_in.max_coarsening_levels > MAX_COARSENING_LEVELS ) {
-		std::cout << "Setting max coarsening level to " << MAX_COARSENING_LEVELS
+		std::cerr << "Setting max coarsening level to " << MAX_COARSENING_LEVELS
 			<< " instead of " << sim_in.max_coarsening_levels << std::endl;
 		sim_in.max_coarsening_levels = MAX_COARSENING_LEVELS;
 	}
@@ -487,7 +489,7 @@ static void parse_arguments(
 		std::exit( -1 );
 	}
 	if( sim_in.max_iterations == 0 ) {
-		std::cout << "Setting number of iterations to 1" << std::endl;
+		std::cerr << "Setting number of iterations to 1" << std::endl;
 		sim_in.max_iterations = 1;
 	}
 }
