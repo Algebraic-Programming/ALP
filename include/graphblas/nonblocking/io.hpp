@@ -1227,6 +1227,42 @@ namespace grb {
 			internal::getRefMatrix( C ), internal::getRefMatrix( A ), val, phase );
 	}
 
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename MaskType, typename InputType,
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2,
+		typename RIT3, typename CIT3, typename NIT3
+	>
+	RC set(
+		Matrix< OutputType, nonblocking, RIT1, CIT1, NIT1 > &C,
+		const Matrix< MaskType, nonblocking, RIT2, CIT2, NIT2 > &M,
+		const Matrix< InputType, nonblocking, RIT3, CIT3, NIT3 > &A,
+		const Phase &phase = EXECUTE
+	) noexcept {
+		if( internal::NONBLOCKING::warn_if_not_native &&
+			config::PIPELINE::warn_if_not_native
+		) {
+			std::cerr << "Warning: masked set (nonblocking) currently delegates "
+				<< "to a blocking implementation.\n"
+				<< "         Further similar such warnings will be suppressed.\n";
+			internal::NONBLOCKING::warn_if_not_native = false;
+		}
+
+		// nonblocking execution is not supported
+		// first, execute any computation that is not completed
+		internal::le.execution();
+
+		// second, delegate to the reference backend
+		return set< descr >(
+			internal::getRefMatrix( C ),
+			internal::getRefMatrix( M ),
+			internal::getRefMatrix( A ),
+			phase
+		);
+	}
+
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename InputType,
