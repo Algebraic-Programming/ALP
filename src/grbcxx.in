@@ -74,6 +74,10 @@ while [[ $# -gt 0 ]]; do
 			BACKEND=$1
 			shift
 		;;
+		-c)
+			ARGS+=("-c")
+			LINK="no"
+		;;
 		--link-alp-static)
 			LINK="static"
 		;;
@@ -139,7 +143,7 @@ fi
 
 if [[ "${LINK}" == "dynamic" ]]; then
 	LIB="-l${UTILS_LIBRARY_NAME} -L '${UTILS_LIBRARY_DIR}' -l${BACKEND_LIBRARY_OUTPUT_NAME} -L '${LIBRARY_DIRS[${BACKENDID}]}'"
-else
+elif [[ "${LINK}" == "static" ]]; then
 	LIB="'${UTILS_LIBRARY_DIR}/lib${UTILS_LIBRARY_NAME}.a'  '${LIBRARY_DIRS[${BACKENDID}]}/lib${BACKEND_LIBRARY_OUTPUT_NAME}.a'"
 fi
 LFLAGS="${LIB} ${BACKENDLFLAGS[${BACKENDID}]} @COMMON_LFLAGS_POST_SPACED@"
