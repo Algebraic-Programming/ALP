@@ -164,42 +164,73 @@ struct output {
 
 template< typename Dtype >
 void read_matrix_data(const std::string &filename, std::vector<Dtype> &data, bool direct) {
-    // Implementation for reading matrix data from file
-	try {
-		Parser parser( filename, direct );
-		assert( parser.m() == parser.n() );
-		std::get<0>(Storage::getData()) = parser.n();
+	const size_t s = grb::spmd<>::pid();
+	if( s == 0 ){
+		// Implementation for reading matrix data from file
 		try {
-			std::get<1>(Storage::getData()) = parser.nz();
-		} catch( ... ) {
-			std::get<1>(Storage::getData()) = parser.entries();
-		}
-		/* Once internal issue #342 is resolved this can be re-enabled
-		for(
-			auto it = parser.begin( PARALLEL );
-			it != parser.end( PARALLEL );
-			++it
-		) {
-			data.push_back( *it );
-		}*/
-		for(
-			auto it = parser.begin( SEQUENTIAL );
-			it != parser.end( SEQUENTIAL );
-			++it
-		) {
-			data.push_back( Dtype( *it ) );
-#ifdef DEBUG_SARE
-			if( spmd<>::pid() == 0 ){
-				// print last data element from std::vector<NonzeroT> data
-				std::cout << "readmatrix_data: " << data.back().first.first << ", "
-					<< data.back().first.second << ", " << data.back().second << "\n";
+			Parser parser( filename, direct );
+			assert( parser.m() == parser.n() );
+			std::get<0>(Storage::getData()) = parser.n();
+			try {
+				std::get<1>(Storage::getData()) = parser.nz();
+			} catch( ... ) {
+				std::get<1>(Storage::getData()) = parser.entries();
 			}
+			/* Once internal issue #342 is resolved this can be re-enabled
+			for(
+				auto it = parser.begin( PARALLEL );
+				it != parser.end( PARALLEL );
+				++it
+			) {
+				data.push_back( *it );
+			}*/
+			for(
+				auto it = parser.begin( SEQUENTIAL );
+				it != parser.end( SEQUENTIAL );
+				++it
+			) {
+				data.push_back( Dtype( *it ) );
+#ifdef DEBUG_SARE
+				if( s == 0 ){
+					// print last data element from std::vector<NonzeroT> data
+					std::cout << "readmatrix_data: " << data.back().first.first << ", "
+						<< data.back().first.second << ", " << data.back().second << "\n";
+				}
 #endif
+			}
+		} catch( std::exception &e ) {
+			std::cerr << "I/O program failed: " << e.what() << "\n";
+			return;
 		}
-	} catch( std::exception &e ) {
-		std::cerr << "I/O program failed: " << e.what() << "\n";
-		return;
 	}
+
+	grb::RC rc = grb::SUCCESS;
+
+	size_t n = std::get<0>(Storage::getData());
+	size_t nz = std::get<0>(Storage::getData());
+
+	rc = rc ? rc : grb::collectives<>::broadcast( n, 0 );
+	rc = rc ? rc : grb::collectives<>::broadcast( nz, 0 );
+
+
+	std::get<0>(Storage::getData()) = n;
+	std::get<1>(Storage::getData()) = nz;
+
+	size_t sz = data.size();
+	rc = rc ? rc : grb::collectives<>::broadcast( sz, 0 );
+	assert( rc == grb::SUCCESS );
+	data.resize( sz );
+
+	static_assert( std::is_same< Dtype, NonzeroT >::value,
+        "Dtype is of unexpected type" );
+	assert( data.size() >= sz );
+	for(size_t i = 0 ; i < sz ; ++i){
+		rc = rc ? rc : grb::collectives<>::broadcast( std::get<0>( data[i].first ), 0 );
+		rc = rc ? rc : grb::collectives<>::broadcast( std::get<1>( data[i].first ), 0 );
+		rc = rc ? rc : grb::collectives<>::broadcast( std::get<1>( data[i] ), 0 );
+	}
+	assert( rc == grb::SUCCESS );
+
 }
 
 template< typename NonzeroT, typename IType, typename VType >
@@ -208,11 +239,11 @@ void read_matrix_data_from_array(
 	std::vector<NonzeroT> &data
 ) {
 	// Implementation for reading matrix data from array
-    try {
-        for (const auto &entry : array) {
-            data.emplace_back(
-                NonzeroT( entry.first.first, entry.first.second, entry.second )
-            );
+	try {
+		for (const auto &entry : array) {
+			data.emplace_back(
+				NonzeroT( entry.first.first, entry.first.second, entry.second )
+			);
 #ifdef DEBUG_SARE
 			if( spmd<>::pid() < 2 ){
 				// print last data element from std::vector<NonzeroT> data
@@ -220,38 +251,56 @@ void read_matrix_data_from_array(
 					<< data.back().first.second << ", " << data.back().second << "\n";
 			}
 #endif
-        }
-        std::get<0>(Storage::getData()) = test_data::n;
-        std::get<1>(Storage::getData()) = data.size();
-    } catch (const std::exception &e) {
-        std::cerr << "Failed to read matrix data from array: " << e.what() << "\n";
-        return;
-    }
+		}
+		std::get<0>(Storage::getData()) = test_data::n;
+		std::get<1>(Storage::getData()) = data.size();
+	} catch (const std::exception &e) {
+		std::cerr << "Failed to read matrix data from array: " << e.what() << "\n";
+		return;
+	}
 }
 
 template< typename Dtype >
 void read_vector_data(const std::string &filename, std::vector<Dtype> &data) {
-    // Implementation for reading vector data from file
-    try {
-        std::ifstream file( filename );
-        if( !file.is_open() ) {
-            std::cerr << "Failed to open vector file: " << filename << "\n";
-            return;
-        }
-        std::string line;
-        while( std::getline( file, line ) ) {
-            if( line.empty() ) continue; // skip empty lines
-            std::istringstream iss( line );
-            Dtype v;
-            if( !(iss >> v) ) {
-                throw std::runtime_error( "Failed to parse line in vector file" );
-            }
-            data.push_back( v );
-        }
-    } catch( std::exception &e ) {
-        std::cerr << "I/O program failed: " << e.what() << "\n";
-        return;
-    }
+	const size_t s = grb::spmd<>::pid();
+	if( s == 0 ){
+		// Implementation for reading vector data from file
+		try {
+			std::ifstream file( filename );
+			if( !file.is_open() ) {
+				std::cerr << "Failed to open vector file: " << filename << "\n";
+				return;
+			}
+			std::string line;
+			while( std::getline( file, line ) ) {
+				if( line.empty() ) continue; // skip empty lines
+				std::istringstream iss( line );
+				Dtype v;
+				if( !(iss >> v) ) {
+					throw std::runtime_error( "Failed to parse line in vector file" );
+				}
+				data.push_back( v );
+			}
+		} catch( std::exception &e ) {
+			std::cerr << "I/O program failed: " << e.what() << "\n";
+			return;
+		}
+	}
+
+	grb::RC rc = grb::SUCCESS;
+	size_t sz = data.size();
+
+	rc = rc ? rc : grb::collectives<>::broadcast( sz, 0 );
+	assert( rc == grb::SUCCESS );
+
+
+	static_assert( std::is_floating_point< Dtype >::value );
+	data.resize( sz );
+	for(size_t i = 0 ; i < sz ; ++i){
+		rc = rc ? rc : grb::collectives<>::broadcast( data[i], 0 );
+	}
+	assert( rc == grb::SUCCESS );
+
 }
 
 template< typename Dtype >
