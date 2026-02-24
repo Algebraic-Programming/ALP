@@ -146,7 +146,11 @@ if [[ "${LINK}" == "dynamic" ]]; then
 elif [[ "${LINK}" == "static" ]]; then
 	LIB="'${UTILS_LIBRARY_DIR}/lib${UTILS_LIBRARY_NAME}.a'  '${LIBRARY_DIRS[${BACKENDID}]}/lib${BACKEND_LIBRARY_OUTPUT_NAME}.a'"
 fi
-LFLAGS="${LIB} ${BACKENDLFLAGS[${BACKENDID}]} @COMMON_LFLAGS_POST_SPACED@"
+if [[ "${LINK}" == "no" ]]; then
+	LFLAGS=
+else
+	LFLAGS="${LIB} ${BACKENDLFLAGS[${BACKENDID}]} @COMMON_LFLAGS_POST_SPACED@"
+fi
 
 CMD="${COMPILER} -std=${CXXSTD} -I'${INCLUDEDIR}' ${BACKENDCFLAGS[${BACKENDID}]} ${ARGS[@]} "$@" ${LFLAGS}"
 
