@@ -28,6 +28,8 @@
 #include <sstream> //std::stringstream
 #include <utility>
 #include <iterator>
+#include <cmath>
+#include <cstdint>
 #include <algorithm>
 #include <stdexcept>
 #include <functional>

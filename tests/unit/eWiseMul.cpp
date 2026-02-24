@@ -50,7 +50,7 @@ void grb_program( const size_t &n, RC &rc ) {
 		}, temp );
 	rc = rc ? rc : set( even_mask, temp, true );
 	rc = rc ? rc : set< descriptors::invert_mask >(
-		odd_mask, even_mask, true );
+		odd_mask, temp, true );
 	rc = rc ? rc : wait();
 	if( rc != SUCCESS ) {
 		std::cerr << "\t initialisation of masks FAILED\n";

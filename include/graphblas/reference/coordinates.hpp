@@ -31,7 +31,7 @@
 #include <stdexcept> // std::runtime_error
 
 #include <assert.h>
-#include <string.h> // memcpy
+#include <string.h> //memcpy
 
 #include <graphblas/backends.hpp>
 #include <graphblas/base/coordinates.hpp>
