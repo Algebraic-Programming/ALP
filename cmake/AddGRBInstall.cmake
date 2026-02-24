@@ -48,7 +48,16 @@ set( HYPERDAGS_BACKEND_INSTALL_DIR "${BINARY_LIBRARIES_INSTALL_DIR}/hyperdags" )
 set( BSP1D_BACKEND_INSTALL_DIR "${BINARY_LIBRARIES_INSTALL_DIR}/spmd" )
 set( HYBRID_BACKEND_INSTALL_DIR "${BINARY_LIBRARIES_INSTALL_DIR}/hybrid" )
 
+# definitions and options common to all backends:  all backends include
+# REFERENCE_INCLUDE_DEFS, REFERENCE_OMP_INCLUDE_DEFS and -fopenmp due to the
+# dependency on OpenMP -- to be resolved
+set( COMMON_COMPILE_DEFINITIONS  "${REFERENCE_INCLUDE_DEFS};${REFERENCE_OMP_INCLUDE_DEFS}" )
+set( COMMON_COMPILE_OPTIONS "-fopenmp" )
 
+# link flags common to all backends, to be inserted after the backend-specific flags
+if( WITH_NUMA )
+	list( APPEND COMMON_LFLAGS_POST "-lnuma"  )
+endif()
 
 # addBackendWrapperGenOptions
 # creates the variables to store the settings for a backend, in order to create
@@ -59,7 +68,6 @@ set( HYBRID_BACKEND_INSTALL_DIR "${BINARY_LIBRARIES_INSTALL_DIR}/hybrid" )
 # backend: (mandatory) argument name
 # COMPILER_COMMAND: (optional) Bash command (also including options, as a CMake list)
 #	to invoke the compiler; if left empty, it is set to CMAKE_CXX_COMPILER
-# RUNENV: (optional) environment variables for running the executable
 # RUNNER: (optional) runner command (also including options, as a CMake list) to
 #	run the executable
 # COMPILE_DEFINITIONS: (optional) definitions for compilation, as "SYMBOL" or
@@ -70,11 +78,11 @@ set( HYBRID_BACKEND_INSTALL_DIR "${BINARY_LIBRARIES_INSTALL_DIR}/hybrid" )
 # WARNING! do NOT turn this into a macro, otherwise escaped paths don't work anymore
 # since they are expanded as macro arguments
 #
-function( addBackendWrapperGenOptions backend )
-	set( multiValueArgs "COMPILER_COMMAND;RUNENV;RUNNER"
+function( addBackendWrapperGenOptions backend lib_dir )
+	set( multiValueArgs "COMPILER_COMMAND;RUNNER"
 		"COMPILE_DEFINITIONS;COMPILE_OPTIONS;LINK_FLAGS"
 	)
-	cmake_parse_arguments( parsed "${options}" "${oneValueArgs}"
+	cmake_parse_arguments( parsed "${options}" ""
 		"${multiValueArgs}" "${ARGN}"
 	)
 
@@ -82,31 +90,22 @@ function( addBackendWrapperGenOptions backend )
 		message( FATAL_ERROR "cannot find ${backend} among available backends")
 	endif()
 
+	assert_valid_variables( lib_dir )
+
 	set( ${backend}_WRAPPER_COMPILER_COMMAND "${parsed_COMPILER_COMMAND}" PARENT_SCOPE )
 	if( NOT parsed_COMPILER_COMMAND )
 		set( ${backend}_WRAPPER_COMPILER_COMMAND "${CMAKE_CXX_COMPILER}" PARENT_SCOPE )
 	endif()
-	set( ${backend}_WRAPPER_RUNENV "${parsed_RUNENV}" PARENT_SCOPE )
 	set( ${backend}_WRAPPER_RUNNER "${parsed_RUNNER}" PARENT_SCOPE )
+	set( ${backend}_LIB_DIR "${lib_dir}" PARENT_SCOPE )
 
-	set( ${backend}_WRAPPER_COMPILE_DEFINITIONS "${parsed_COMPILE_DEFINITIONS}" PARENT_SCOPE )
+	list( APPEND __cd "${COMMON_COMPILE_DEFINITIONS}" "${parsed_COMPILE_DEFINITIONS}" )
+	set( ${backend}_WRAPPER_COMPILE_DEFINITIONS "${__cd}" PARENT_SCOPE )
 
-	set( ${backend}_WRAPPER_COMPILE_OPTIONS "${parsed_COMPILE_OPTIONS}" PARENT_SCOPE )
+	list( APPEND __co "${COMMON_COMPILE_OPTIONS}" "${parsed_COMPILE_OPTIONS}" )
+	set( ${backend}_WRAPPER_COMPILE_OPTIONS "${__co}" PARENT_SCOPE )
 	set( ${backend}_WRAPPER_LINK_FLAGS "${parsed_LINK_FLAGS}" PARENT_SCOPE )
 endfunction( addBackendWrapperGenOptions )
-
-## compile definitions and options common to all backends: do not change!
-set( COMMON_WRAPPER_DEFINITIONS
-		"${REFERENCE_INCLUDE_DEFS}"
-		"${REFERENCE_OMP_INCLUDE_DEFS}"
-)
-set( COMMON_WRAPPER_OPTIONS
-		"${OpenMP_CXX_FLAGS}"
-)
-
-if( WITH_NUMA )
-	set( NUMA_LFLAG "-lnuma" )
-endif()
 
 ### POPULATING WRAPPER INFORMATION FOR INSTALLATION TARGETS
 # for each enabled backend, add its information for the wrapper generation
@@ -114,35 +113,27 @@ endif()
 
 # shared memory backends
 if( WITH_REFERENCE_BACKEND )
-	addBackendWrapperGenOptions( "reference"
+	addBackendWrapperGenOptions( "reference" "${SHMEM_BACKEND_INSTALL_DIR}"
 		COMPILE_DEFINITIONS "${REFERENCE_SELECTION_DEFS}"
-		LINK_FLAGS "'${SHMEM_BACKEND_INSTALL_DIR}/lib${BACKEND_LIBRARY_OUTPUT_NAME}.a'"
-			"'${ALP_UTILS_INSTALL_DIR}/lib${ALP_UTILS_LIBRARY_OUTPUT_NAME}.a'" "${NUMA_LFLAG}"
 	)
 endif()
 
 if( WITH_OMP_BACKEND )
-	addBackendWrapperGenOptions( "reference_omp"
+	addBackendWrapperGenOptions( "reference_omp" "${SHMEM_BACKEND_INSTALL_DIR}"
 		COMPILE_DEFINITIONS "${REFERENCE_OMP_SELECTION_DEFS}"
-		LINK_FLAGS "'${SHMEM_BACKEND_INSTALL_DIR}/lib${BACKEND_LIBRARY_OUTPUT_NAME}.a'"
-			"'${ALP_UTILS_INSTALL_DIR}/lib${ALP_UTILS_LIBRARY_OUTPUT_NAME}.a'" "${NUMA_LFLAG}"
 	)
 endif()
 
 # dependent backends
 if( WITH_HYPERDAGS_BACKEND )
-	addBackendWrapperGenOptions( "hyperdags"
-		COMPILE_DEFINITIONS "${HYPERDAGS_SELECTION_DEFS};${HYPERDAGS_INCLUDE_DEFS}"
-		LINK_FLAGS "'${HYPERDAGS_BACKEND_INSTALL_DIR}/lib${BACKEND_LIBRARY_OUTPUT_NAME}.a'"
-		"'${ALP_UTILS_INSTALL_DIR}/lib${ALP_UTILS_LIBRARY_OUTPUT_NAME}.a'" "${NUMA_LFLAG}"
+	addBackendWrapperGenOptions( "hyperdags" "${HYPERDAGS_BACKEND_INSTALL_DIR}"
+		COMPILE_DEFINITIONS "${HYPERDAGS_INCLUDE_DEFS};${HYPERDAGS_SELECTION_DEFS}"
 	)
 endif()
 
 if( WITH_NONBLOCKING_BACKEND )
-	addBackendWrapperGenOptions( "nonblocking"
-		COMPILE_DEFINITIONS "${NONBLOCKING_SELECTION_DEFS};${NONBLOCKING_INCLUDE_DEFS}"
-		LINK_FLAGS "'${SHMEM_BACKEND_INSTALL_DIR}/lib${BACKEND_LIBRARY_OUTPUT_NAME}.a'"
-			"'${ALP_UTILS_INSTALL_DIR}/lib${ALP_UTILS_LIBRARY_OUTPUT_NAME}.a'" "${NUMA_LFLAG}"
+	addBackendWrapperGenOptions( "nonblocking" "${SHMEM_BACKEND_INSTALL_DIR}"
+		COMPILE_DEFINITIONS "${NONBLOCKING_INCLUDE_DEFS};${NONBLOCKING_SELECTION_DEFS}"
 	)
 endif()
 
@@ -169,24 +160,18 @@ if( WITH_BSP1D_BACKEND OR WITH_HYBRID_BACKEND )
 	set( MANUALRUN "${LPFRUN_CMD}" "${MANUALRUN_ARGS}" )
 
 	if( WITH_BSP1D_BACKEND )
-		addBackendWrapperGenOptions( "bsp1d"
+		addBackendWrapperGenOptions( "bsp1d" "${BSP1D_BACKEND_INSTALL_DIR}"
 			COMPILER_COMMAND "${LPF_CXX_COMPILER}"
 			RUNNER "${LPFRUN_CMD}"
 			COMPILE_DEFINITIONS "${LPF_INCLUDE_DEFS};${BSP1D_SELECTION_DEFS}"
-			LINK_FLAGS "'${BSP1D_BACKEND_INSTALL_DIR}/lib${BACKEND_LIBRARY_OUTPUT_NAME}.a'"
-				"'${ALP_UTILS_INSTALL_DIR}/lib${ALP_UTILS_LIBRARY_OUTPUT_NAME}.a'" "${NUMA_LFLAG}"
-				"-llpf_hl" "-lpthread" "-lm" "-ldl"
 		)
 	endif()
 
 	if( WITH_HYBRID_BACKEND )
-		addBackendWrapperGenOptions( "hybrid"
+		addBackendWrapperGenOptions( "hybrid" "${HYBRID_BACKEND_INSTALL_DIR}"
 			COMPILER_COMMAND "${LPF_CXX_COMPILER}"
 			RUNNER "${LPFRUN_CMD}"
 			COMPILE_DEFINITIONS "${LPF_INCLUDE_DEFS};${HYBRID_SELECTION_DEFS}"
-			LINK_FLAGS "'${HYBRID_BACKEND_INSTALL_DIR}/lib${BACKEND_LIBRARY_OUTPUT_NAME}.a'"
-				"'${ALP_UTILS_INSTALL_DIR}/lib${ALP_UTILS_LIBRARY_OUTPUT_NAME}.a'" "${NUMA_LFLAG}"
-				"-llpf_hl" "-lpthread" "-lm" "-ldl"
 		)
 	endif()
 endif()
