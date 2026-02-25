@@ -231,6 +231,10 @@ add_grb_executables( swapVector swapVector.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
+add_grb_executables( swapVectorLazyEval swapVectorLazyEval.cpp
+	BACKENDS nonblocking
+)
+
 add_grb_executables( thread_local_storage thread_local_storage.cpp
 	BACKENDS reference NO_BACKEND_NAME
 	ADDITIONAL_LINK_LIBRARIES Threads::Threads

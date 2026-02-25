@@ -337,6 +337,15 @@ for MODE in ${MODES}; do
 				grep 'Test OK' ${TEST_OUT_DIR}/swapVector_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
 				echo " "
 
+				if [ "$BACKEND" = "nonblocking" ]; then
+					echo ">>>      [x]           [ ]       Testing std::swap with lazy evaluation (Issue #408)"
+					echo "                                 on nonblocking backend with size 100."
+					$runner ${TEST_BIN_DIR}/swapVectorLazyEval_${MODE}_${BACKEND} 100 &> ${TEST_OUT_DIR}/swapVectorLazyEval_${MODE}_${BACKEND}_${P}_${T}
+					head -1 ${TEST_OUT_DIR}/swapVectorLazyEval_${MODE}_${BACKEND}_${P}_${T}
+					grep 'Test OK' ${TEST_OUT_DIR}/swapVectorLazyEval_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
+					echo " "
+				fi
+
 				echo ">>>      [x]           [ ]       Testing std::move on two vectors of doubles of"
 				echo "                                 size 100."
 				$runner ${TEST_BIN_DIR}/moveVector_${MODE}_${BACKEND} 100 &> ${TEST_OUT_DIR}/moveVector_${MODE}_${BACKEND}_${P}_${T}
