@@ -225,12 +225,14 @@ void read_matrix_data(const std::string &filename, std::vector<Dtype> &data, boo
 	assert( rc == grb::SUCCESS );
 	data.resize( sz );
 
+	static_assert( std::is_same< Dtype, NonzeroT >::value,
+        "Dtype is of unexpected type" );
 	assert( data.size() >= sz );
 	for(size_t i = 0 ; i < sz ; ++i){
-		rc = rc ? rc : grb::collectives<>::broadcast( &(data[i].first), 0 );
-		rc = rc ? rc : grb::collectives<>::broadcast( &(data[i].second), 0 );
+		rc = rc ? rc : grb::collectives<>::broadcast( std::get<0>( data[i].first ), 0 );
+		rc = rc ? rc : grb::collectives<>::broadcast( std::get<1>( data[i].first ), 0 );
+		rc = rc ? rc : grb::collectives<>::broadcast( std::get<1>( data[i] ), 0 );
 	}
-	std::cerr << s << " afjkdl " << std::endl;
 	assert( rc == grb::SUCCESS );
 
 }
@@ -294,8 +296,10 @@ void read_vector_data(const std::string &filename, std::vector<Dtype> &data) {
 
 	rc = rc ? rc : grb::collectives<>::broadcast( sz, 0 );
 	assert( rc == grb::SUCCESS );
-	data.resize( sz );
 
+
+	static_assert( std::is_floating_point< Dtype >::value );
+	data.resize( sz );
 	for(size_t i = 0 ; i < sz ; ++i){
 		rc = rc ? rc : grb::collectives<>::broadcast( data[i], 0 );
 	}
