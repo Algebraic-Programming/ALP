@@ -51,17 +51,13 @@
 
 
 /**
- * The logger uses std::cout since it does not flush by default: in case of
- * parallel write text chunks from multiple processes are less likely to
- * overlap.
+ * The logger uses std::cerr to keep stdout clean for automated output
+ * (e.g., HyperDAG MatrixMarket files in hyperdags backend).
  *
- * \warning No overlap is not guaranteed though.
- *
- * \note In ALP tests, stderr is typically reserved for textual output checks
- *       while test messages meant for human consumption indeed are directed
- *       to stdout.
+ * \note For the hyperdags backend, stdout must be reserved for the HyperDAG
+ *       graph output in MatrixMarket format, so all test messages go to stderr.
  */
-#define __LOGGER_ERR ( std::cout )
+#define __LOGGER_ERR ( std::cerr )
 
 /**
  * Prints a line of text and flushes it.

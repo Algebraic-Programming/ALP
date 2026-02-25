@@ -105,9 +105,9 @@ namespace grb {
 					const auto now = std::chrono::system_clock::now();
 					const auto since = now.time_since_epoch();
 					if( printHeader ) {
-						std::cout << "Time since epoch (in ms.): ";
-					}
-					std::cout << std::chrono::duration_cast<
+					std::cerr << "Time since epoch (in ms.): ";
+				}
+				std::cerr << std::chrono::duration_cast<
 							std::chrono::milliseconds
 						>( since ).count() << "\n";
 				}
@@ -164,18 +164,18 @@ namespace grb {
 #ifndef _GRB_NO_STDIO
 					// output results
 					if( pid == 0 ) {
-						std::cout << "Overall timings (io, preamble, useful, postamble):\n"
+						std::cerr << "Overall timings (io, preamble, useful, postamble):\n"
 							<< std::scientific;
-						std::cout << "Avg: " << total_times.io << ", " << total_times.preamble
+						std::cerr << "Avg: " << total_times.io << ", " << total_times.preamble
 							<< ", " << total_times.useful << ", " << total_times.postamble << "\n";
-						std::cout << "Min: " << min_times.io << ", " << min_times.preamble << ", "
+						std::cerr << "Min: " << min_times.io << ", " << min_times.preamble << ", "
 							<< min_times.useful << ", " << min_times.postamble << "\n";
-						std::cout << "Max: " << max_times.io << ", " << max_times.preamble << ", "
+						std::cerr << "Max: " << max_times.io << ", " << max_times.preamble << ", "
 							<< max_times.useful << ", " << max_times.postamble << "\n";
-						std::cout << "Std: " << sqrt( sdev.io ) << ", " << sqrt( sdev.preamble )
+						std::cerr << "Std: " << sqrt( sdev.io ) << ", " << sqrt( sdev.preamble )
 							<< ", " << sqrt( sdev.useful ) << ", " << sqrt( sdev.postamble ) << "\n";
  #if __GNUC__ > 4
-						std::cout << std::defaultfloat;
+						std::cerr << std::defaultfloat;
  #endif
 						printTimeSinceEpoch();
 					}
@@ -262,14 +262,14 @@ namespace grb {
 						// give experiment output line
 						if( pid == 0 ) {
 							if( ret == grb::SUCCESS ) {
-								std::ios_base::fmtflags prev_cout_state( std::cout.flags() );
-								std::cout << "Outer iteration #" << out << " timings "
+								std::ios_base::fmtflags prev_cerr_state( std::cerr.flags() );
+								std::cerr << "Outer iteration #" << out << " timings "
 									<< "(io, preamble, useful, postamble, time since epoch): "
 									<< std::fixed
 									<< inner_times.io << ", " << inner_times.preamble << ", "
 									<< inner_times.useful << ", " << inner_times.postamble << ", ";
 									printTimeSinceEpoch( false );
-								std::cout.flags( prev_cout_state );
+								std::cerr.flags( prev_cerr_state );
 							} else {
 								std::cerr << "Error during cross-process collection of timing results: "
 									<< "\t" << grb::toString( ret ) << std::endl;
