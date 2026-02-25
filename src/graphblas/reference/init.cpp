@@ -62,6 +62,7 @@ grb::RC grb::init< grb::reference >(
 	// set memory policy
 	numa_set_localalloc();
 #endif
+	grb::internal::reference_mapper.clear();
 	// done
 	return grb::SUCCESS;
 }
