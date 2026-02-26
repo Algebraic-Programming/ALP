@@ -746,6 +746,10 @@ grb::RC Pipeline::verifyDenseDescriptor() {
 		it != dense_descr_coordinates.end(); ++it
 	) {
 		if( !( *it )->isDense() ) {
+#ifdef _NONBLOCKING_DEBUG
+			std::cout << "\t error in pipeline execution: the dense descriptor was "
+				<< "illegally used" << std::endl;
+#endif
 			return ILLEGAL;
 		}
 	}
@@ -1030,13 +1034,6 @@ grb::RC Pipeline::execution() {
 
 	// verify that the dense descriptor was legally used
 	ret = ret ? ret : verifyDenseDescriptor();
-
-#ifdef _NONBLOCKING_DEBUG
-	if( ret == ILLEGAL ) {
-		std::cerr << "error in pipeline execution: the dense descriptor was "
-			<< "illegally used" << std::endl;
-	}
-#endif
 
 	clear();
 

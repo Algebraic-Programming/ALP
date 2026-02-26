@@ -436,6 +436,19 @@ for BACKEND in ${BACKENDS[@]}; do
 				grep "Test OK" ${TEST_OUT_DIR}/fuselets.log || echo "Test FAILED"
 				echo " "
 			fi
+
+			if [ "$BACKEND" = "reference_omp" ] || [ "$BACKEND" = "reference"  ] || [ "$BACKEND" = "hyperdags" ] || [ "$BACKEND" = "nonblocking"  ]; then
+				echo ">>>      [x]           [ ]       Testing Simulated Annealing-Replica Exchange on a"
+				echo "                                 small 16x16 matrix."
+				echo "Functional test executable: ${TEST_BIN_DIR}/simulated_annealing_re_ising_${BACKEND}"
+				$runner ${TEST_BIN_DIR}/simulated_annealing_re_ising_${BACKEND} --use-default-data --verify &> ${TEST_OUT_DIR}/simulated_annealing_re_ising_${BACKEND}_${P}_${T}.log
+				( grep "Test OK" ${TEST_OUT_DIR}/simulated_annealing_re_ising_${BACKEND}_${P}_${T}.log ) || printf 'Test FAILED.\n'
+				echo ">>>      [x]           [ ]       Testing Simulated Annealing-Replica Exchange on a"
+				echo "                                 18x18 matrix with constructed optimal solution."
+				echo "Functional test executable: ${TEST_BIN_DIR}/simulated_annealing_re_planted_sol_${BACKEND}"
+				$runner ${TEST_BIN_DIR}/simulated_annealing_re_planted_sol_${BACKEND} &> ${TEST_OUT_DIR}/simulated_annealing_re_ising_${BACKEND}_${P}_${T}.log
+				( grep "Test OK" ${TEST_OUT_DIR}/simulated_annealing_re_ising_${BACKEND}_${P}_${T}.log ) || printf 'Test FAILED.\n'
+			fi
 		done
 	done
 

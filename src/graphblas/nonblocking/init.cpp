@@ -27,7 +27,7 @@
 #include <graphblas/reference/init.hpp>
 #include <graphblas/nonblocking/init.hpp>
 
-#include <graphblas/utils/alloc.hpp>
+#include <graphblas/alloc.hpp>
 
 #include <graphblas/nonblocking/config.hpp>
 

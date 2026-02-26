@@ -157,7 +157,7 @@ namespace grb {
 	 *                        nonzeroes as \a x.
 	 * @return #grb::ILLEGAL  If \a y or \a z has a different sparsity pattern from
 	 *                        \a x.
-	 * @return #grb::FAILED   If the capacity of \a A was insufficient to store the
+	 * @return #grb::ILLEGAL  If the capacity of \a A was insufficient to store the
 	 *                        given sparsity pattern and \a phase is #grb::EXECUTE.
 	 * @return #grb::OUTOFMEM If the \a phase is #grb::RESIZE and \a A could not be
 	 *                        resized to have sufficient capacity to complete this
@@ -288,7 +288,7 @@ namespace grb {
 	 *                        not match. All input data containers are left
 	 *                        untouched if this exit code is returned; it will be
 	 *                        as though this call was never made.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a z was insufficient. The output matrix
 	 *                        \a z is cleared, and the call to this function has
 	 *                        no further effects.
@@ -387,7 +387,7 @@ namespace grb {
 	 *                        not match. All input data containers are left
 	 *                        untouched if this exit code is returned; it will be
 	 *                        be as though this call was never made.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a z was insufficient. The output
 	 *                        matrix \a z is cleared, and the call to this function
 	 *                        has no further effects.

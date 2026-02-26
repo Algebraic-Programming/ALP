@@ -10398,6 +10398,9 @@ namespace grb {
 	// internal namespace for implementation of grb::dot
 	namespace internal {
 
+		/**
+		 * Invariant: x should have fewer nonzeroes than y
+		 */
 		template<
 			Descriptor descr,
 #ifdef GRB_BOOLEAN_DISPATCHER
@@ -10432,6 +10435,7 @@ namespace grb {
 #else
 			(void) upper_bound;
 #endif
+			assert( local_x.nonzeroes() <= local_y.nonzeroes() );
 
 			// get raw alias
 			const InputType1 * __restrict__ a = internal::getRaw( x );
@@ -10450,8 +10454,7 @@ namespace grb {
 
 					// prepare registers
 					for( size_t k = 0; k < AnyOp::blocksize; ++k, ++i ) {
-						mask[ k ] = already_dense_input_x ||
-							local_x.assigned( already_dense_input_y ? i : local_y.index( i ) );
+						mask[ k ] = already_dense_input_x || local_y.assigned(local_x.index( i ));
 					}
 
 					// rewind
@@ -10461,9 +10464,9 @@ namespace grb {
 					for( size_t k = 0; k < AnyOp::blocksize; ++k, ++i ) {
 						if( mask[ k ] ) {
 							xx[ k ] = static_cast< typename AnyOp::D1 >(
-								a[ ( already_dense_input_y ? i : local_y.index( i ) ) + lower_bound ] );
+								a[ ( already_dense_input_x ? i : local_x.index( i ) ) + lower_bound ] );
 							yy[ k ] = static_cast< typename AnyOp::D2 >(
-								b[ ( already_dense_input_y ? i : local_y.index( i ) ) + lower_bound ] );
+								b[ ( already_dense_input_x ? i : local_x.index( i ) ) + lower_bound ] );
 						}
 					}
 
@@ -10504,9 +10507,9 @@ namespace grb {
 				for( ; i < local_nz; ++i ) {
 					typename AddMonoid::D3 temp =
 						addMonoid.template getIdentity< typename AddMonoid::D3 >();
-					const size_t index = ( already_dense_input_y ? i : local_y.index( i ) ) +
+					const size_t index = ( already_dense_input_x ? i : local_x.index( i ) ) +
 						lower_bound;
-					if( already_dense_input_x || local_x.assigned( index - lower_bound ) ) {
+					if( already_dense_input_y || local_y.assigned( index - lower_bound ) ) {
 						apply( temp, a[ index ], b[ index ], anyOp );
 						foldr( temp, thread_local_output, addMonoid.getOperator() );
 					}
@@ -10658,7 +10661,9 @@ namespace grb {
 										already_dense_input_y, already_dense_input_x,
 										array_reduced[ thread_id ],
 										lower_bound, upper_bound,
-										local_y, local_x, x, y, local_y_nz,
+										local_y, local_x,
+										x, y,
+										local_y_nz,
 										addMonoid, anyOp
 									);
 							}

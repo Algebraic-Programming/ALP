@@ -125,10 +125,13 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			timer.reset();
 			out.error_code = grb::set( vx, 1 );
 			out.error_code = out.error_code ? out.error_code :
+				grb::set( vy, 0 );
+			out.error_code = out.error_code ? out.error_code :
 				setupSparseMatrix( mx, n );
 			out.error_code = out.error_code ? out.error_code : grb::wait();
 			if( out.error_code != grb::SUCCESS ) {
-				std::cerr << "Error in experiment set-up\n";
+				std::cerr << "Error in experiment set-up: "
+					<< grb::toString( out.error_code ) << "\n";
 				init_error = true;
 			}
 			out.times.preamble = timer.time();
@@ -142,7 +145,8 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			}
 			out.times.useful = timer.time() / static_cast< double >( data_in.rep );
 			if( out.error_code != grb::SUCCESS && !init_error ) {
-				std::cerr << "Error during experiment hot loop\n";
+				std::cerr << "Error during experiment hot loop: "
+					<< grb::toString( out.error_code ) << "\n";
 			}
 			// done
 			out.times.postamble = 0;
@@ -157,10 +161,13 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			timer.reset();
 			out.error_code = grb::set( vx, 1 );
 			out.error_code = out.error_code ? out.error_code :
+				grb::set( vy, 0 );
+			out.error_code = out.error_code ? out.error_code :
 				setupSparseMatrix( mx, n );
 			out.error_code = out.error_code ? out.error_code : grb::wait();
 			if( out.error_code != grb::SUCCESS ) {
-				std::cerr << "Error in experiment set-up\n";
+				std::cerr << "Error in experiment set-up: "
+					<< grb::toString( out.error_code ) << "\n";
 				init_error = true;
 			}
 			out.times.preamble = timer.time();
@@ -175,7 +182,8 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			}
 			out.times.useful = timer.time() / static_cast< double >( data_in.rep );
 			if( out.error_code != grb::SUCCESS && !init_error ) {
-				std::cerr << "Error during experiment hot loop\n";
+				std::cerr << "Error during experiment hot loop: "
+					<< grb::toString( out.error_code ) << "\n";
 			}
 			// done
 			out.times.postamble = 0;
@@ -190,10 +198,13 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			timer.reset();
 			out.error_code = grb::set( vx, 1 );
 			out.error_code = out.error_code ? out.error_code :
+				grb::set( vy, 0 );
+			out.error_code = out.error_code ? out.error_code :
 				setupSparseMatrix( mx, n );
 			out.error_code = out.error_code ? out.error_code : grb::wait();
 			if( out.error_code != grb::SUCCESS ) {
-				std::cerr << "Error in experiment set-up\n";
+				std::cerr << "Error in experiment set-up: "
+					<< grb::toString( out.error_code ) << "\n";
 				init_error = true;
 			}
 			out.times.preamble = timer.time();
@@ -207,7 +218,8 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			}
 			out.times.useful = timer.time() / static_cast< double >( data_in.rep );
 			if( out.error_code != grb::SUCCESS && !init_error ) {
-				std::cerr << "Error during experiment hot loop\n";
+				std::cerr << "Error during experiment hot loop: "
+					<< grb::toString( out.error_code ) << "\n";
 			}
 			// done
 			out.times.postamble = 0;
@@ -222,10 +234,13 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			timer.reset();
 			out.error_code = grb::set( vx, 1 );
 			out.error_code = out.error_code ? out.error_code :
+				grb::set( vy, 0 );
+			out.error_code = out.error_code ? out.error_code :
 				setupSparseMatrix( mx, n );
 			out.error_code = out.error_code ? out.error_code : grb::wait();
 			if( out.error_code != grb::SUCCESS ) {
-				std::cerr << "Error in experiment set-up\n";
+				std::cerr << "Error in experiment set-up: "
+					<< grb::toString( out.error_code ) << "\n";
 				init_error = true;
 			}
 			out.times.preamble = timer.time();
@@ -240,7 +255,8 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			}
 			out.times.useful = timer.time() / static_cast< double >( data_in.rep );
 			if( out.error_code != grb::SUCCESS && !init_error ) {
-				std::cerr << "Error during experiment hot loop\n";
+				std::cerr << "Error during experiment hot loop: "
+					<< grb::toString( out.error_code ) << "\n";
 			}
 			// done
 			out.times.postamble = 0;

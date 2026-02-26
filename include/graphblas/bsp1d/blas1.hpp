@@ -23,15 +23,15 @@
 #ifndef _H_GRB_BSP1D_BLAS1
 #define _H_GRB_BSP1D_BLAS1
 
+#include <graphblas/rc.hpp>
+#include <graphblas/ops.hpp>
 #include <graphblas/blas0.hpp>
 #include <graphblas/blas1.hpp>
 #include <graphblas/bsp/collectives.hpp>
-#include <graphblas/ops.hpp>
-#include <graphblas/rc.hpp>
 #include <graphblas/type_traits.hpp>
 
-#include "distribution.hpp"
 #include "vector.hpp"
+#include "distribution.hpp"
 
 #define NO_CAST_ASSERT( x, y, z )                                                          \
 	static_assert( x,                                                                  \
@@ -52,6 +52,53 @@
 
 
 namespace grb {
+
+	namespace internal {
+
+		/*
+		 * Handles TRY and EXECUTE phases return code and associated global
+		 * updates.
+		 *
+		 * This helper function applies to both cases when
+		 *  -# on SUCCESS, the output vector becomes dense;
+		 *  -# on FAILED, the output vector global nonzero count needs
+		 *     updating.
+		 *
+		 * @tparam isgd If on SUCCESS, the Global output vector is
+		 *              guaranteed Dense (ISGD).
+		 * @tparam T    The value type of the output vector
+		 */
+		template< bool isgd, typename T >
+		void handle_try_execute(
+			grb::Vector< T > &x,
+			const grb::Phase &phase,
+			grb::RC &ret
+		) {
+			// handle try and execute
+			if( phase != RESIZE ) {
+				if( ret == SUCCESS ) {
+					if( isgd ) {
+						// in this case, the number of nonzeroes in the output vector is
+						// guaranteed full - no communication required
+						internal::setDense( x );
+					} else {
+						// in this case, the number of nonzeroes in the output vector may have
+						// changed
+						ret = internal::updateNnz( x );
+					}
+				} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+					ret == FAILED
+				) {
+					// in this case, the full computation has not completed but the contents of
+					// x do contain a subset of results. Therefore, the number of nonzeroes may
+					// have changed, but we need to take care to still propagate FAILED
+					const RC subrc = internal::updateNnz( x );
+					if( subrc != SUCCESS ) { ret = grb::PANIC; }
+				}
+			}
+		}
+
+	} // end namespace ``grb::internal''
 
 	/**
 	 * \defgroup BLAS1_REF The Level-1 ALP/GraphBLAS routines -- BSP1D backend
@@ -396,16 +443,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				internal::setDense( y );
-			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
-				ret == FAILED
-			) {
-				const RC subrc = internal::updateNnz( y );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		internal::template handle_try_execute< true >( y, phase, ret );
 
 		// done
 		return ret;
@@ -681,15 +719,8 @@ namespace grb {
 			}
 		}
 
-		// handle try and execute
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				internal::setDense( x );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( x );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		// handle try and execute phases
+		internal::template handle_try_execute< true >( x, phase, ret );
 
 		// done
 		return ret;
@@ -846,10 +877,13 @@ namespace grb {
 					const RC subrc = internal::updateNnz( x );
 					if( subrc != SUCCESS ) { ret = PANIC; }
 				}
-			} else if( ret == FAILED ) {
+			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+				ret == FAILED
+			) {
 				assert( phase == TRY );
 				const RC subrc = internal::updateNnz( x );
 				if( subrc != SUCCESS ) { ret = PANIC; }
+				// ensure propagate failed error code
 			}
 		}
 
@@ -1010,19 +1044,7 @@ namespace grb {
 		}
 
 		// handle try and execute
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				// x may have a new global number of nonzeroes that needs to be synced
-				// (recall that the dense case is not handled here)
-				ret = internal::updateNnz( x );
-			} else if( ret == FAILED ) {
-				// x may contain useful results that are a subset of the requested
-				// computation. Therefore the nnz may have changed, but we should
-				// take care to continue propagate FAILED
-				const RC subrc = internal::updateNnz( x );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		internal::template handle_try_execute< false >( x, phase, ret );
 
 		// done
 		return ret;
@@ -1102,14 +1124,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( x );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( x );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		internal::template handle_try_execute< false >( x, phase, ret );
 
 		// done
 		return ret;
@@ -1189,14 +1204,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( x );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( x );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		internal::template handle_try_execute< false >( x, phase, ret );
 
 		// done
 		return ret;
@@ -1249,7 +1257,12 @@ namespace grb {
 			return ILLEGAL;
 		}
 		if( capacity( z ) < n && phase == EXECUTE ) {
-			return FAILED;
+			const grb::RC clear_rc = grb::clear( z );
+			if( clear_rc == grb::SUCCESS ) {
+				return ILLEGAL;
+			} else {
+				return PANIC;
+			}
 		}
 
 		// catch trivial resize
@@ -1326,8 +1339,13 @@ namespace grb {
 		if( size( mask ) != n ) {
 			return MISMATCH;
 		}
-		if( capacity( z ) < n && phase == EXECUTE ) {
-			return FAILED;
+		if( grb::capacity( z ) < n && phase == grb::EXECUTE ) {
+			const grb::RC clear_rc = grb::clear( z );
+			if( clear_rc == grb::SUCCESS ) {
+				return grb::ILLEGAL;
+			} else {
+				return grb::PANIC;
+			}
 		}
 
 		// catch trivial resize
@@ -1393,8 +1411,13 @@ namespace grb {
 		if( (descr & descriptors::dense) && nnz( z ) != n ) {
 			return ILLEGAL;
 		}
-		if( capacity( z ) < n && phase == EXECUTE ) {
-			return FAILED;
+		if( grb::capacity( z ) < n && phase == grb::EXECUTE ) {
+			const grb::RC clear_rc = grb::clear( z );
+			if( clear_rc == grb::SUCCESS ) {
+				return grb::ILLEGAL;
+			} else {
+				return grb::PANIC;
+			}
 		}
 
 		// catch trivial resize
@@ -1471,8 +1494,13 @@ namespace grb {
 		if( size( mask ) != n ) {
 			return MISMATCH;
 		}
-		if( capacity( z ) < n && phase == EXECUTE ) {
-			return FAILED;
+		if( grb::capacity( z ) < n && phase == grb::EXECUTE ) {
+			const grb::RC clear_rc = grb::clear( z );
+			if( clear_rc == grb::SUCCESS ) {
+				return grb::ILLEGAL;
+			} else {
+				return grb::PANIC;
+			}
 		}
 
 		// catch trivial resize
@@ -1572,8 +1600,8 @@ namespace grb {
 		} else if( phase == EXECUTE ) {
 			if( ret == SUCCESS ) {
 				internal::setDense( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
+			} else if( ret == ILLEGAL ) {
+				const RC subrc = grb::clear( z );
 				if( subrc != SUCCESS ) { ret = PANIC; }
 			}
 		}
@@ -1662,8 +1690,8 @@ namespace grb {
 		} else if( phase == EXECUTE ) {
 			if( ret == SUCCESS ) {
 				internal::setDense( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
+			} else if( ret == ILLEGAL ) {
+				const RC subrc = grb::clear( z );
 				if( subrc != SUCCESS ) { ret = PANIC; }
 			}
 		}
@@ -1769,19 +1797,9 @@ namespace grb {
 		}
 
 		// catch execute
-		if( phase != RESIZE ) {
-			assert( phase == EXECUTE );
-			if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			} else if( ret == SUCCESS ) {
-				if( !(descr & descriptors::dense) ) {
-					ret = internal::updateNnz( z );
-				} else {
-					internal::setDense( z );
-				}
-			}
-		}
+		internal::template handle_try_execute<
+				((descr & descriptors::dense) > 0)
+			>( z, phase, ret );
 
 		// done
 		return ret;
@@ -1876,14 +1894,7 @@ namespace grb {
 		}
 
 		// handle try and execute
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -1977,14 +1988,7 @@ namespace grb {
 		}
 
 		// handle try and execute
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -2089,15 +2093,7 @@ namespace grb {
 		}
 
 		// handle try and execute
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			}
-			if( ret == FAILED ) {
-				const RC update_rc = internal::updateNnz( z );
-				if( update_rc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -2183,15 +2179,8 @@ namespace grb {
 		}
 
 		// handle execute phase
-		if( phase != RESIZE ) {
-			assert( phase == EXECUTE );
-			if( ret == SUCCESS ) {
-				internal::setDense( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		internal::template handle_try_execute< true >( z, phase, ret );
+
 		return ret;
 	}
 
@@ -2275,15 +2264,7 @@ namespace grb {
 		}
 
 		// handle execute
-		if( phase != RESIZE ) {
-			assert( phase == EXECUTE );
-			if( ret == SUCCESS ) {
-				internal::setDense( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		internal::template handle_try_execute< true >( z, phase, ret );
 
 		// done
 		return ret;
@@ -2377,14 +2358,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -2478,14 +2452,7 @@ namespace grb {
 		}
 
 		// handle execute and try phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -2585,14 +2552,7 @@ namespace grb {
 		}
 
 		// handle execute and try phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -2692,14 +2652,7 @@ namespace grb {
 		}
 
 		// handle try and execute
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -3253,14 +3206,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -3333,14 +3279,7 @@ namespace grb {
 		}
 
 		// handle execute and try phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -3412,14 +3351,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = FAILED; }
-			}
-		}
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -3574,14 +3506,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -3667,14 +3592,7 @@ namespace grb {
 		}
 
 		// handle execute and try phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -3760,14 +3678,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = FAILED; }
-			}
-		}
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -3850,14 +3761,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = FAILED; }
-			}
-		}
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;

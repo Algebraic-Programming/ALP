@@ -181,7 +181,7 @@ namespace grb {
 	 * \endcode
 	 *
 	 * @return #grb::SUCCESS  On successful completion of this call.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a z was insufficient. The output vector
 	 *                        \a z is cleared, and the call to this function has no
 	 *                        further effects.
@@ -264,7 +264,7 @@ namespace grb {
 	 * \endcode
 	 *
 	 * @return #grb::SUCCESS  On successful completion of this call.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a z was insufficient. The output vector
 	 *                        \a z is cleared, and the call to this function has no
 	 *                        further effects.
@@ -347,7 +347,7 @@ namespace grb {
 	 * \endcode
 	 *
 	 * @return #grb::SUCCESS  On successful completion of this call.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a z was insufficient. The output vector
 	 *                        \a z is cleared, and the call to this function has no
 	 *                        further effects.
@@ -430,7 +430,7 @@ namespace grb {
 	 * \endcode
 	 *
 	 * @return #grb::SUCCESS  On successful completion of this call.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a z was insufficient. The output vector
 	 *                        \a z is cleared, and the call to this function has no
 	 *                        further effects.
@@ -543,7 +543,7 @@ namespace grb {
 	 *                        match. All input data containers are left untouched
 	 *                        if this exit code is returned; it will be as though
 	 *                        this call was never made.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a z was insufficient. The output vector
 	 *                        \a z is cleared, and the call to this function has no
 	 *                        further effects.
@@ -652,7 +652,7 @@ namespace grb {
 	 *                        match. All input data containers are left untouched
 	 *                        if this exit code is returned; it will be as though
 	 *                        this call was never made.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a z was insufficient. The output vector
 	 *                        \a z is cleared, and the call to this function has no
 	 *                        further effects.
@@ -764,7 +764,7 @@ namespace grb {
 	 *                        match. All input data containers are left untouched
 	 *                        if this exit code is returned; it will be as though
 	 *                        this call was never made.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a z was insufficient. The output vector
 	 *                        \a z is cleared, and the call to this function has no
 	 *                        further effects.
@@ -875,7 +875,7 @@ namespace grb {
 	 *                        not match. All input data containers are left
 	 *                        untouched if this exit code is returned; it will be
 	 *                        as though this call was never made.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a z was insufficient. The output vector
 	 *                        \a z is cleared, and the call to this function has no
 	 *                        further effects.
@@ -988,7 +988,7 @@ namespace grb {
 	 *                        match. All input data containers are left untouched
 	 *                        if this exit code is returned; it will be as though
 	 *                        this call was never made.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a z was insufficient. The output vector
 	 *                        \a z is cleared, and the call to this function has no
 	 *                        further effects.
@@ -1099,7 +1099,7 @@ namespace grb {
 	 *                        not match. All input data containers are left
 	 *                        untouched if this exit code is returned; it will be
 	 *                        as though this call was never made.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a z was insufficient. The output vector
 	 *                        \a z is cleared, and the call to this function has no
 	 *                        further effects.
@@ -1210,7 +1210,7 @@ namespace grb {
 	 *                        match. All input data containers are left untouched
 	 *                        if this exit code is returned; it will be as though
 	 *                        this call was never made.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a z was insufficient. The output vector
 	 *                        \a z is cleared, and the call to this function has no
 	 *                        further effects.
@@ -1321,7 +1321,7 @@ namespace grb {
 	 *                        not match. All input data containers are left
 	 *                        untouched if this exit code is returned; it will be
 	 *                        as though this call was never made.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a z was insufficient. The output vector
 	 *                        \a z is cleared, and the call to this function has no
 	 *                        further effects.
@@ -1434,7 +1434,7 @@ namespace grb {
 	 *                        match. All input data containers are left untouched
 	 *                        if this exit code is returned; it will be as though
 	 *                        this call was never made.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a z was insufficient. The output vector
 	 *                        \a z is cleared, and the call to this function has no
 	 *                        further effects.
@@ -1546,7 +1546,7 @@ namespace grb {
 	 *                        \a z do not match. All input data containers are left
 	 *                        untouched if this exit code is returned; it will be
 	 *                        as though this call was never made.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a z was insufficient. The output vector
 	 *                        \a z is cleared, and the call to this function has no
 	 *                        further effects.
@@ -1661,7 +1661,7 @@ namespace grb {
 	 *                        match. All input data containers are left untouched
 	 *                        if this exit code is returned; it will be as though
 	 *                        this call was never made.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a z was insufficient. The output vector
 	 *                        \a z is cleared, and the call to this function has no
 	 *                        further effects.
@@ -1769,7 +1769,7 @@ namespace grb {
 	 *                        match. All input data containers are left untouched
 	 *                        if this exit code is returned; it will be as though
 	 *                        this call was never made.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a z was insufficient. The output vector
 	 *                        \a z is cleared, and the call to this function has no
 	 *                        further effects.
@@ -1873,7 +1873,7 @@ namespace grb {
 	 *                        not match. All input data containers are left
 	 *                        untouched; it will be as though this call was never
 	 *                        made.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a z was insufficient. The output vector
 	 *                        \a z is cleared, and the call to this function has no
 	 *                        further effects.
@@ -1980,7 +1980,7 @@ namespace grb {
 	 * @return #grb::MISMATCH Whenever the dimensions of \a y and \a z do not
 	 *                        match. All input data containers are left untouched;
 	 *                        it will be as though this call was never made.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a z was insufficient. The output vector
 	 *                        \a z is cleared, and the call to this function has no
 	 *                        further effects.
@@ -2087,7 +2087,7 @@ namespace grb {
 	 * @return #grb::MISMATCH Whenever the dimensions of \a x and \a z do not
 	 *                        match. All input data containers are left untouched;
 	 *                        it will be as though this call was never made.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a z was insufficient. The output vector
 	 *                        \a z is cleared, and the call to this function has no
 	 *                        further effects.
@@ -2190,7 +2190,7 @@ namespace grb {
 	 *                  default parameter is #grb::EXECUTE.
 	 *
 	 * @return #grb::SUCCESS  On successful completion of this call.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a z was insufficient. The output vector
 	 *                        \a z is cleared, and the call to this function has no
 	 *                        further effects.
@@ -2304,7 +2304,7 @@ namespace grb {
 	 *                        \a z do not match. All input data containers are left
 	 *                        untouched; it will be as though this call was never
 	 *                        made.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a z was insufficient. The output vector
 	 *                        \a z is cleared, and the call to this function has no
 	 *                        further effects.
@@ -2421,7 +2421,7 @@ namespace grb {
 	 *                        not match. All input data containers are left
 	 *                        untouched; it will be as though this call was never
 	 *                        made.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a z was insufficient. The output vector
 	 *                        \a z is cleared, and the call to this function has no
 	 *                        further effects.
@@ -2538,7 +2538,7 @@ namespace grb {
 	 *                        not match. All input data containers are left
 	 *                        untouched; it will be as though this call was never
 	 *                        made.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a z was insufficient. The output vector
 	 *                        \a z is cleared, and the call to this function has no
 	 *                        further effects.
@@ -2651,7 +2651,7 @@ namespace grb {
 	 *
 	 * @return #grb::SUCCESS  On successful completion of this call.
 	 * @return #grb::MISMATCH If \a mask and \a z do not have the same size.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a z was insufficient. The output vector
 	 *                        \a z is cleared, and the call to this function has no
 	 *                        further effects.
@@ -2746,7 +2746,7 @@ namespace grb {
 	 *                        not match. All input data containers are left
 	 *                        untouched if this exit code is returned; it will be
 	 *                        as though this call was never made.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a z was insufficient. The output vector
 	 *                        \a z is cleared, and the call to this function has no
 	 *                        further effects.
@@ -2843,7 +2843,7 @@ namespace grb {
 	 *                        match. All input data containers are left untouched
 	 *                        if this exit code is returned; it will be as though
 	 *                        this call was never made.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a z was insufficient. The output vector
 	 *                        \a z is cleared, and the call to this function has no
 	 *                        further effects.
@@ -2940,7 +2940,7 @@ namespace grb {
 	 *                        match. All input data containers are left untouched
 	 *                        if this exit code is returned; it will be as though
 	 *                        this call was never made.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a z was insufficient. The output vector
 	 *                        \a z is cleared, and the call to this function has no
 	 *                        further effects.
@@ -3033,7 +3033,7 @@ namespace grb {
 	 *                  default parameter is #grb::EXECUTE.
 	 *
 	 * @return #grb::SUCCESS  On successful completion of this call.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a z was insufficient. The output vector
 	 *                        \a z is cleared, and the call to this function has no
 	 *                        further effects.
@@ -3132,7 +3132,7 @@ namespace grb {
 	 *                        \a z do not match. All input data containers are left
 	 *                        untouched if this exit code is returned; it will be
 	 *                        as though this call was never made.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a z was insufficient. The output vector
 	 *                        \a z is cleared, and the call to this function has no
 	 *                        further effects.
@@ -3237,7 +3237,7 @@ namespace grb {
 	 *                        not match. All input data containers are left
 	 *                        untouched if this exit code is returned; it will be
 	 *                        as though this call was never made.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a z was insufficient. The output vector
 	 *                        \a z is cleared, and the call to this function has no
 	 *                        further effects.
@@ -3342,7 +3342,7 @@ namespace grb {
 	 *                        not match. All input data containers are left
 	 *                        untouched if this exit code is returned; it will be
 	 *                        as though this call was never made.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a z was insufficient. The output vector
 	 *                        \a z is cleared, and the call to this function has no
 	 *                        further effects.
@@ -3444,7 +3444,7 @@ namespace grb {
 	 *
 	 * @return #grb::SUCCESS  On successful completion of this call.
 	 * @return #grb::MISMATCH If \a mask and \a z have different size.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a z was insufficient. The output vector
 	 *                        \a z is cleared, and the call to this function has no
 	 *                        further effects.

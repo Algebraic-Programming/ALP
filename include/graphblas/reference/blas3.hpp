@@ -1700,12 +1700,12 @@ namespace grb {
 
 			if( clear_at_exit ) {
 #ifdef _DEBUG_REFERENCE_BLAS3
-				std::cout << "\t mxm_generic is about to exit with FAILED "
+				std::cout << "\t mxm_generic is about to exit with ILLEGAL "
 					<< "(and will clear the output matrix)\n";
 #endif
 				const RC clear_rc = clear( C );
 				if( clear_rc != SUCCESS ) { return PANIC; }
-				return FAILED;
+				return ILLEGAL;
 			}
 
 #ifdef _DEBUG_REFERENCE_BLAS3
@@ -1888,7 +1888,7 @@ namespace grb {
 					<< "complete the requested computation\n";
 #endif
 				if( clear_rc == SUCCESS ) {
-					return FAILED;
+					return ILLEGAL;
 				} else {
 					return PANIC;
 				}
@@ -2043,7 +2043,12 @@ namespace grb {
 			// step 4, check nonzero capacity
 			assert( crs_offsets[ nrows ] == ccs_offsets[ ncols ] );
 			if( internal::getNonzeroCapacity( A ) < crs_offsets[ nrows ] ) {
-				return FAILED;
+				const grb::RC clear_rc = grb::clear( A );
+				if( clear_rc == grb::SUCCESS ) {
+					return grb::ILLEGAL;
+				} else {
+					return grb::PANIC;
+				}
 			}
 
 			// step 5, counting sort, second and final ingestion phase
@@ -2252,7 +2257,10 @@ namespace grb {
 		if( ncols != grb::ncols( A ) ) {
 			return MISMATCH;
 		}
-
+		if( std::numeric_limits< size_t >::max() / nnz( u ) < nnz( v ) ||
+			std::numeric_limits< size_t >::max() / nnz( v ) < nnz( u ) ) {
+			return ILLEGAL;
+		}
 		if( phase == RESIZE ) {
 			return resize( A, nnz( u ) * nnz( v ) );
 		}
@@ -2267,7 +2275,7 @@ namespace grb {
 			if( clear_rc != SUCCESS ) {
 				return PANIC;
 			} else {
-				return FAILED;
+				return ILLEGAL;
 			}
 		}
 
@@ -2835,7 +2843,7 @@ namespace grb {
 					if( clear_rc != SUCCESS ) {
 						return PANIC;
 					} else {
-						return FAILED;
+						return ILLEGAL;
 					}
 				}
 

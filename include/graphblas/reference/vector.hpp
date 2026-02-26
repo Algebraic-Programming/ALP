@@ -47,7 +47,7 @@
 #include <graphblas/ops.hpp>
 #include <graphblas/rc.hpp>
 #include <graphblas/type_traits.hpp>
-#include <graphblas/utils/alloc.hpp>
+#include <graphblas/alloc.hpp>
 #include <graphblas/utils/autodeleter.hpp>
 
 #include "compressed_storage.hpp"
@@ -560,6 +560,20 @@ namespace grb {
 		}
 
 		/**
+		 * Removes the internal reference_mapper references to the id.
+		 */
+		void remove_mapper_references() {
+			if( _coordinates.size() > 0 && _remove_id ) {
+				internal::reference_mapper.remove( _id );
+				_id = std::numeric_limits< uintptr_t >::max();
+			} else {
+				if( _remove_id ) {
+					assert( _id == std::numeric_limits< uintptr_t >::max() );
+				}
+			}
+		}
+
+		/**
 		 * \internal Internal constructor that wraps around an existing raw dense
 		 *           vector. This constructor results in a dense vector whose
 		 *           structure is immutable. Any invalid use incurs UB; use with care.
@@ -984,6 +998,8 @@ namespace grb {
 				std::cout << "Vector (reference) move-assignment called: move " << x._id
 					<< " into " << _id << "\n";
 #endif
+				remove_mapper_references();
+
 				_id = x._id;
 				_remove_id = x._remove_id;
 				_raw = x._raw;
@@ -1009,14 +1025,8 @@ namespace grb {
 				// _raw_deleter,
 				// _buffer_deleter, and
 				// _assigned_deleter
-				if( _coordinates.size() > 0 && _remove_id ) {
-					internal::reference_mapper.remove( _id );
-					_id = std::numeric_limits< uintptr_t >::max();
-				} else {
-					if( _remove_id ) {
-						assert( _id == std::numeric_limits< uintptr_t >::max() );
-					}
-				}
+
+				remove_mapper_references();
 			}
 
 			/**

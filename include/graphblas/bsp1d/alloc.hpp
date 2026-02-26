@@ -23,7 +23,7 @@
 #ifndef _H_GRB_ALLOC_BSP1D
 #define _H_GRB_ALLOC_BSP1D
 
-#include <graphblas/utils/alloc.hpp>
+#include <graphblas/alloc.hpp>
 
 namespace grb {
 

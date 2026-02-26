@@ -44,7 +44,7 @@
 #include <graphblas/bsp/internal-collectives.hpp>
 #include <graphblas/bsp/collectives_blas1_vec.hpp>
 
-#include <graphblas/utils/alloc.hpp>
+#include <graphblas/alloc.hpp>
 #include <graphblas/utils/autodeleter.hpp>
 
 #include "init.hpp"
@@ -70,7 +70,7 @@ namespace grb {
 		}
 
 		template< typename DataType, typename Coords >
-		void setDense( Vector< DataType, BSP1D, Coords > & x );
+		void setDense( Vector< DataType, BSP1D, Coords > &x );
 
 		template<
 			Descriptor descr,
@@ -2536,7 +2536,7 @@ namespace grb {
 		 *
 		 * \internal Dispatches to #grb::set.
 		 */
-		Vector< D, BSP1D, C > & operator=( Vector< D, BSP1D, C > &x ) {
+		Vector< D, BSP1D, C > & operator=( const Vector< D, BSP1D, C > &x ) {
 			const auto rc = set( *this, x );
 			if( rc != SUCCESS ) {
 				throw std::runtime_error( "grb::set inside copy-constructor: "
@@ -2554,6 +2554,12 @@ namespace grb {
 		 * @see grb::Vector for the user-level specfication.
 		 */
 		Vector< D, BSP1D, C > & operator=( Vector< D, BSP1D, C > &&x ) noexcept {
+			// get thread-local store
+			auto &data = internal::grb_BSP1D.load();
+			// free container ID
+			if( _n > 0 ) {
+				data.mapper.remove( _id );
+			}
 			// move all fields from x to our instance
 			_id = x._id;
 			_raw = x._raw;

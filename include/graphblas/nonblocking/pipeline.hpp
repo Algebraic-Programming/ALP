@@ -319,6 +319,7 @@ namespace grb {
 					const Coordinates< nonblocking > * const vector_ptr
 				);
 #endif
+
 				void markMaybeSparseDenseDescriptorVerification(
 					Coordinates< nonblocking > * const vector_ptr
 				);
@@ -330,6 +331,7 @@ namespace grb {
 				void merge( Pipeline &pipeline );
 
 				void clear();
+
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 				void buildAlreadyDenseVectors();
 #endif

@@ -80,7 +80,7 @@ include/graphblas/base/exec.hpp \
 include/graphblas/base/init.hpp \
 include/graphblas/base/collectives.hpp \
 include/graphblas/base/benchmark.hpp \
-include/graphblas/utils/alloc.hpp \
+include/graphblas/alloc.hpp \
 include/graphblas/utils/config.hpp \
 include/graphblas/utils/hpparser.h \
 include/graphblas/utils/parser.hpp \
