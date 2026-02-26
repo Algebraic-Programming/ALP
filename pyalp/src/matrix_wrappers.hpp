@@ -41,7 +41,7 @@ void buildMatrix(
 
     grb::RC io_rc;
     (void)io_rc;
-    io_rc = grb::buildMatrixUnique( M, data_ptr_i, data_ptr_j , data_ptr_v, nnz, grb::SEQUENTIAL );
+    io_rc = grb::buildMatrixUnique( M, data_ptr_i, data_ptr_i + nnz, data_ptr_j, data_ptr_j + nnz, data_ptr_v, data_ptr_v + nnz, grb::SEQUENTIAL );
     assert( io_rc == grb::SUCCESS );
 }
 
@@ -57,7 +57,7 @@ grb::Matrix<ScalarType> matrix_factory(
 
     // Helper for dispatch
     bool handled = false;
-    auto try_type = [&](auto dummy) {
+    auto try_type = [&](const auto dummy) {
         using IntType = decltype(dummy);
         if (py::dtype::of<IntType>().is(data1.dtype()) && py::dtype::of<IntType>().is(data2.dtype())) {
             buildMatrix<IntType, ScalarType>(

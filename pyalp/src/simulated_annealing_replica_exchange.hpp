@@ -33,8 +33,9 @@ ScalarType SARE_QUBO(
     ) {
     ScalarType best_energy = std::numeric_limits<ScalarType>::max();
 
-	if( !verbose )
+	if( !verbose ){
 	    std::cout << "SARE_QUBO:  start \n";
+	}
 	// get user process ID
 	const size_t s = grb::spmd<>::pid();
 	(void)s;
@@ -75,10 +76,10 @@ ScalarType SARE_QUBO(
 
 	if( !verbose ) {
 	    // output
-	    // std::cout << " solver_iterations = " << solver_iterations << "\n";
-	    // std::cout << " tol = " << tol << "\n";
-	    // std::cout << " iterations = " << iterations << "\n";
-	    // std::cout << " residual = " << residual << "\n";
+	    std::cout << " seed = " << seed << "\n";
+	    std::cout << " #iterations = " << solver_iterations << "\n";
+	    std::cout << " best_energy = " << best_energy << "\n";
+	    std::cout << " solver time = " << single_time << " s \n";
 	}
 
 	if( !verbose ) {
@@ -99,7 +100,7 @@ ScalarType SARE_Ising(
     const size_t seed = 0,
     size_t verbose = 0
     ) {
-    ScalarType best_energy = std::numeric_limits<ScalarType>::max();
+    ScalarType best_energy = 0;
 
 	if( !verbose )
 	    std::cout << "SARE_Ising:  start \n";
@@ -144,10 +145,10 @@ ScalarType SARE_Ising(
 
 	if( !verbose ) {
 	    // output
-	    // std::cout << " solver_iterations = " << solver_iterations << "\n";
-	    // std::cout << " tol = " << tol << "\n";
-	    // std::cout << " iterations = " << iterations << "\n";
-	    // std::cout << " residual = " << residual << "\n";
+	    std::cout << " seed = " << seed << "\n";
+	    std::cout << " #iterations = " << solver_iterations << "\n";
+	    std::cout << " best_energy = " << best_energy << "\n";
+	    std::cout << " solver time = " << single_time << " s \n";
 	}
 
 	if( !verbose ) {

@@ -20,19 +20,13 @@
 namespace py = pybind11;
 
 
-using BaseScalarType = double;
-#ifdef _CG_COMPLEX
- using ScalarType = std::complex< BaseScalarType >;
-#else
- using ScalarType = BaseScalarType;
-#endif
-
-void buildVector(grb::Vector< ScalarType >& V, py::array_t<ScalarType> arrv) {
+template< typename T >
+void buildVector(grb::Vector< T >& V, py::array_t<T> arrv) {
 
     // Check array is 1D
     py::buffer_info info_v = arrv.request();
     if (info_v.ndim != 1) throw std::runtime_error("Array must be 1D");
-    ScalarType* data_ptr_v = static_cast<ScalarType*>(info_v.ptr);
+    T* data_ptr_v = static_cast<T*>(info_v.ptr);
 
     grb::RC io_rc;
     (void)io_rc;
@@ -40,26 +34,25 @@ void buildVector(grb::Vector< ScalarType >& V, py::array_t<ScalarType> arrv) {
     assert( io_rc == grb::SUCCESS );
 }
 
-py::array_t<ScalarType>
-to_numpy(grb::Vector< ScalarType >& x) {
-    grb::PinnedVector< ScalarType > pinnedVector;
-    pinnedVector = grb::PinnedVector< ScalarType >( x, grb::SEQUENTIAL );
+template< typename T >
+py::array_t< T > to_numpy( const grb::Vector< T >& x ) {
+    grb::PinnedVector< T > pinnedVector;
+    pinnedVector = grb::PinnedVector< T >( x, grb::SEQUENTIAL );
+	const size_t sz = pinnedVector.size();
 
     std::cout << "create numpy array from grb::vector\n";
 
-    ScalarType* data = new ScalarType[grb::size(x)];
-    for( size_t k = 0; k < grb::size(x); ++k ) {
-	const auto &value = pinnedVector.getNonzeroValue( k );
-	data[k]=value;
+	auto result = py::array_t<T>(sz);
+	py::buffer_info buf = result.request();
+	T* ptr = static_cast< T* >( buf.ptr );
+
+    for( size_t k = 0; k < sz; ++k ) {
+		ptr[ k ] = 0;
+	}
+    for( size_t k = 0; k < pinnedVector.nonzeroes(); ++k ) {
+		const auto &value = pinnedVector.getNonzeroValue( k );
+		ptr[pinnedVector.getNonzeroIndex( k )] = value;
     }
 
-    // Capsule to manage memory (will delete[] when array is destroyed in Python)
-    py::capsule free_when_done(data, [](void *f) {
-	delete[] reinterpret_cast<ScalarType*>(f);
-    });
-
-    // Create NumPy array that shares memory with C++
-    py::array_t<ScalarType> arr({grb::size(x)}, {sizeof(ScalarType)}, data, free_when_done);
-    return arr;
-
+    return result;
 }

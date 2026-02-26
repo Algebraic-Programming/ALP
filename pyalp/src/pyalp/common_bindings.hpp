@@ -3,6 +3,7 @@
 
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
+#include <pybind11/stl.h>
 
 #include <graphblas.hpp>
 
@@ -14,6 +15,7 @@
 
 namespace py = pybind11;
 
+
 // Register all pyalp bindings. Module-local registration can be enabled by
 // instantiating with ModuleLocal = true. When ModuleLocal==true the
 // py::module_local() policy is applied to class bindings to avoid symbol
@@ -24,7 +26,7 @@ void register_pyalp(py::module_ &m) {
     // Common bindings for all backends
     m.def("backend_name", [](){ return "backend"; });
 
-    if constexpr (ModuleLocal) {
+    if (ModuleLocal) {
         py::class_<grb::Matrix< ScalarType >>(m, "Matrix", py::module_local())
         .def(py::init([](size_t m_, size_t n_,
                 py::array data1,
@@ -51,7 +53,20 @@ void register_pyalp(py::module_ &m) {
          py::arg("m"),
          py::arg("k_array")
         )
-        .def("to_numpy", &to_numpy, "Convert to numpy array");
+        .def("to_numpy", &to_numpy< ScalarType >, "Convert to numpy array");
+
+        py::class_<grb::Vector< StateType >>(m, "State", py::module_local())
+        .def(py::init<size_t>())
+        .def(py::init([](size_t m,
+                             py::array_t<StateType> data3) {
+                grb::Vector< StateType > vec(m); // call the basic constructor
+                buildVector(vec, data3); // initialize with data
+                return vec;
+            }),
+         py::arg("m"),
+         py::arg("k_array")
+        )
+        .def("to_numpy", &to_numpy< StateType >, "Convert to numpy array");
     } else {
         py::class_<grb::Matrix< ScalarType >>(m, "Matrix")
         .def(py::init([](size_t m_, size_t n_,
@@ -77,10 +92,54 @@ void register_pyalp(py::module_ &m) {
          py::arg("m"),
          py::arg("k_array")
         )
-        .def("to_numpy", &to_numpy, "Convert to numpy array");
-    }
+        .def("to_numpy", &to_numpy< ScalarType >, "Convert to numpy array");
 
-    m.def("buildVector", &buildVector, "Fill Vector from 1 NumPy array");
+        py::class_<grb::Vector< StateType >>(m, "State")
+        .def(py::init<size_t>())
+        .def(py::init([](size_t m,
+                             py::array_t<StateType> data3) {
+                grb::Vector< StateType > vec(m); // call the basic constructor
+                buildVector(vec, data3); // initialize with data
+                return vec;
+            }),
+         py::arg("m"),
+         py::arg("k_array")
+        )
+        .def("to_numpy", &to_numpy< StateType >, "Convert to numpy array");
+
+    }
+	
+	py::class_< std::vector<grb::Vector<StateType>> >(m, "stdVectorStates")
+        .def(py::init<size_t>())
+		.def(py::init([](
+						size_t m,
+						py::array_t< StateType > arr ) {
+				(void) m;
+
+				const py::buffer_info buf = arr.request();
+				
+				if (buf.ndim != 2) {
+					throw std::runtime_error("Input array must be 2-dimensional");
+				}
+				const size_t sz = buf.shape[0];
+                std::vector< grb::Vector<StateType> > vec (sz);
+				assert( static_cast<size_t>( buf.shape[1] ) <= m );
+				auto ptr = static_cast<StateType*>(buf.ptr);
+
+    			grb::RC io_rc = grb::SUCCESS;
+				for (size_t i = 0; i < sz; i++) {
+					io_rc = io_rc ? io_rc :
+						grb::buildVector( vec[i], ptr, ptr + buf.shape[1], grb::SEQUENTIAL );
+				}
+                return vec;
+            }),
+         py::arg("m"),
+         py::arg("k_array")
+		 );
+        // .def("get_vec", & );
+
+    m.def("buildVector", &buildVector<ScalarType>, "Fill Vector from 1 NumPy array");
+    m.def("buildVectorInt8", &buildVector<StateType>, "Fill Vector from 1 NumPy array");
     m.def("print_my_numpy_array", &print_my_numpy_array, "Print a numpy array as a flattened std::vector");
     m.def("conjugate_gradient", &conjugate_gradient, "Pass alp data to alp CG solver",
       py::arg("L"),
@@ -114,4 +173,5 @@ void register_pyalp(py::module_ &m) {
       py::arg("seed") = 0,
       py::arg("verbose") = 0
     );
+
 }
