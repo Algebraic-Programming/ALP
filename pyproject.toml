@@ -1,0 +1,4 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+# Use the legacy backend so setup.py is executed, which delegates to pyalp/setup.py.
+build-backend = "setuptools.build_meta:__legacy__"

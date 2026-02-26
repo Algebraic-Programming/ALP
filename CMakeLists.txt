@@ -31,12 +31,43 @@ set( MINORVERSION 7 )
 set( BUGVERSION 0 )
 set( VERSION "${MAJORVERSION}.${MINORVERSION}.${BUGVERSION}" )
 
+# Export a canonical ALP version string for subprojects and packaging. This
+# defaults to the VERSION defined above but can be overridden by -DALP_VERSION
+# on the cmake command line (CI may pass this explicitly).
+if(NOT DEFINED ALP_VERSION)
+	set(ALP_VERSION "${VERSION}" CACHE STRING "ALP project version (for packaging)")
+else()
+	# Keep user-provided ALP_VERSION in cache so subprojects see it
+	set(ALP_VERSION "${ALP_VERSION}" CACHE STRING "ALP project version (for packaging)" FORCE)
+endif()
+
 # set the project name
 project( GraphBLAS
 	VERSION ${VERSION}
 	DESCRIPTION "The ultimate engine for sparse computation"
 	LANGUAGES CXX C
 )
+
+# Find Git and get repository information for metadata
+find_package(Git QUIET)
+if(GIT_FOUND)
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        OUTPUT_VARIABLE ALP_GIT_COMMIT
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} rev-parse --abbrev-ref HEAD
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        OUTPUT_VARIABLE ALP_GIT_BRANCH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+else()
+    set(ALP_GIT_COMMIT "unknown")
+    set(ALP_GIT_BRANCH "unknown")
+endif()
+
 set( CMAKE_CXX_STANDARD 11 )
 set( CMAKE_CXX_STANDARD_REQUIRED ON )
 
@@ -243,7 +274,13 @@ endif()
 
 # always look for math and rt libraries
 find_package( LibM REQUIRED )
-find_library( LIBRT rt REQUIRED )
+# librt exists on Linux but not on macOS; only require it on non-Apple UNIX
+if(UNIX AND NOT APPLE)
+	find_library( LIBRT rt REQUIRED )
+else()
+	# On macOS librt is not provided/needed; define an empty variable for compatibility
+	set(LIBRT "" CACHE FILEPATH "rt library (not present on Apple platforms)")
+endif()
 
 # pthreads is needed for hpparser
 find_package( Threads REQUIRED )
@@ -321,10 +358,12 @@ if( WITH_OMP_BACKEND OR WITH_HYBRID_BACKEND )
 	set( WITH_OMP_BACKEND_HEADERS ON )
 endif()
 
+
 add_subdirectory( include )
 
 ### BACKEND IMPLEMENTATIONS
 add_subdirectory( src )
+
 
 ### TESTS and EXAMPLES
 
@@ -335,6 +374,101 @@ include( AddGRBTests )
 
 add_subdirectory( tests )
 
+if( ENABLE_PYALP )
+	# Only add the pyalp subdirectory if it contains a CMakeLists.txt in the source tree.
+	if(EXISTS "${PROJECT_SOURCE_DIR}/pyalp/CMakeLists.txt")
+		add_subdirectory(pyalp)
+	else()
+		message(STATUS "pyalp subdirectory not present in source tree; skipping add_subdirectory(pyalp)")
+	endif()
+endif()
+
+# Provide a top-level convenience packaging target for pyalp so callers can run
+#   cmake --build <build-dir> --target pyalp --parallel
+# even if the pyalp CMakeLists placed a packaging target in a subdirectory or
+# the generator didn't expose that target at the top-level. This mirrors the
+# packaging flow implemented under pyalp/src/CMakeLists.txt and is only added
+# when pyalp is enabled and present in source.
+if( ENABLE_PYALP AND EXISTS "${PROJECT_SOURCE_DIR}/pyalp/CMakeLists.txt" )
+	# Attempt to find a Python interpreter (non-fatal if already found elsewhere)
+	find_package(PythonInterp QUIET)
+
+	# Build the list of backend targets that should be packaged. Keep this in
+	# sync with pyalp/src/CMakeLists.txt.
+	set(pyalp_package_targets "")
+	if(WITH_REFERENCE_BACKEND)
+		list(APPEND pyalp_package_targets pyalp_ref)
+	endif()
+	if(WITH_OMP_BACKEND)
+		list(APPEND pyalp_package_targets pyalp_omp)
+	endif()
+	if(WITH_NONBLOCKING_BACKEND)
+		list(APPEND pyalp_package_targets pyalp_nonblocking)
+	endif()
+	string(JOIN " " pyalp_package_targets_str ${pyalp_package_targets})
+
+	# Only add the top-level pyalp target if one is not already defined.
+	if(NOT TARGET pyalp)
+		add_custom_target(pyalp
+			COMMENT "Build enabled pyalp backends and package wheel(s) into ${CMAKE_BINARY_DIR}/dist"
+		)
+
+		add_custom_command(TARGET pyalp
+			# Build each backend target individually (cmake --build --target accepts one target at a time)
+			VERBATIM
+		)
+		# Add per-backend build commands so each target is invoked separately.
+		foreach(_pyalp_backend IN LISTS pyalp_package_targets)
+			add_custom_command(TARGET pyalp
+				COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target ${_pyalp_backend} --parallel
+				VERBATIM
+			)
+		endforeach()
+		add_custom_command(TARGET pyalp
+			COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/dist
+			COMMAND ${CMAKE_COMMAND} -E env CMAKE_BUILD_DIR=${CMAKE_BINARY_DIR} ${PYTHON_EXECUTABLE} -m pip wheel ${CMAKE_SOURCE_DIR}/pyalp -w ${CMAKE_BINARY_DIR}/dist
+			COMMAND ${CMAKE_COMMAND} -E echo ""
+			COMMAND ${CMAKE_COMMAND} -E echo "============================================================"
+			COMMAND ${CMAKE_COMMAND} -E echo "Packaged wheel(s) into: ${CMAKE_BINARY_DIR}/dist"
+			COMMAND ${CMAKE_COMMAND} -E echo "To install the wheel(s):"
+			COMMAND ${CMAKE_COMMAND} -E echo "  python -m pip install ${CMAKE_BINARY_DIR}/dist/<wheel-file>.whl"
+			COMMAND ${CMAKE_COMMAND} -E echo "or install all wheels in dist:" 
+			COMMAND ${CMAKE_COMMAND} -E echo "  python -m pip install ${CMAKE_BINARY_DIR}/dist/*.whl"
+			COMMAND ${CMAKE_COMMAND} -E echo "After installation, import the package in Python, e.g.:"
+			COMMAND ${CMAKE_COMMAND} -E echo "  python -c \"import alp_graphblas; print(alp_graphblas.__version__)\""
+			VERBATIM
+		)
+	endif()
+endif()
+## Also expose a clearly-named packaging target that avoids name collisions
+if( ENABLE_PYALP AND EXISTS "${PROJECT_SOURCE_DIR}/pyalp/CMakeLists.txt" )
+	if(NOT TARGET pyalp-package)
+		add_custom_target(pyalp-package
+			COMMENT "(convenience) Build enabled pyalp backends and package wheel(s) into ${CMAKE_BINARY_DIR}/dist"
+		)
+
+		foreach(_pyalp_backend IN LISTS pyalp_package_targets)
+			add_custom_command(TARGET pyalp-package
+				COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target ${_pyalp_backend} --parallel
+				VERBATIM
+			)
+		endforeach()
+		add_custom_command(TARGET pyalp-package
+			COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/dist
+			COMMAND ${CMAKE_COMMAND} -E env CMAKE_BUILD_DIR=${CMAKE_BINARY_DIR} ${PYTHON_EXECUTABLE} -m pip wheel ${CMAKE_SOURCE_DIR}/pyalp -w ${CMAKE_BINARY_DIR}/dist
+			COMMAND ${CMAKE_COMMAND} -E echo ""
+			COMMAND ${CMAKE_COMMAND} -E echo "============================================================"
+			COMMAND ${CMAKE_COMMAND} -E echo "Packaged wheel(s) into: ${CMAKE_BINARY_DIR}/dist"
+			COMMAND ${CMAKE_COMMAND} -E echo "To install the wheel(s):"
+			COMMAND ${CMAKE_COMMAND} -E echo "  python -m pip install ${CMAKE_BINARY_DIR}/dist/<wheel-file>.whl"
+			COMMAND ${CMAKE_COMMAND} -E echo "or install all wheels in dist:" 
+			COMMAND ${CMAKE_COMMAND} -E echo "  python -m pip install ${CMAKE_BINARY_DIR}/dist/*.whl"
+			COMMAND ${CMAKE_COMMAND} -E echo "After installation, import the package in Python, e.g.:"
+			COMMAND ${CMAKE_COMMAND} -E echo "  python -c \"import alp_graphblas; print(alp_graphblas.__version__)\""
+			VERBATIM
+		)
+	endif()
+endif()
 add_subdirectory( examples )
 
 
@@ -376,4 +510,8 @@ add_dependencies( docs userdocs devdocs )
 
 message( "Tests enabled for backends: ${AVAILABLE_TEST_BACKENDS}" )
 message( "Enabled backend targets: ${AVAILABLE_BACKENDS}\n" )
+
+
+
+
 

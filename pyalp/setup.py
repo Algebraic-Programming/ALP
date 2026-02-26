@@ -1,0 +1,277 @@
+from setuptools import setup, Extension
+from setuptools import find_packages
+from setuptools.command.build_ext import build_ext as _build_ext
+import sys
+import os
+import glob
+import shutil
+import sysconfig
+import pathlib
+bdist_wheel_cmd = None
+try:
+    # Used to mark wheel as non-pure when bundling a prebuilt .so
+    from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
+
+    class bdist_wheel(_bdist_wheel):
+        def finalize_options(self):
+            super().finalize_options()
+            # wheel contains a native shared object; mark as platform-specific
+            self.root_is_pure = False
+
+    bdist_wheel_cmd = bdist_wheel
+except Exception:
+    bdist_wheel_cmd = None
+_have_pybind11 = False
+try:
+    # import lazily — only needed when we build from sources
+    from pybind11.setup_helpers import Pybind11Extension, build_ext
+    _have_pybind11 = True
+except Exception:
+    Pybind11Extension = None
+    build_ext = None
+
+here = os.path.abspath(os.path.dirname(__file__))
+
+prebuilt_env = os.environ.get("PREBUILT_PYALP_SO") or os.environ.get("PYALP_PREBUILT_SO")
+
+# Discover prebuilt backend shared objects in the CMake build tree.
+def find_all_prebuilt():
+    """Discover prebuilt shared objects only inside the directory explicitly
+    provided by the caller via the CMAKE_BUILD_DIR (or PYALP_BUILD_DIR)
+    environment variable.
+
+    Per the packaging policy, this function will not probe arbitrary
+    sibling directories or search the source tree; callers must provide a
+    well-defined build directory. If no build directory is set, an empty
+    mapping is returned (so callers can fall back to building from
+    sources when pybind11 is available).
+    """
+    supported = ["pyalp_ref", "pyalp_omp", "pyalp_nonblocking", "_pyalp"]
+    py_tag = f"cp{sys.version_info[0]}{sys.version_info[1]}"
+    mapping = {}
+
+    cmake_build_dir = os.environ.get("CMAKE_BUILD_DIR") or os.environ.get("PYALP_BUILD_DIR")
+    # If no explicit build dir is provided, fall back to the conventional
+    # out-of-source `../build` directory. This keeps discovery inside a
+    # single well-defined location and preserves prior CI behavior.
+    if not cmake_build_dir:
+        cmake_build_dir = os.path.abspath(os.path.join(here, '..', 'build'))
+    else:
+        cmake_build_dir = os.path.abspath(cmake_build_dir)
+
+    for mod in supported:
+        found = []
+        patterns = [
+            os.path.join(cmake_build_dir, '**', f'{mod}*.so'),
+            os.path.join(cmake_build_dir, '**', f'{mod}*.pyd'),
+        ]
+        for pat in patterns:
+            try:
+                found.extend(glob.glob(pat, recursive=True))
+            except Exception:
+                pass
+        if not found:
+            continue
+        # Prefer candidate matching current ABI tag in filename or parent dir
+        matching = [c for c in found if py_tag in os.path.basename(c) or py_tag in os.path.basename(os.path.dirname(c))]
+        chosen = (matching or found)[0]
+        mapping[mod] = os.path.abspath(chosen)
+
+    return mapping
+
+# Determine prebuilt modules mapping. If user specified a single PREBUILT env var,
+# map it to its basename (module name) where possible; otherwise search the build tree.
+prebuilt_modules = {}
+if prebuilt_env:
+    # map provided path to module name by deriving filename stem
+    bn = os.path.basename(prebuilt_env)
+    modname = bn.split('.', 1)[0]
+    prebuilt_modules[modname] = os.path.abspath(prebuilt_env)
+else:
+    prebuilt_modules = find_all_prebuilt()
+
+package_data = {}
+ext_modules = []
+
+class build_ext_copy_prebuilt(_build_ext):
+    """Custom build_ext that copies a prebuilt shared object into the build dir.
+
+    This ensures the extension is installed into platlib and the wheel is valid
+    for auditwheel repair.
+    """
+
+    def build_extension(self, ext):
+        # Determine target path for the extension
+        target_path = self.get_ext_fullpath(ext.name)
+        os.makedirs(os.path.dirname(target_path), exist_ok=True)
+        # Choose the source prebuilt file corresponding to this extension
+        # ext.name is like 'pyalp.<module_name>'
+        mod_fullname = ext.name
+        modname = mod_fullname.split('.', 1)[1] if '.' in mod_fullname else mod_fullname
+
+        # Priority: explicit env var -> mapping discovered earlier -> glob search
+        src = os.environ.get("PREBUILT_PYALP_SO") or os.environ.get("PYALP_PREBUILT_SO")
+        if not src:
+            src = prebuilt_modules.get(modname)
+        if not src:
+                # No explicit PREBUILT path or discovered prebuilt module in the
+                # provided build directory. Do not search arbitrary locations.
+                src = None
+
+        if not src or not os.path.exists(src):
+            raise RuntimeError(f"Prebuilt pyalp shared object not found for module '{modname}' during build_ext")
+        shutil.copyfile(src, target_path)
+
+        # The _metadata.py file is generated by CMake in the build directory.
+        # We need to find it and copy it to the same directory as the extension.
+        ext_build_dir = os.path.dirname(target_path)
+        # Only copy generated metadata when an explicit build directory is
+        # provided via CMAKE_BUILD_DIR or PYALP_BUILD_DIR. We do not search the
+        # source tree or other locations for generated metadata.
+        cmake_build_dir = os.environ.get("CMAKE_BUILD_DIR") or os.environ.get("PYALP_BUILD_DIR")
+        if cmake_build_dir:
+            metadata_src_path = os.path.join(os.path.abspath(cmake_build_dir), "pyalp_metadata.py")
+            metadata_dest_path = os.path.join(ext_build_dir, "_metadata.py")
+            if os.path.exists(metadata_src_path):
+                print(f"Copying generated metadata from {metadata_src_path} to {metadata_dest_path}")
+                shutil.copyfile(metadata_src_path, metadata_dest_path)
+            else:
+                print(f"Warning: Generated metadata file not found at {metadata_src_path}. Skipping copy.")
+        else:
+            print("CMAKE_BUILD_DIR / PYALP_BUILD_DIR not set; skipping metadata file copy.")
+
+if prebuilt_modules:
+    # Create an Extension for each discovered prebuilt module so setuptools will
+    # place the shared object into the package (platlib).
+    for modname in prebuilt_modules.keys():
+        ext_modules.append(Extension(f"pyalp.{modname}", sources=[]))
+else:
+    if not _have_pybind11:
+        raise RuntimeError("pybind11 is required to build the extension from sources. Install pybind11 or provide PREBUILT_PYALP_SO to bundle a prebuilt .so.")
+    assert Pybind11Extension is not None
+    ext_modules = [
+        Pybind11Extension(
+            "pyalp._pyalp",
+            ["src/pyalp/module_entry.cpp"],
+            include_dirs=[
+                os.path.join(here, "src"),
+                os.path.join(here, "src", "pyalp"),
+                os.path.join(here, "extern", "pybind11", "include"),
+                os.path.normpath(os.path.join(here, "..", "include")),
+            ],
+            define_macros=[("PYALP_MODULE_NAME", "_pyalp"), ("PYALP_MODULE_LOCAL", "1")],
+            cxx_std=14,
+        )
+    ]
+
+# Read metadata from pyproject.toml when available to avoid mismatched values
+def _read_pyproject_toml(path):
+    if not os.path.exists(path):
+        return {}
+    # Prefer the stdlib tomllib on Python 3.11+, otherwise fall back to
+    # the third-party `toml` package if available. Avoid importing
+    # tomllib at module import time on older Pythons to prevent SyntaxError
+    # when cibuildwheel invokes builds using older interpreters.
+    try:
+        if sys.version_info >= (3, 11):
+            import tomllib
+            with open(path, "rb") as f:
+                return tomllib.load(f) or {}
+    except Exception:
+        pass
+    try:
+        import toml
+        with open(path, "r", encoding="utf-8") as f:
+            return toml.load(f) or {}
+    except Exception:
+        return {}
+
+pyproject_path = os.path.abspath(os.path.join(here, "..", "pyproject.toml"))
+_pyproject = _read_pyproject_toml(pyproject_path)
+
+_name = None
+_version = None
+_description = None
+
+# PEP 621 [project] table
+if isinstance(_pyproject, dict) and "project" in _pyproject:
+    proj = _pyproject.get("project", {})
+    _name = proj.get("name") or _name
+    _version = proj.get("version") or _version
+    _description = proj.get("description") or _description
+# poetry configuration [tool.poetry]
+elif isinstance(_pyproject, dict) and _pyproject.get("tool", {}).get("poetry"):
+    poetry = _pyproject["tool"]["poetry"]
+    _name = poetry.get("name") or _name
+    _version = poetry.get("version") or _version
+    _description = poetry.get("description") or _description
+
+setup_kwargs = {
+    "name": _name or "pyalp",
+    "version": _version or "0.8.1",
+    "description": _description or "pyalp package (C++ bindings)",
+    "packages": find_packages(where="src"),
+    "package_dir": {"": "src"},
+    # Ensure generated metadata is included in the wheel. The build process
+    # will copy the generated file to the package build dir as `_metadata.py`.
+    "package_data": {"pyalp": ["_metadata.py"]},
+    "ext_modules": ext_modules,
+    "include_package_data": True,
+}
+
+# Prefer generating egg-info in the out-of-source build directory so the
+# source tree is not polluted during wheel builds. If the CI or caller set
+# CMAKE_BUILD_DIR we use that; otherwise default to ../build relative to the
+# package directory.
+egg_base = os.environ.get("CMAKE_BUILD_DIR")
+if not egg_base:
+    # Try to auto-detect an out-of-source CMake build directory that is a
+    # sibling of the repository root. We consider a directory to be a CMake
+    # build if it contains a CMakeCache.txt file. This supports build trees
+    # named arbitrarily (for example `test_build_dirname`) instead of assuming
+    # a literal `build` directory.
+    repo_parent = os.path.abspath(os.path.join(here, '..'))
+    candidates = []
+    try:
+        for entry in os.listdir(repo_parent):
+            p = os.path.join(repo_parent, entry)
+            if os.path.isdir(p) and os.path.exists(os.path.join(p, 'CMakeCache.txt')):
+                candidates.append(p)
+    except Exception:
+        candidates = []
+    if candidates:
+        # Prefer a directory literally named 'build' if present, else pick the
+        # first candidate found.
+        build_dir = None
+        for c in candidates:
+            if os.path.basename(c) == 'build':
+                build_dir = c
+                break
+        if not build_dir:
+            build_dir = candidates[0]
+        egg_base = os.path.abspath(build_dir)
+    else:
+        egg_base = os.path.abspath(os.path.join(here, '..', 'build'))
+
+# Supply setuptools options to place egg-info under the build directory
+# Only set egg_info when an explicit build directory environment variable is
+# provided. Do not attempt to auto-detect or write egg-info into the source
+# tree when no build dir is specified.
+if egg_base:
+    setup_kwargs.setdefault("options", {})
+    setup_kwargs["options"]["egg_info"] = {"egg_base": egg_base}
+
+# Supply cmdclass entries for build_ext (copy-prebuilt or pybind11) and bdist_wheel
+cmdclass = {}
+# If we detected prebuilt modules, use the copy-prebuilt build_ext which copies
+# each discovered shared object into the package build directory.
+if prebuilt_modules:
+    cmdclass["build_ext"] = build_ext_copy_prebuilt
+elif build_ext is not None:
+    cmdclass["build_ext"] = build_ext
+if bdist_wheel_cmd is not None:
+    cmdclass["bdist_wheel"] = bdist_wheel_cmd
+if cmdclass:
+    setup_kwargs["cmdclass"] = cmdclass
+
+setup(**setup_kwargs)

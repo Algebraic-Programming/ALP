@@ -9,3 +9,5 @@ paths.mk
 [Oo]bj*/
 [Ii]nstall*/
 cmake-build-*/
+.venv/
+pyalp/src/pyalp.egg-info/

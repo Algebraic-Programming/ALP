@@ -1,0 +1,60 @@
+name: pyalp CI (local-build smoke test)
+
+on:
+  push:
+    tags: [ 'pyalp*' ]
+  workflow_dispatch: {}
+
+jobs:
+  build-and-test-local:
+    name: Build pyalp with LOCAL profile and run smoke tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install system build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build pkg-config python3-venv python3-dev python3-pip libnuma-dev
+
+      - name: Configure top-level CMake with LOCAL profile
+        run: |
+          set -euo pipefail
+          # Configure from repository root using the LOCAL profile to enable native optimizations
+          cmake -S . -B build/ci_local -G Ninja \
+            -DALP_BUILD_PROFILE=LOCAL \
+            -DENABLE_PYALP=ON \
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+            -DPython3_EXECUTABLE=$(which python3)
+
+      - name: Build pyalp backends
+        run: |
+          set -euo pipefail
+          cmake --build build/ci_local --target pyalp_ref pyalp_omp pyalp_nonblocking --parallel
+
+      - name: Package pyalp wheel from CMake build
+        run: |
+          set -euo pipefail
+          mkdir -p dist_wheel
+          export CMAKE_BUILD_DIR=$(pwd)/build/ci_local
+          ( cd pyalp && python -m pip wheel . -w ../dist_wheel )
+
+      - name: Smoke test wheel in venv
+        run: |
+          set -euo pipefail
+          python3 -V
+          python3 -m venv venv
+          . venv/bin/activate
+          pip install --upgrade pip wheel
+          pip install dist_wheel/*.whl
+          # run the smoke test script which should import pyalp and backends e.g. pyalp.pyalp_ref
+          python tools/smoke_test_pyalp.py

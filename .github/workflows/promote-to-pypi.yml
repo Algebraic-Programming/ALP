@@ -1,0 +1,73 @@
+name: Promote release to PyPI
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Git tag / release to promote (e.g. pyalp.v0.8.14)'
+        required: true
+  push:
+    tags:
+      - 'pyalp.v*'
+
+# Request OIDC id-token permissions at workflow level so actions can use
+# the GitHub Actions OIDC provider. The pypa publish action requires this
+# for trusted publisher flow when using repository-provided credentials.
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    # Require approval from the `production` environment before the job can
+    # access environment-scoped secrets (e.g. the PyPI API token). Create the
+    # environment in the repository settings and add the secret `PYPI_API_TOKEN`.
+    environment: production
+    # Also explicitly request id-token at the job level to be extra clear.
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout (for local scripts)
+        uses: actions/checkout@v4
+
+      - name: Download release assets (via GitHub API)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          echo "Downloading release assets for ${REPO} tag ${TAG}"
+          mkdir -p release_assets
+          # Fetch release metadata for the tag
+          release_json=$(curl -sSf -H "Authorization: Bearer ${GITHUB_TOKEN}" "https://api.github.com/repos/${REPO}/releases/tags/${TAG}")
+          if [ -z "${release_json}" ]; then
+            echo "No release metadata found for tag ${TAG}" >&2
+            exit 1
+          fi
+
+          # Iterate assets and download each one using the assets API (requires Accept header)
+          echo "$release_json" | jq -r '.assets[] | [.id, .name] | @tsv' | while IFS=$'\t' read -r id name; do
+            echo "Downloading asset: ${name} (id ${id})"
+            curl -sSfL -H "Authorization: Bearer ${GITHUB_TOKEN}" -H "Accept: application/octet-stream" "https://api.github.com/repos/${REPO}/releases/assets/${id}" -o "release_assets/${name}"
+          done
+          echo "Downloaded files:" && ls -la release_assets || true
+
+      - name: List downloaded assets
+        run: |
+          echo "Assets in release_assets:"
+          ls -la release_assets || true
+      
+      - name: Show package name and version (diagnostic)
+        run: |
+          python -c "import importlib,importlib.util,sys,pathlib; spec=importlib.util.find_spec('tomllib') or importlib.util.find_spec('tomli'); name=spec.name if spec else sys.exit(print('No TOML parser available (tomllib/tomli), skipping')); toml=importlib.import_module(name); p=pathlib.Path('pyalp/pyproject.toml'); (sys.exit(print('pyalp/pyproject.toml not found at', p)) if not p.exists() else None); data=toml.loads(p.read_text()); proj=data.get('project',{}); print('project.name =', proj.get('name')); print('project.version =', proj.get('version'))"
+
+      - name: Publish to PyPI (alp-graphblas)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: release_assets/
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
