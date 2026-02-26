@@ -10,6 +10,7 @@
 #include "matrix_wrappers.hpp"
 #include "vector_wrappers.hpp"
 #include "conjugate_gradient.hpp"
+#include "simulated_annealing_replica_exchange.hpp"
 
 namespace py = pybind11;
 
@@ -89,6 +90,28 @@ void register_pyalp(py::module_ &m) {
       py::arg("u"),
       py::arg("temp"),
       py::arg("solver_iterations") = 1000,
+      py::arg("verbose") = 0
+    );
+    m.def("SARE_QUBO", &SARE_QUBO, "Pass alp data to alp SARE_QUBO solver",
+      py::arg("Q"),
+      py::arg("states"),
+      py::arg("energies"),
+      py::arg("betas"),
+      py::arg("best_state"),
+      py::arg("solver_iterations") = 100,
+      py::arg("seed") = 0,
+      py::arg("verbose") = 0
+    );
+
+    m.def("SARE_Ising", &SARE_Ising, "Pass alp data to alp SARE_Ising solver",
+      py::arg("Q"),
+      py::arg("h"),
+      py::arg("states"),
+      py::arg("energies"),
+      py::arg("betas"),
+      py::arg("best_state"),
+      py::arg("solver_iterations") = 100,
+      py::arg("seed") = 0,
       py::arg("verbose") = 0
     );
 }

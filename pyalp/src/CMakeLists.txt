@@ -47,7 +47,7 @@ assert_defined_variables( WITH_REFERENCE_BACKEND WITH_OMP_BACKEND )
 if( WITH_REFERENCE_BACKEND )
 	set(PYALP_MODULE_NAME pyalp_ref)
 
-	pybind11_add_module( ${PYALP_MODULE_NAME} pyalp/module_entry.cpp conjugate_gradient.hpp matrix_wrappers.hpp utils.hpp vector_wrappers.hpp )
+	pybind11_add_module( ${PYALP_MODULE_NAME} pyalp/module_entry.cpp conjugate_gradient.hpp simulated_annealing_replica_exchange.hpp matrix_wrappers.hpp utils.hpp vector_wrappers.hpp )
 	target_compile_definitions(${PYALP_MODULE_NAME} PRIVATE PYALP_MODULE_NAME=${PYALP_MODULE_NAME})
 	# By default enable module-local pybind11 registrations so multiple backend
 	# extension modules can be imported into the same interpreter without
@@ -65,7 +65,7 @@ if( WITH_REFERENCE_BACKEND )
 	# (Optional) If you need extra compile flags or C++ standard:
 	 set_target_properties(${PYALP_MODULE_NAME} PROPERTIES CXX_STANDARD 14 CXX_STANDARD_REQUIRED YES)
 	# target_compile_options(conjugate_gradient_python PRIVATE -Wall -Wextra)
-	
+
 	# On Apple platforms with newer Clang, downgrade the template keyword warning from error to warning
 	if(APPLE)
 		target_compile_options(${PYALP_MODULE_NAME} PRIVATE -Wno-error=missing-template-arg-list-after-template-kw)
@@ -90,7 +90,7 @@ endif()
 if( WITH_OMP_BACKEND )
 	set(PYALP_MODULE_NAME pyalp_omp)
 
-	pybind11_add_module( ${PYALP_MODULE_NAME} pyalp/module_entry.cpp conjugate_gradient.hpp matrix_wrappers.hpp utils.hpp vector_wrappers.hpp )
+	pybind11_add_module( ${PYALP_MODULE_NAME} pyalp/module_entry.cpp conjugate_gradient.hpp simulated_annealing_replica_exchange.hpp matrix_wrappers.hpp utils.hpp vector_wrappers.hpp )
 	target_compile_definitions( ${PYALP_MODULE_NAME} PRIVATE PYALP_MODULE_NAME=${PYALP_MODULE_NAME})
 	# Enable module-local registration for this backend (see note above)
 	target_compile_definitions(${PYALP_MODULE_NAME} PRIVATE PYALP_MODULE_LOCAL=${PYALP_MODULE_LOCAL_VAL})
@@ -121,7 +121,7 @@ endif()
 if( WITH_NONBLOCKING_BACKEND )
 	set(PYALP_MODULE_NAME pyalp_nonblocking)
 
-	pybind11_add_module( ${PYALP_MODULE_NAME} pyalp/module_entry.cpp conjugate_gradient.hpp matrix_wrappers.hpp utils.hpp vector_wrappers.hpp )
+	pybind11_add_module( ${PYALP_MODULE_NAME} pyalp/module_entry.cpp conjugate_gradient.hpp simulated_annealing_replica_exchange.hpp  matrix_wrappers.hpp utils.hpp vector_wrappers.hpp )
 	target_compile_definitions( ${PYALP_MODULE_NAME} PRIVATE PYALP_MODULE_NAME=${PYALP_MODULE_NAME})
 	# Enable module-local registration for this backend (see note above)
 	target_compile_definitions(${PYALP_MODULE_NAME} PRIVATE PYALP_MODULE_LOCAL=${PYALP_MODULE_LOCAL_VAL})
@@ -232,6 +232,8 @@ set(pybind11_VERSION ${pybind11_VERSION})
 
 # This is a simplified list. A more robust solution would inspect the build targets.
 set(pyalp_ALGORITHMS "conjugate_gradient")
+set(pyalp_ALGORITHMS "SARE_Ising")
+set(pyalp_ALGORITHMS "SARE_QUBO")
 set(pyalp_BACKENDS "reference, reference_omp")
 
 # Configure the metadata file from the template
