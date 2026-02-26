@@ -1,5 +1,5 @@
-#ifndef TSIrCo_MODEL_BASELINE_HPP
-#define TSIrCo_MODEL_BASELINE_HPP
+#ifndef PAHIS_MODEL_BASELINE_HPP
+#define PAHIS_MODEL_BASELINE_HPP
 
 #include <iostream>
 #include <sys/types.h>
@@ -28,12 +28,12 @@ namespace HW_model
         int d_numa;  // The level (1-indexed) at which NUMA effects start (first level after LLC), 0 if no NUMA
                      // Positive for close policy, negative for spread policy
         // size_t SIMD_size;        // Size of each SIMD operation
-        // double r_scalar, r_SIMD;// inverse OPS/s (seconds/op)
+        double r_scalar, r_vec;// OPS/s
         std::vector<double> g;    // inverse BW (seconds/access)
         std::vector<double> ls;   // latency
         std::vector<uint64_t> m;  // available memory NOT on prev levels
-        std::vector<size_t> p;    // sub-components
-        std::vector<size_t> kmax; // Max number of access streams
+        std::vector<size_t> p;    // sub-components of each level
+        std::vector<size_t> P; // Total subcomponents under level  p(0) * p(1) * ... * p(l)
     } *HWParameters_p;
 
     struct HWParameter_configurations
@@ -143,16 +143,16 @@ namespace HW_model
             // Validate hardware parameters
             if (hw_model.d <= 0 || hw_model.g.empty() ||
                 hw_model.ls.empty() || hw_model.m.empty() || hw_model.p.empty() ||
-                hw_model.kmax.empty())
+                hw_model.P.empty())
             {
                 throw std::invalid_argument("Missing required hardware parameters");
             }
 
-            if (hw_model.g.size() != static_cast<size_t>(hw_model.d) ||
-                hw_model.ls.size() != static_cast<size_t>(hw_model.d) ||
-                hw_model.m.size() != static_cast<size_t>(hw_model.d) ||
-                hw_model.p.size() != static_cast<size_t>(hw_model.d) ||
-                hw_model.kmax.size() != static_cast<size_t>(hw_model.d))
+            if (hw_model.g.size() != (size_t)(hw_model.d) ||
+                hw_model.ls.size() != (size_t)(hw_model.d) ||
+                hw_model.m.size() != (size_t)(hw_model.d) ||
+                hw_model.p.size() != (size_t)(hw_model.d) ||
+                hw_model.P.size() != (size_t)(hw_model.d))
             {
                 throw std::invalid_argument("Inconsistent hardware parameter vector sizes");
             }
@@ -165,16 +165,16 @@ namespace HW_model
         // Validate hardware parameters
         if (hw_params->d <= 0 || hw_params->g.empty() ||
             hw_params->ls.empty() || hw_params->m.empty() || hw_params->p.empty() ||
-            hw_params->kmax.empty())
+            hw_params->P.empty())
         {
             throw std::invalid_argument("Missing required hardware parameters");
         }
 
-        if (hw_params->g.size() != static_cast<size_t>(hw_params->d) ||
-            hw_params->ls.size() != static_cast<size_t>(hw_params->d) ||
-            hw_params->m.size() != static_cast<size_t>(hw_params->d) ||
-            hw_params->p.size() != static_cast<size_t>(hw_params->d) ||
-            hw_params->kmax.size() != static_cast<size_t>(hw_params->d))
+        if (hw_params->g.size() != (size_t)(hw_params->d) ||
+            hw_params->ls.size() != (size_t)(hw_params->d) ||
+            hw_params->m.size() != (size_t)(hw_params->d) ||
+            hw_params->p.size() != (size_t)(hw_params->d) ||
+            hw_params->P.size() != (size_t)(hw_params->d))
         {
             throw std::invalid_argument("Inconsistent hardware parameter vector sizes");
         }
@@ -187,7 +187,7 @@ namespace HW_model
             return "0 B";
         const char *units[] = {"B", "KB", "MB", "GB", "TB", "PB"};
         int unit = 0;
-        double size = static_cast<double>(bytes);
+        double size = (double)(bytes);
         while (size >= 1024 && unit < 5)
         {
             size /= 1024;
@@ -210,6 +210,10 @@ namespace HW_model
 #ifdef DEBUG_COST_MODELS
         std::cout << "\nHardware parameters:\n";
         std::cout << "  - Levels (d): " << hw_params->d << "\n";
+        std::cout << "  - Scalar rate (r_scalar): " << std::scientific << std::setprecision(2)
+                  << hw_params->r_scalar << " ops/s\n";
+        std::cout << "  - Vector rate (r_vec): " << std::scientific << std::setprecision(2)
+                  << hw_params->r_vec << " ops/s\n";
         for (size_t i = 0; i < hw_params->d; i++)
         {
             std::cout << "  - Level " << (i + 1) << ":\n";
@@ -219,7 +223,7 @@ namespace HW_model
                       << (hw_params->ls[i] * 1e9) << " ns\n";
             std::cout << "    - Memory (m): " << format_bytes(hw_params->m[i]) << "\n";
             std::cout << "    - Processing units (p): " << hw_params->p[i] << "\n";
-            std::cout << "    - Max streams (kmax): " << hw_params->kmax[i] << "\n";
+            std::cout << "    - Total subcomponents (P): " << hw_params->P[i] << "\n";
         }
 #endif
     }
@@ -231,6 +235,10 @@ namespace HW_model
 #ifdef DEBUG_COST_MODELS
         std::cout << "\nHardware parameters:\n";
         std::cout << "  - Levels (d): " << hw_params->d << "\n";
+        std::cout << "  - Scalar rate (r_scalar): " << std::scientific << std::setprecision(2)
+                  << hw_params->r_scalar << " ops/s\n";
+        std::cout << "  - Vector rate (r_vec): " << std::scientific << std::setprecision(2)
+                  << hw_params->r_vec << " ops/s\n";
         for (size_t i = 0; i < hw_params->d; i++)
         {
             std::string level_name = (i < level_names.size()) ? level_names[i] : "Unknown";
@@ -241,7 +249,7 @@ namespace HW_model
                       << (hw_params->ls[i] * 1e9) << " ns\n";
             std::cout << "    - Memory (m): " << format_bytes(hw_params->m[i]) << "\n";
             std::cout << "    - Processing units (p): " << hw_params->p[i] << "\n";
-            std::cout << "    - Max streams (kmax): " << hw_params->kmax[i] << "\n";
+            std::cout << "    - Total subcomponents (P): " << hw_params->P[i] << "\n";
         }
 #endif
     }
@@ -306,8 +314,8 @@ namespace HW_model
             }
             
             // Find closest match
-            if (std::abs(static_cast<int64_t>(model_threads) - static_cast<int64_t>(num_threads)) <
-                std::abs(static_cast<int64_t>(best_threads) - static_cast<int64_t>(num_threads))) {
+            if (std::abs((int64_t)(model_threads) - (int64_t)(num_threads)) <
+                std::abs((int64_t)(best_threads) - (int64_t)(num_threads))) {
                 best_idx = idx;
                 best_threads = model_threads;
             }
@@ -324,9 +332,9 @@ namespace HW_model
 
         typedef struct AlgoParameters
         {
-            uint64_t ops_scalar, ops_SIMD;
+            uint64_t w_scalar, w_vector;
             uint64_t b_foot, b_reads, b_writes;
-            size_t lvl;
+            size_t l_i;
         } *AlgoParameters_p;
 
         void algo_params_validate(AlgoParameters_p algo_params)
@@ -345,9 +353,9 @@ namespace HW_model
 
             // Compute operations
             std::cout << "  - Compute Operations:\n";
-            std::cout << "    - Scalar operations: " << algo_params->ops_scalar << "\n";
-            std::cout << "    - SIMD operations: " << algo_params->ops_SIMD << "\n";
-            std::cout << "    - Total operations: " << (algo_params->ops_scalar + algo_params->ops_SIMD) << "\n";
+            std::cout << "    - Scalar operations: " << algo_params->w_scalar << "\n";
+            std::cout << "    - SIMD operations: " << algo_params->w_vector << "\n";
+            std::cout << "    - Total operations: " << (algo_params->w_scalar + algo_params->w_vector) << "\n";
 
             // Memory operations
             std::cout << "  - Memory Operations:\n";
@@ -357,15 +365,15 @@ namespace HW_model
             std::cout << "    - Total data transfer: " << HW_model::format_bytes(algo_params->b_reads + algo_params->b_writes) << "\n";
 
             // Operational intensity
-            double op_intensity = static_cast<double>(algo_params->ops_scalar + algo_params->ops_SIMD) /
+            double op_intensity = (double)(algo_params->w_scalar + algo_params->w_vector) /
                                   (algo_params->b_reads + algo_params->b_writes);
             std::cout << "  - Operational Intensity: " << std::fixed << std::setprecision(2)
                       << op_intensity << " ops/byte\n";
 
             // Memory level
-            if (algo_params->lvl > 0)
+            if (algo_params->l_i > 0)
             {
-                std::cout << "  - Target memory level: " << algo_params->lvl << "\n";
+                std::cout << "  - Target memory level: " << algo_params->l_i << "\n";
             }
             else
             {
@@ -378,25 +386,21 @@ namespace HW_model
         void adjust_lvl_naive(HW_model::HWParameters_p hw_params,
                               AlgoParameters_p algo_params, size_t target_threads)
         {
-            // The base level for auto-adjustment is the maximum level of all supersteps
-            size_t base_level = 0, target_level = hw_params->d;
-
-            if (algo_params->lvl)
+            size_t target_level = hw_params->d;
+            target_threads = target_threads;
+            if (algo_params->l_i)
                 return;
 
-            // Naive search for the appropriate memory level (d)
-            size_t pi_mult = 1;
+            // Find the first level whose memory capacity fits the footprint
             for (size_t lvl = 0; lvl < hw_params->d; lvl++)
             {
-                pi_mult *= hw_params->p[lvl];
-                if (lvl >= base_level &&
-                    algo_params->b_foot <= hw_params->m[lvl])// && target_threads <= pi_mult)
+                if (algo_params->b_foot <= hw_params->m[lvl])
                 {
                     target_level = lvl + 1;
                     break;
                 }
             }
-            algo_params->lvl = target_level;
+            algo_params->l_i = target_level;
         }
 
 /*=====================================================================*/
@@ -424,12 +428,13 @@ namespace HW_model
 
             adjust_lvl_naive(hw_params, algo_params, target_threads);
             double comp_t = 0.0, mem_t = 0.0;
-            comp_t = 0; // Currently ignoring compute time
-            // (hw_params->r_scalar * algo_params->ops_scalar / target_threads + hw_params->r_SIMD * algo_params->ops_SIMD / target_threads);
+            if (hw_params->r_scalar > 0 || hw_params->r_vec > 0)
+                comp_t = (hw_params->r_scalar > 0 ? (double)algo_params->w_scalar / hw_params->r_scalar / target_threads : 0)
+                       + (hw_params->r_vec > 0 ? (double)algo_params->w_vector / hw_params->r_vec / target_threads : 0);
             if (algo_params->b_foot)
-                mem_t = hw_params->g[algo_params->lvl - 1] 
+                mem_t = hw_params->g[algo_params->l_i - 1] 
                 * (algo_params->b_reads / target_threads + algo_params->b_writes / target_threads)
-                + hw_params->ls[algo_params->lvl - 1];
+                + hw_params->ls[algo_params->l_i - 1];
             else mem_t = 0;
 
 			double total_cost = std::max( comp_t, mem_t );
@@ -444,11 +449,11 @@ namespace HW_model
             size_t y_dsize, size_t A_dsize, size_t A_rowidx_size, size_t A_colidx_size ) {
 			AlgoParameters_p spmv_coo = new AlgoParameters();
 			spmv_coo->b_foot = ( A_dsize + A_rowidx_size + A_colidx_size ) * nnz + y_dsize * m + x_dsize * n;
-			spmv_coo->lvl = 0; // Auto-adjust memory level
+			spmv_coo->l_i = 0; // Auto-adjust memory level
 			spmv_coo->b_reads = ( A_dsize + A_rowidx_size + A_colidx_size + x_dsize + y_dsize ) * nnz;
 			spmv_coo->b_writes = y_dsize * nnz;
-			spmv_coo->ops_scalar = 2 * nnz;
-            spmv_coo->ops_SIMD = 0;
+			spmv_coo->w_scalar = 2 * nnz;
+            spmv_coo->w_vector = 0;
             return spmv_coo;
 		}
 
@@ -459,8 +464,8 @@ namespace HW_model
 			spmv_csr->b_foot = ( A_colidx_size + A_dsize ) * nnz + A_rowptr_size * ( m + 1 ) + y_dsize * m + x_dsize * n;
 			spmv_csr->b_reads = ( A_colidx_size + A_dsize + x_dsize ) * nnz + A_rowptr_size * ( m + 1 ) + y_dsize * m;
 			spmv_csr->b_writes = y_dsize * m;
-			spmv_csr->ops_scalar = 2 * nnz;
-            spmv_csr->ops_SIMD = 0;
+			spmv_csr->w_scalar = 2 * nnz;
+            spmv_csr->w_vector = 0;
             return spmv_csr;
 		}
 		/*=====================================================================*/
@@ -476,9 +481,9 @@ namespace HW_model
 				algo_p->b_reads = 0 + ( y_vec ? y_dsize * n : 0 );
 				algo_p->b_writes = x_dsize * n;
 			}
-			algo_p->ops_scalar = 0;
-			algo_p->ops_SIMD = 0;
-			algo_p->lvl = 0;
+			algo_p->w_scalar = 0;
+			algo_p->w_vector = 0;
+			algo_p->l_i = 0;
 			return algo_p;
 		}
 		/*=====================================================================*/
@@ -489,9 +494,9 @@ namespace HW_model
             algo_p->b_foot = dtype_size * n;
             algo_p->b_reads = 0;
             algo_p->b_writes = dtype_size * n;
-            algo_p->ops_scalar = 0;
-            algo_p->ops_SIMD = 0;
-            algo_p->lvl = 0;
+            algo_p->w_scalar = 0;
+            algo_p->w_vector = 0;
+            algo_p->l_i = 0;
             return algo_p;
         }
         /*=====================================================================*/
@@ -502,9 +507,9 @@ namespace HW_model
             algo_p->b_foot = 0;
             algo_p->b_reads = 0;
             algo_p->b_writes = 0;
-            algo_p->ops_scalar = 1;
-            algo_p->ops_SIMD = 0;
-            algo_p->lvl = 0;
+            algo_p->w_scalar = 1;
+            algo_p->w_vector = 0;
+            algo_p->l_i = 0;
             return algo_p;
         }
         /*=====================================================================*/
@@ -515,9 +520,9 @@ namespace HW_model
 			algo_p->b_foot = z_dsize * n + ( x_vec ? x_dsize * n : 0 ) + ( y_vec ? y_dsize * n : 0 );
 			algo_p->b_reads = ( x_vec ? x_dsize * n : 0 ) + ( y_vec ? y_dsize * n : 0 );
 			algo_p->b_writes = z_dsize * n;
-			algo_p->ops_scalar = 0;
-            algo_p->ops_SIMD = n;
-            algo_p->lvl = 0;
+			algo_p->w_scalar = 0;
+            algo_p->w_vector = n;
+            algo_p->l_i = 0;
             return algo_p;
 		}
 		/*=====================================================================*/
@@ -528,9 +533,9 @@ namespace HW_model
             algo_p->b_foot = 0 + (x_vec ? x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
             algo_p->b_reads = (x_vec ? x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
             algo_p->b_writes = (x_vec ? x_dsize * n : 0);
-            algo_p->ops_scalar = 0;
-            algo_p->ops_SIMD = n;
-            algo_p->lvl = 0;
+            algo_p->w_scalar = 0;
+            algo_p->w_vector = n;
+            algo_p->l_i = 0;
             return algo_p;
 		}
 		/*=====================================================================*/
@@ -541,9 +546,9 @@ namespace HW_model
             algo_p->b_foot = 0 + (x_vec ? x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
             algo_p->b_reads = (x_vec ? x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
             algo_p->b_writes = (y_vec ? y_dsize * n : 0);
-            algo_p->ops_scalar = 0;
-            algo_p->ops_SIMD = n;
-            algo_p->lvl = 0;
+            algo_p->w_scalar = 0;
+            algo_p->w_vector = n;
+            algo_p->l_i = 0;
             return algo_p;
 		}
 		/*=====================================================================*/
@@ -553,9 +558,11 @@ namespace HW_model
 			algo_p->b_foot = ( x_dsize + y_dsize ) * n;
 			algo_p->b_reads = ( x_dsize + y_dsize ) * n;
 			algo_p->b_writes = 0;
-            algo_p->ops_scalar = 0;
-            algo_p->ops_SIMD = 2*n;
-            algo_p->lvl = 0;
+            algo_p->w_scalar = 0;
+            algo_p->w_vector = 2*n;
+            algo_p->l_i = 0;
+            // FIXME: A superstep for reduction is missing here, but it needs * threads -> not covered by SVal
+            z_dsize = z_dsize;
             return algo_p;
 		}
 		/*=====================================================================*/
@@ -566,9 +573,9 @@ namespace HW_model
 			algo_p->b_foot = z_dsize * n + (x_vec ? x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
 			algo_p->b_reads = (x_vec ? x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
 			algo_p->b_writes = z_dsize * n;
-			algo_p->ops_scalar = 0;
-            algo_p->ops_SIMD = n;
-            algo_p->lvl = 0;
+			algo_p->w_scalar = 0;
+            algo_p->w_vector = n;
+            algo_p->l_i = 0;
             return algo_p;
 		}
 		/*=====================================================================*/
@@ -579,9 +586,9 @@ namespace HW_model
 			algo_p->b_foot = z_dsize * n + (x_vec ? x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
 			algo_p->b_reads = (x_vec ? x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
 			algo_p->b_writes = z_dsize * n;
-			algo_p->ops_scalar = 0;
-            algo_p->ops_SIMD = n;
-            algo_p->lvl = 0;
+			algo_p->w_scalar = 0;
+            algo_p->w_vector = n;
+            algo_p->l_i = 0;
             return algo_p;
 		}
 		/*=====================================================================*/
@@ -591,9 +598,9 @@ namespace HW_model
 			algo_p->b_foot = ( z_dsize + x_dsize + y_dsize ) * n + ( a_vec ? a_dsize * n : 0 );
 			algo_p->b_reads = ( x_dsize + y_dsize ) * n + ( a_vec ? a_dsize * n : 0 );
 			algo_p->b_writes = (z_dsize)*n;
-			algo_p->ops_scalar = 0;
-            algo_p->ops_SIMD = 2 * n;
-            algo_p->lvl = 0;
+			algo_p->w_scalar = 0;
+            algo_p->w_vector = 2 * n;
+            algo_p->l_i = 0;
             return algo_p;
 		}
 		/*==================================================================*/
@@ -607,12 +614,12 @@ namespace HW_model
         // Algorithm parameters structure
         typedef struct AlgoParameters
         {
-            uint64_t ops_scalar, ops_SIMD;
+            uint64_t w_scalar, w_vector;
             uint64_t b_foot;
             uint64_t b_reads, b_writes;
             uint64_t rand_reads, rand_writes;
 
-            size_t lvl;
+            size_t l_i;
         } *AlgoParameters_p;
 
         void algo_params_validate(AlgoParameters_p algo_params)
@@ -631,9 +638,9 @@ namespace HW_model
             
             // Compute operations
             std::cout << "  - Compute Operations:\n";
-            std::cout << "    - Scalar operations: " << algo_params->ops_scalar << "\n";
-            std::cout << "    - SIMD operations: " << algo_params->ops_SIMD << "\n";
-            std::cout << "    - Total operations: " << (algo_params->ops_scalar + algo_params->ops_SIMD) << "\n";
+            std::cout << "    - Scalar operations: " << algo_params->w_scalar << "\n";
+            std::cout << "    - SIMD operations: " << algo_params->w_vector << "\n";
+            std::cout << "    - Total operations: " << (algo_params->w_scalar + algo_params->w_vector) << "\n";
             
             // Memory operations
             std::cout << "  - Memory Operations:\n";
@@ -659,22 +666,22 @@ namespace HW_model
             std::cout << "    - Total data transfer: " << HW_model::format_bytes(total_transfers) << "\n";
             
             // Operational intensity
-            double op_intensity = static_cast<double>(algo_params->ops_scalar + algo_params->ops_SIMD) / 
+            double op_intensity = (double)(algo_params->w_scalar + algo_params->w_vector) / 
                                   (total_transfers > 0 ? total_transfers : 1);
             std::cout << "  - Operational Intensity: " << std::fixed << std::setprecision(2)
                       << op_intensity << " ops/byte\n";
             
             // Batch vs Random ratio
             if (total_transfers > 0) {
-                double batch_ratio = static_cast<double>(algo_params->b_reads + algo_params->b_writes) / 
+                double batch_ratio = (double)(algo_params->b_reads + algo_params->b_writes) / 
                                      total_transfers * 100.0;
                 std::cout << "  - Batch access ratio: " << std::fixed << std::setprecision(1)
                           << batch_ratio << "%\n";
             }
             
             // Memory level
-            if (algo_params->lvl > 0) {
-                std::cout << "  - Target memory level: " << algo_params->lvl << "\n";
+            if (algo_params->l_i > 0) {
+                std::cout << "  - Target memory level: " << algo_params->l_i << "\n";
             } else {
                 std::cout << "  - Target memory level: auto\n";
             }
@@ -685,25 +692,21 @@ namespace HW_model
         void adjust_lvl_naive(HW_model::HWParameters_p hw_params,
                               AlgoParameters_p algo_params, size_t target_threads)
         {
-            // The base level for auto-adjustment is the maximum level of all supersteps
-            size_t base_level = 0, target_level = hw_params->d;
-
-            if (algo_params->lvl)
+            size_t target_level = hw_params->d;
+            target_threads = target_threads;
+            if (algo_params->l_i)
                 return;
 
-            // Naive search for the appropriate memory level (d)
-            size_t pi_mult = 1;
+            // Find the first level whose memory capacity fits the footprint
             for (size_t lvl = 0; lvl < hw_params->d; lvl++)
             {
-                pi_mult *= hw_params->p[lvl];
-                if (lvl >= base_level &&
-                    algo_params->b_foot <= hw_params->m[lvl])// && target_threads <= pi_mult)
+                if (algo_params->b_foot <= hw_params->m[lvl])
                 {
                     target_level = lvl + 1;
                     break;
                 }
             }
-            algo_params->lvl = target_level;
+            algo_params->l_i = target_level;
         }
 
         /*=====================================================================*/
@@ -733,11 +736,12 @@ namespace HW_model
 
             adjust_lvl_naive(hw_params, algo_params, target_threads);
             double comp_t = 0.0, mem_t = 0.0;
-            comp_t = 0; // Currently ignoring compute time
-            // (hw_params->r_scalar * algo_params->ops_scalar / target_threads + hw_params->r_SIMD * algo_params->ops_SIMD / target_threads);
-            mem_t = hw_params->g[algo_params->lvl - 1] 
+            if (hw_params->r_scalar > 0 || hw_params->r_vec > 0)
+                comp_t = (hw_params->r_scalar > 0 ? (double)algo_params->w_scalar / hw_params->r_scalar / target_threads : 0)
+                       + (hw_params->r_vec > 0 ? (double)algo_params->w_vector / hw_params->r_vec / target_threads : 0);
+            mem_t = hw_params->g[algo_params->l_i - 1] 
             * (algo_params->b_reads / target_threads + algo_params->b_writes / target_threads) 
-            + hw_params->ls[algo_params->lvl - 1] 
+            + hw_params->ls[algo_params->l_i - 1] 
             * (algo_params->rand_reads / target_threads + algo_params->rand_writes / target_threads);
 
 			double total_cost = std::max(comp_t, mem_t);
@@ -752,7 +756,7 @@ namespace HW_model
             size_t A_dsize, size_t A_rowidx_size, size_t A_colidx_size ) {
 			AlgoParameters_p spmv_coo = new AlgoParameters();
 			spmv_coo->b_foot = ( A_dsize + A_rowidx_size + A_colidx_size ) * nnz + y_dsize * m + x_dsize * n;
-            spmv_coo->lvl = 0; // Auto-adjust memory level
+            spmv_coo->l_i = 0; // Auto-adjust memory level
 			spmv_coo->b_reads = ( A_dsize + A_rowidx_size + A_colidx_size + x_dsize + y_dsize ) * nnz;
 			spmv_coo->b_writes = y_dsize * nnz;
             spmv_coo->rand_reads = 2 * nnz; // * dtype_size
@@ -795,9 +799,9 @@ namespace HW_model
 				algo_p->rand_writes = 0;
                 algo_p->rand_reads = 0;
             }
-            algo_p->ops_scalar = 0;
-            algo_p->ops_SIMD = 0;
-            algo_p->lvl = 0;
+            algo_p->w_scalar = 0;
+            algo_p->w_vector = 0;
+            algo_p->l_i = 0;
             return algo_p;
 		}
 		/*=====================================================================*/
@@ -810,9 +814,9 @@ namespace HW_model
             algo_p->b_writes = dtype_size * n;
             algo_p->rand_writes = 0;
             algo_p->rand_reads = 0;
-            algo_p->ops_scalar = 0;
-            algo_p->ops_SIMD = 0;
-            algo_p->lvl = 0;
+            algo_p->w_scalar = 0;
+            algo_p->w_vector = 0;
+            algo_p->l_i = 0;
             return algo_p;
         }
         /*=====================================================================*/
@@ -825,9 +829,9 @@ namespace HW_model
             algo_p->b_writes = 0;
             algo_p->rand_writes = 0;
             algo_p->rand_reads = 0;
-            algo_p->ops_scalar = 1;
-            algo_p->ops_SIMD = 0;
-            algo_p->lvl = 0;
+            algo_p->w_scalar = 1;
+            algo_p->w_vector = 0;
+            algo_p->l_i = 0;
             return algo_p;
         }
         /*=====================================================================*/
@@ -841,9 +845,9 @@ namespace HW_model
             algo_p->b_writes = z_dsize * n;
             algo_p->rand_writes = 0;
             algo_p->rand_reads = 0;
-            algo_p->ops_scalar = 0;
-            algo_p->ops_SIMD = n;
-            algo_p->lvl = 0;
+            algo_p->w_scalar = 0;
+            algo_p->w_vector = n;
+            algo_p->l_i = 0;
             return algo_p;
 		}
 		/*=====================================================================*/
@@ -856,9 +860,9 @@ namespace HW_model
             algo_p->b_writes = (x_vec ? x_dsize * n : 0);
             algo_p->rand_writes = 0;
             algo_p->rand_reads = 0;
-            algo_p->ops_scalar = 0;
-            algo_p->ops_SIMD = n;
-            algo_p->lvl = 0;
+            algo_p->w_scalar = 0;
+            algo_p->w_vector = n;
+            algo_p->l_i = 0;
             return algo_p;
 		}
 		/*=====================================================================*/
@@ -871,9 +875,9 @@ namespace HW_model
             algo_p->b_writes = (y_vec ? y_dsize * n : 0);
             algo_p->rand_writes = 0;
             algo_p->rand_reads = 0;
-            algo_p->ops_scalar = 0;
-            algo_p->ops_SIMD = n;
-            algo_p->lvl = 0;
+            algo_p->w_scalar = 0;
+            algo_p->w_vector = n;
+            algo_p->l_i = 0;
             return algo_p;
 		}
 		/*=====================================================================*/
@@ -885,9 +889,11 @@ namespace HW_model
 			algo_p->b_writes = 0;
             algo_p->rand_writes = 0;
             algo_p->rand_reads = 0;
-            algo_p->ops_scalar = 0;
-            algo_p->ops_SIMD = 2 * n;
-            algo_p->lvl = 0;
+            algo_p->w_scalar = 0;
+            algo_p->w_vector = 2 * n;
+            algo_p->l_i = 0;
+            // FIXME: A superstep for reduction is missing here, but it needs * threads -> not covered by SVal
+            z_dsize = z_dsize;
             return algo_p;
 		}
 		/*=====================================================================*/
@@ -900,9 +906,9 @@ namespace HW_model
 			algo_p->b_writes = z_dsize * n;
 			algo_p->rand_writes = 0;
             algo_p->rand_reads = 0;
-            algo_p->ops_scalar = 0;
-            algo_p->ops_SIMD = n;
-            algo_p->lvl = 0;
+            algo_p->w_scalar = 0;
+            algo_p->w_vector = n;
+            algo_p->l_i = 0;
             return algo_p;
 		}
 		/*=====================================================================*/
@@ -915,9 +921,9 @@ namespace HW_model
 			algo_p->b_writes = z_dsize * n;
 			algo_p->rand_writes = 0;
             algo_p->rand_reads = 0;
-            algo_p->ops_scalar = 0;
-            algo_p->ops_SIMD = n;
-            algo_p->lvl = 0;
+            algo_p->w_scalar = 0;
+            algo_p->w_vector = n;
+            algo_p->l_i = 0;
             return algo_p;
 		}
 		/*=====================================================================*/
@@ -930,13 +936,891 @@ namespace HW_model
             algo_p->b_writes = (z_dsize) * n;
             algo_p->rand_writes = 0;
             algo_p->rand_reads = 0;
-            algo_p->ops_scalar = 0;
-            algo_p->ops_SIMD = 2 * n;
-            algo_p->lvl = 0;
+            algo_p->w_scalar = 0;
+            algo_p->w_vector = 2 * n;
+            algo_p->l_i = 0;
             return algo_p;
 		}
 		/*==================================================================*/
     } 
+
+    // PaHIS performance model
+    namespace pahis
+    {
+        // Scaled value: stores a raw value with optional deferred division by s
+        struct SVal {
+            uint64_t val;
+            bool div_by_s;
+            SVal() : val(0), div_by_s(false) {}
+            SVal(uint64_t v, bool d = false) : val(v), div_by_s(d) {}
+            uint64_t resolve(size_t s) const { return div_by_s ? val / s : val; }
+        };
+
+        // Per-worker computation parameters: w_v(i,s)
+        typedef struct SubComponentComp {
+            SVal w_scalar, w_vector;
+        } SubComponentComp_t;
+
+        // Per-sub-component data movement parameters at level l_i
+        typedef struct SubComponentDataM {
+            SVal k_s; // Number of k-streams
+            SVal hi_rep; // Total count of last hi entry (min 1; 1 = no extra repetition, N = last entry appears N times)
+            std::vector<SVal> hi; // Access sizes for each stream
+        } SubComponentDataM_t;
+
+        // Superstep structure
+        typedef struct Superstep
+        {
+            SVal nv; // Number of supersteps of this type
+            size_t l_i;      // Memory level (for g/bandwidth)
+            size_t l_i_lat;  // Latency level (for ls/latency)
+            // w_v(i,s): per-worker computation (s = 0..P(d))
+            // Size 1 = all workers identical
+            std::vector<SubComponentComp_t> w_v;
+            // k_s(i,s), h(i,s,k): per-sub-component data movement (s = 0..p(l_i))
+            // Size 1 = all sub-components identical
+            std::vector<SubComponentDataM_t> dm_s_v;
+        } *Superstep_p;
+
+        // Algorithm parameters structure
+        typedef struct AlgoParameters
+        {
+            uint64_t num_v;                 // Number of superstep variations
+            uint64_t b_foot;                // Memory footprint  
+            std::vector<Superstep_p> ss_v;  // Superstep variations
+        } *AlgoParameters_p;
+
+        // Validate algorithm parameters
+        void algo_params_validate(AlgoParameters_p algo_params)
+        {
+            // Validate input parameters
+            if (algo_params->num_v <= 0 || algo_params->ss_v.empty())
+            {
+                throw std::invalid_argument("Missing required algorithm parameters: num_v and ss_v");
+            }
+
+            if (algo_params->ss_v.size() != (size_t)(algo_params->num_v))
+            {
+                throw std::invalid_argument("ss_v should have " + std::to_string(algo_params->num_v) +
+                                            " elements, but got " + std::to_string(algo_params->ss_v.size()));
+            }
+            // Validate each superstep
+            for (size_t i = 0; i < algo_params->ss_v.size(); i++)
+            {
+                Superstep_p ss = algo_params->ss_v[i];
+                if (ss->w_v.empty())
+                {
+                    throw std::invalid_argument("Superstep type " + std::to_string(i + 1) +
+                                                " has empty w_v (need at least 1 sub-component variation)");
+                }
+                if (ss->dm_s_v.empty())
+                {
+                    throw std::invalid_argument("Superstep type " + std::to_string(i + 1) +
+                                                " has empty dm_s_v (need at least 1 sub-component variation)");
+                }
+                for (size_t s = 0; s < ss->dm_s_v.size(); s++)
+                {
+                    const auto& cs = ss->dm_s_v[s];
+                    if (cs.hi_rep.val == 0)
+                    {
+                        throw std::invalid_argument("Superstep type " + std::to_string(i + 1) +
+                                                    " sub-component " + std::to_string(s) +
+                                                    " has hi_rep=0 (must be >= 1)");
+                    }
+                    if (cs.hi.size() + cs.hi_rep.val - 1 != (size_t)(cs.k_s.val))
+                    {
+                        throw std::invalid_argument("Superstep type " + std::to_string(i + 1) +
+                                                    " sub-component " + std::to_string(s) +
+                                                    " has k_s=" + std::to_string(cs.k_s.val) +
+                                                    " but hi has " + std::to_string(cs.hi.size()) +
+                                                    " elements with hi_rep=" + std::to_string(cs.hi_rep.val));
+                    }
+                }
+            }
+        }
+
+        // Print algorithm parameters
+        void algo_params_print(AlgoParameters_p algo_params)
+        {
+            // Algorithm parameters
+#ifdef DEBUG_COST_MODELS
+            std::cout << "\nAlgorithm parameters:\n";
+            std::cout << "  - Superstep variations (num_v): " << algo_params->num_v << "\n";
+            std::cout << "  - Memory footprint: " << HW_model::format_bytes(algo_params->b_foot) << "\n";
+
+            for (size_t i = 0; i < algo_params->ss_v.size(); i++)
+            {
+                Superstep_p ss = algo_params->ss_v[i];
+
+                std::cout << "  - Superstep type " << (i + 1) << ":\n";
+                std::cout << "    - Count (nv): " << ss->nv.val
+                          << (ss->nv.div_by_s ? "/s" : "") << "\n";
+                std::cout << "    - Memory level (bw): " << ss->l_i
+                          << ", (lat): " << ss->l_i_lat << "\n";
+                std::cout << "    - Comp sub-components (w_v): " << ss->w_v.size() << "\n";
+                for (size_t s = 0; s < ss->w_v.size(); s++)
+                {
+                    if (ss->w_v.size() > 1)
+                        std::cout << "      [s=" << s << "] ";
+                    else
+                        std::cout << "      ";
+                    std::cout << "w_scalar=" << ss->w_v[s].w_scalar.val
+                              << (ss->w_v[s].w_scalar.div_by_s ? "/s" : "")
+                              << ", w_vector=" << ss->w_v[s].w_vector.val
+                              << (ss->w_v[s].w_vector.div_by_s ? "/s" : "") << "\n";
+                }
+                std::cout << "    - Comm sub-components: " << ss->dm_s_v.size() << "\n";
+                for (size_t s = 0; s < ss->dm_s_v.size(); s++)
+                {
+                    const auto& cs = ss->dm_s_v[s];
+                    if (ss->dm_s_v.size() > 1)
+                        std::cout << "      [s=" << s << "] ";
+                    else
+                        std::cout << "      ";
+                    std::cout << "k_s=" << cs.k_s.val
+                              << (cs.k_s.div_by_s ? "/s" : "") << ", hi: ";
+                    uint64_t sum_hi = 0;
+                    for (size_t j = 0; j < cs.hi.size(); j++)
+                    {
+                        sum_hi += cs.hi[j].val;
+                        std::cout << cs.hi[j].val;
+                        if (cs.hi[j].div_by_s) std::cout << "/s";
+                        if (j < cs.hi.size() - 1)
+                            std::cout << ", ";
+                        else if (cs.hi_rep.val > 1)
+                            std::cout << " (X" << cs.hi_rep.val << (cs.hi_rep.div_by_s ? "/s" : "") << ")";
+                    }
+                    if (cs.hi_rep.val > 1 && !cs.hi.empty())
+                        sum_hi += cs.hi.back().val * (cs.hi_rep.val - 1);
+                    std::cout << "\n";
+                    if (ss->dm_s_v.size() > 1)
+                        std::cout << "             ";
+                    else
+                        std::cout << "      ";
+                    std::cout << "Volume per superstep: " << HW_model::format_bytes(sum_hi) << "\n";
+                }
+            }
+#endif
+        }
+
+        // Validate superstep levels against hardware parameters (after adjust_lvl_naive)
+        void validate_superstep_levels(HW_model::HWParameters_p hw_params,
+                                       AlgoParameters_p algo_params)
+        {
+            for (size_t t = 0; t < algo_params->ss_v.size(); t++)
+            {
+                Superstep_p ss = algo_params->ss_v[t];
+                // Skip supersteps with no data movement
+                if (ss->dm_s_v.empty() || !ss->dm_s_v[0].k_s.val)
+                    continue;
+                size_t lvl = ss->l_i;
+                size_t lvl_lat = ss->l_i_lat;
+                if (lvl < 1 || lvl > hw_params->d)
+                {
+                    std::cerr << "Warning: Superstep type " << (t + 1) << " has bandwidth level " << lvl
+                              << " out of range [1, " << hw_params->d << "]. Clamping.\n";
+                    ss->l_i = std::min(std::max((size_t)1, lvl), hw_params->d);
+                }
+                if (lvl_lat < 1 || lvl_lat > hw_params->d)
+                {
+                    std::cerr << "Warning: Superstep type " << (t + 1) << " has latency level " << lvl_lat
+                              << " out of range [1, " << hw_params->d << "]. Clamping.\n";
+                    ss->l_i_lat = std::min(std::max((size_t)1, lvl_lat), hw_params->d);
+                }
+            }
+        }
+
+        // Adjust memory level for supersteps
+        // Numa_opt: -1 = pessimistic, 0 = balanced, 1 = optimistic
+        void adjust_lvl_naive(HW_model::HWParameters_p hw_params,
+                              AlgoParameters_p algo_params, int Numa_opt)
+        {
+            size_t target_threads = hw_params->P[hw_params->d - 1];
+
+            // Check if any supersteps need adjustment
+            bool adjust_level = false;
+            for (size_t t = 0; t < algo_params->ss_v.size(); t++)
+                if (!(algo_params->ss_v[t]->l_i) || algo_params->ss_v[t]->l_i == 42)
+                    adjust_level = true;
+            if (!adjust_level) return;
+
+            // NUMA setup
+            size_t abs_d_numa = (size_t)(std::abs(hw_params->d_numa));
+            bool threads_span_numa = (abs_d_numa > 0) &&
+                (abs_d_numa <= 1 || target_threads > hw_params->P[abs_d_numa - 2]);
+
+            // Find base memory level (1-indexed)
+            // total_mem(l_i) = m(l_i) * P(d) / P(l_i)
+            size_t base_level = hw_params->d;
+            for (size_t lvl = 0; lvl < hw_params->d; lvl++)
+            {
+                uint64_t effective_mem = hw_params->m[lvl]
+                    * (hw_params->P[hw_params->d - 1] / hw_params->P[lvl]);
+                if (algo_params->b_foot <= effective_mem)
+                {
+                    base_level = lvl + 1;
+                    break;
+                }
+            }
+
+            // Apply NUMA policy and assign levels
+            for (size_t t = 0; t < algo_params->ss_v.size(); t++)
+            {
+                if (!(algo_params->ss_v[t]->l_i))
+                {
+                    size_t li = base_level;
+                    size_t li_lat = base_level;
+                    if (threads_span_numa)
+                    {
+                        size_t numa_bump = std::min(abs_d_numa + 1, hw_params->d);
+                        if (Numa_opt == -1) // pessimistic
+                        {
+                            li = std::max(base_level, numa_bump);
+                            li_lat = li;
+                        }
+                        else if (Numa_opt == 0) // balanced
+                        {
+                            li_lat = std::max(base_level, numa_bump);
+                        }
+                        // optimistic (1): no adjustment
+                    }
+                    algo_params->ss_v[t]->l_i = li;
+                    algo_params->ss_v[t]->l_i_lat = li_lat;
+                }
+                else if (algo_params->ss_v[t]->l_i == 42)
+                {
+                    algo_params->ss_v[t]->l_i = hw_params->d;
+                    algo_params->ss_v[t]->l_i_lat = hw_params->d;
+                }
+            }
+        }
+
+        // Scale a per-system throughput value to per-worker seconds
+        // (hw_params store system-wide g/ls; multiply by P(d) to get per-worker cost)
+        inline double throughput_balancer_to_s(double val, size_t target_threads)
+        {
+            return val * target_threads;
+        }
+
+        /*=====================================================================*/
+        /*------------------------------Predictor-------------------------------*/
+        /**
+         * Predicts execution cost for a kernel using the PaHIS model.
+         * Stream aggregation is always sum.
+         * target_threads is derived from hw_params->P[d-1].
+         *
+         * @param hw_params Hardware parameters
+         * @param algo_params Algorithm parameters
+         * @param Numa_opt NUMA optimization: -1 = pessimistic, 0 = balanced, 1 = optimistic (default: 0)
+         * @return Predicted execution cost in seconds
+         */
+        double predict_cost(HW_model::HWParameters_p hw_params,
+                            AlgoParameters_p algo_params,
+                            int Numa_opt = 0)
+        {
+            // Derive threads from hardware model
+            size_t target_threads = hw_params->P[hw_params->d - 1];
+#ifdef DEBUG_COST_MODELS
+            std::cout << "===== PaHIS Cost Prediction =====\n\n";
+            std::cout << "Threads (derived): " << target_threads << "\n";
+            std::cout << "Numa_opt: " << Numa_opt << "\n";
+#endif
+
+            algo_params_validate(algo_params);
+            algo_params_print(algo_params);
+            hw_params_validate(hw_params);
+            // hw_params_print(hw_params);
+
+            adjust_lvl_naive(hw_params, algo_params, Numa_opt);
+            validate_superstep_levels(hw_params, algo_params);
+
+            // Calculate cost for each superstep type
+            double total_cost = 0.0;
+#ifdef DEBUG_COST_MODELS
+            std::cout << "\nComputation breakdown by superstep type:\n";
+#endif
+            for (size_t t = 0; t < algo_params->ss_v.size(); t++)
+            {
+                Superstep_p ss = algo_params->ss_v[t];
+                uint64_t num_supersteps = ss->nv.resolve(target_threads);
+                size_t lvl = ss->l_i;
+                size_t lvl_lat = ss->l_i_lat;
+
+                // Eq. 1: c_comp(i) = max_{s=0}^{P(d)} (max(w_scalar(i,s)/r_scalar, w_vec(i,s)/r_vec))
+                double c_comp = 0.0;
+                for (const auto& wv : ss->w_v)
+                {
+                    double worker_comp = std::max(
+                        (double)wv.w_scalar.resolve(target_threads) / hw_params->r_scalar,
+                        (double)wv.w_vector.resolve(target_threads) / hw_params->r_vec);
+                    c_comp = std::max(c_comp, worker_comp);
+                }
+
+                // Eq. 2: c_comm(i) = max_{s=0}^{p(l_i)} (sum_k (h(i,s,k)*g(l_i) + ls(l_i)))
+                double c_comm = 0.0;
+                if (!ss->dm_s_v.empty() && ss->dm_s_v[0].k_s.val)
+                {
+                    // GLOBAL_SYNC level: hw_params already contain the barrier cost directly
+                    // Detected by g==0 (no bandwidth, only latency) AND being the last level
+                    bool is_global_sync = (lvl == hw_params->d && hw_params->g[lvl - 1] == 0.0);
+                    double g_level = is_global_sync ? hw_params->g[lvl - 1]
+                                                    : throughput_balancer_to_s(hw_params->g[lvl - 1], target_threads);
+                    double ls_level = is_global_sync ? hw_params->ls[lvl_lat - 1]
+                                                     : throughput_balancer_to_s(hw_params->ls[lvl_lat - 1], target_threads);
+
+                    for (const auto& cs : ss->dm_s_v)
+                    {
+                        uint64_t sum_hi = 0;
+                        for (size_t j = 0; j < cs.hi.size(); ++j)
+                            sum_hi += cs.hi[j].resolve(target_threads);
+                        uint64_t resolved_hi_rep = cs.hi_rep.resolve(target_threads);
+                        if (resolved_hi_rep > 1 && !cs.hi.empty())
+                            sum_hi += cs.hi.back().resolve(target_threads) * (resolved_hi_rep - 1);
+                        double sub_comm = sum_hi * g_level + cs.k_s.resolve(target_threads) * ls_level;
+                        c_comm = std::max(c_comm, sub_comm);
+                    }
+                }
+
+                // Eq. 3: T += nv * max(c_comp(i), c_comm(i))
+                double superstep_cost = std::max(c_comp, c_comm);
+                double type_cost = num_supersteps * superstep_cost;
+                total_cost += type_cost;
+#ifdef DEBUG_COST_MODELS
+                std::cout << "Superstep type " << (t + 1)
+                          << " (bw level " << lvl << ", lat level " << lvl_lat << "):\n";
+                std::cout << "  - Count: " << num_supersteps << "\n";
+                std::cout << "  - c_comp: "
+                          << std::scientific << std::setprecision(4)
+                          << c_comp << " s"
+                          << "  = max over " << ss->w_v.size() << " worker(s)\n";
+                std::cout << "  - c_comm: "
+                          << std::scientific << std::setprecision(4)
+                          << c_comm << " s"
+                          << "  = max over " << ss->dm_s_v.size() << " sub-component(s)\n";
+                std::cout << "  - Cost per superstep: "
+                          << std::scientific << std::setprecision(4)
+                          << superstep_cost << " s"
+                          << "  = max(c_comp, c_comm)\n";
+                std::cout << "  - Total cost: "
+                          << std::scientific << std::setprecision(4)
+                          << type_cost << " seconds\n";
+#endif
+            }
+#ifdef DEBUG_COST_MODELS
+            std::cout << "\nMemory footprint: " << HW_model::format_bytes(algo_params->b_foot) << "\n";
+            std::cout << "\nTotal cost: "
+                      << std::scientific << std::setprecision(4)
+                      << total_cost << " seconds\n";
+#endif
+            return total_cost;
+        }
+
+        /*=====================================================================*/
+        /*--------------------------------COO----------------------------------*/
+        AlgoParameters_p get_params_coo(uint64_t nnz, uint64_t n,
+                                        uint64_t m, size_t x_dsize, size_t y_dsize,
+                                        size_t A_dsize, size_t A_rowidx_size, size_t A_colidx_size)
+        {
+            AlgoParameters_p spmv_coo = new AlgoParameters();
+            spmv_coo->b_foot = (A_dsize + A_rowidx_size + A_colidx_size) * nnz
+                + y_dsize * m + x_dsize * n;
+            spmv_coo->num_v = 2;
+            Superstep_p ss_omp_barrier = new Superstep();
+            ss_omp_barrier->nv = 1;
+            ss_omp_barrier->l_i = 42;
+            ss_omp_barrier->l_i_lat = 42;
+            ss_omp_barrier->w_v.resize(1);
+            ss_omp_barrier->w_v[0].w_scalar = 0;
+            ss_omp_barrier->w_v[0].w_vector = 0;
+            ss_omp_barrier->dm_s_v.resize(1);
+            ss_omp_barrier->dm_s_v[0].k_s = 1;
+            ss_omp_barrier->dm_s_v[0].hi_rep = 1;
+            ss_omp_barrier->dm_s_v[0].hi = {0};
+            spmv_coo->ss_v.push_back(ss_omp_barrier);
+            Superstep_p ss_coo = new Superstep();
+            ss_coo->nv = SVal(nnz, true);
+            ss_coo->l_i = 0;
+            ss_coo->l_i_lat = 0;
+            ss_coo->w_v.resize(1);
+            ss_coo->w_v[0].w_scalar = 2*y_dsize;
+            ss_coo->w_v[0].w_vector = 0;
+            ss_coo->dm_s_v.resize(1);     
+            ss_coo->dm_s_v[0].k_s = 5;
+            ss_coo->dm_s_v[0].hi_rep = 1;
+            ss_coo->dm_s_v[0].hi = 
+                {A_rowidx_size, A_colidx_size, A_dsize, x_dsize, 2 * y_dsize};
+            spmv_coo->ss_v.push_back(ss_coo);
+            return spmv_coo;
+        }
+
+        /*=====================================================================*/
+        /*--------------------------------CSR----------------------------------*/
+        AlgoParameters_p get_params_csr_balanced(uint64_t nnz, uint64_t n,
+                                        uint64_t m, size_t y_dsize, size_t x_dsize,
+                                        size_t A_dsize, size_t A_rowptr_size, size_t A_colidx_size)
+        {
+            AlgoParameters_p spmv_csr = new AlgoParameters();
+            spmv_csr->b_foot = (A_colidx_size + A_dsize) * nnz + A_rowptr_size * (m + 1)
+                + y_dsize * m + x_dsize * n;
+            spmv_csr->num_v = 2;
+            Superstep_p ss_omp_barrier = new Superstep();
+            ss_omp_barrier->nv = 1;
+            ss_omp_barrier->l_i = 42;
+            ss_omp_barrier->l_i_lat = 42;
+            ss_omp_barrier->w_v.resize(1);
+            ss_omp_barrier->w_v[0].w_scalar = 0;
+            ss_omp_barrier->w_v[0].w_vector = 0;
+            ss_omp_barrier->dm_s_v.resize(1);
+            ss_omp_barrier->dm_s_v[0].k_s = 1;
+            ss_omp_barrier->dm_s_v[0].hi_rep = 1;
+            ss_omp_barrier->dm_s_v[0].hi = {0};
+            spmv_csr->ss_v.push_back(ss_omp_barrier);
+            // Superstep A (pipelined) - internal loop
+            Superstep_p ss_A = new Superstep();
+            ss_A->nv = 1;
+            ss_A->l_i = 0;
+            ss_A->l_i_lat = 0;
+            ss_A->w_v.resize(1);
+            ss_A->w_v[0].w_scalar = SVal(2 * y_dsize * nnz, true);
+            ss_A->w_v[0].w_vector = 0;
+            //  y, rowptr: ks(i, s) = 3, hi(i, s, k) = ms * szbytes
+            //  col, val: ks(i, s) = 2 * ms , hi(i, s, k) = nz * rs [ir ] * szbytes
+            //  x: ks(i, s) = nz * s , hi(i, s, k) = szbytes
+            ss_A->dm_s_v.resize(5);
+            ss_A->dm_s_v[0].k_s = 1;
+            ss_A->dm_s_v[0].hi_rep = 1;
+            ss_A->dm_s_v[0].hi = {SVal(m * A_rowptr_size, true)};
+
+            ss_A->dm_s_v[1].k_s = 2;
+            ss_A->dm_s_v[1].hi_rep = 1;
+            ss_A->dm_s_v[1].hi = {SVal(m * y_dsize, true), SVal(m * y_dsize, true)};
+            
+            // Assuming perfect balancing of nnz across rows (i.e. m rows each have nnz/m non-zeros)
+            ss_A->dm_s_v[2].k_s = SVal(m, true);
+            ss_A->dm_s_v[2].hi_rep = SVal( m, true);
+            ss_A->dm_s_v[2].hi = {nnz/m * A_colidx_size};
+            
+            ss_A->dm_s_v[3].k_s = SVal(m, true);
+            ss_A->dm_s_v[3].hi_rep = SVal(m, true);
+            ss_A->dm_s_v[3].hi = {nnz/m * A_dsize};
+            
+            ss_A->dm_s_v[4].k_s = SVal(nnz, true);
+            ss_A->dm_s_v[4].hi_rep = SVal(nnz, true);
+            ss_A->dm_s_v[4].hi = {x_dsize};    
+
+            spmv_csr->ss_v.push_back(ss_A);
+            return spmv_csr;
+        }
+        AlgoParameters_p get_params_csr(uint64_t nnz, uint64_t n,
+                                        uint64_t m, size_t y_dsize, size_t x_dsize,
+                                        size_t A_dsize, size_t A_rowptr_size, size_t A_colidx_size)
+        {
+            // Best case scenario: nnz balanced perfectly 
+            return get_params_csr_balanced(nnz, n, m, y_dsize, x_dsize, A_dsize, A_rowptr_size, A_colidx_size);
+        }
+        /*=====================================================================*/
+        /*--------------------------------set----------------------------------*/
+        AlgoParameters_p get_params_set(uint64_t n, bool y_vec, size_t x_dsize,
+            size_t y_dsize, bool i)
+        {
+            AlgoParameters_p algo_p = new AlgoParameters();
+            algo_p->num_v = 2;
+            Superstep_p ss_omp_barrier = new Superstep();
+            ss_omp_barrier->nv = 1;
+            ss_omp_barrier->l_i = 42;
+            ss_omp_barrier->l_i_lat = 42;
+            ss_omp_barrier->w_v.resize(1);
+            ss_omp_barrier->w_v[0].w_scalar = 0;
+            ss_omp_barrier->w_v[0].w_vector = 0;
+            ss_omp_barrier->dm_s_v.resize(1);
+            ss_omp_barrier->dm_s_v[0].k_s = 1;
+            ss_omp_barrier->dm_s_v[0].hi_rep = 1;
+            ss_omp_barrier->dm_s_v[0].hi = {0};
+            algo_p->ss_v.push_back(ss_omp_barrier);
+            Superstep_p ss_A = new Superstep();
+            ss_A->nv = 1;
+            ss_A->l_i = 0;
+            ss_A->l_i_lat = 0;
+            ss_A->w_v.resize(1);
+            ss_A->w_v[0].w_scalar = 0;
+            ss_A->w_v[0].w_vector = 0;
+            ss_A->dm_s_v.resize(1);
+            ss_A->dm_s_v[0].hi_rep = 1;
+            if (i)
+            {
+                algo_p->b_foot = x_dsize;
+                ss_A->dm_s_v[0].k_s = 1;
+                ss_A->dm_s_v[0].hi = {x_dsize};
+            }
+            else
+            {
+                algo_p->b_foot = x_dsize * n + (y_vec ? y_dsize * n : 0);
+                if (y_vec) {
+                    ss_A->dm_s_v[0].k_s = 2;
+                    ss_A->dm_s_v[0].hi = {SVal(x_dsize * n, true), SVal(y_dsize * n, true)};
+                } else {
+                    ss_A->dm_s_v[0].k_s = 1;
+                    ss_A->dm_s_v[0].hi = {SVal(x_dsize * n, true)};
+                }
+            }
+            algo_p->ss_v.push_back(ss_A);
+            return algo_p;
+        }
+        /*=====================================================================*/
+        /*--------------------------------clear--------------------------------*/
+        AlgoParameters_p get_params_clear(uint64_t n, size_t dtype_size)
+        {
+            AlgoParameters_p algo_p = new AlgoParameters();
+            algo_p->num_v = 2;
+            Superstep_p ss_omp_barrier = new Superstep();
+            ss_omp_barrier->nv = 1;
+            ss_omp_barrier->l_i = 42;
+            ss_omp_barrier->l_i_lat = 42;
+            ss_omp_barrier->w_v.resize(1);
+            ss_omp_barrier->w_v[0].w_scalar = 0;
+            ss_omp_barrier->w_v[0].w_vector = 0;
+            ss_omp_barrier->dm_s_v.resize(1);
+            ss_omp_barrier->dm_s_v[0].k_s = 1;
+            ss_omp_barrier->dm_s_v[0].hi_rep = 1;
+            ss_omp_barrier->dm_s_v[0].hi = {0};
+            algo_p->ss_v.push_back(ss_omp_barrier);
+            Superstep_p ss_A = new Superstep();
+            algo_p->b_foot = dtype_size * n;
+            ss_A->nv = 1;
+            ss_A->l_i = 0;
+            ss_A->l_i_lat = 0;
+            ss_A->w_v.resize(1);
+            ss_A->w_v[0].w_scalar = 0;
+            ss_A->w_v[0].w_vector = 0;
+            ss_A->dm_s_v.resize(1);
+            ss_A->dm_s_v[0].k_s = 1;
+            ss_A->dm_s_v[0].hi_rep = 1;
+            ss_A->dm_s_v[0].hi = {SVal(dtype_size * n, true)};
+            algo_p->ss_v.push_back(ss_A);
+            return algo_p;
+        }
+        /*=====================================================================*/
+        /*--------------------------------apply--------------------------------*/
+        AlgoParameters_p get_params_apply()//(size_t dtype_size)
+        {
+            AlgoParameters_p algo_p = new AlgoParameters();
+            algo_p->num_v = 1;
+            Superstep_p ss_A = new Superstep();
+            algo_p->b_foot = 0;
+            ss_A->nv = 1;
+            ss_A->l_i = 0;
+            ss_A->l_i_lat = 0;
+            ss_A->w_v.resize(1);
+            ss_A->w_v[0].w_scalar = 0;
+            ss_A->w_v[0].w_vector = 0;
+            ss_A->dm_s_v.resize(1);
+            ss_A->dm_s_v[0].k_s = 0;
+            ss_A->dm_s_v[0].hi_rep = 1;
+            ss_A->dm_s_v[0].hi = {};
+            algo_p->ss_v.push_back(ss_A);
+            return algo_p;
+        }
+        /*=====================================================================*/
+        /*--------------------------------eWiseApply--------------------------------*/
+        AlgoParameters_p get_params_eWiseApply(uint64_t n, size_t z_dsize, size_t x_dsize,
+            size_t y_dsize, bool x_vec, bool y_vec)
+        {
+            if (!x_vec && !y_vec) return get_params_apply();            
+            AlgoParameters_p algo_p = new AlgoParameters();
+            algo_p->num_v = 2;
+            Superstep_p ss_omp_barrier = new Superstep();
+            ss_omp_barrier->nv = 1;
+            ss_omp_barrier->l_i = 42;
+            ss_omp_barrier->l_i_lat = 42;
+            ss_omp_barrier->w_v.resize(1);
+            ss_omp_barrier->w_v[0].w_scalar = 0;
+            ss_omp_barrier->w_v[0].w_vector = 0;
+            ss_omp_barrier->dm_s_v.resize(1);
+            ss_omp_barrier->dm_s_v[0].k_s = 1;
+            ss_omp_barrier->dm_s_v[0].hi_rep = 1;
+            ss_omp_barrier->dm_s_v[0].hi = {0};
+            algo_p->ss_v.push_back(ss_omp_barrier);
+            Superstep_p ss_A = new Superstep();
+            algo_p->b_foot = z_dsize * n + 
+                (x_vec ? x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
+            ss_A->nv = 1;
+            ss_A->l_i = 0;
+            ss_A->l_i_lat = 0;
+            ss_A->w_v.resize(1);
+            ss_A->w_v[0].w_scalar = 0;
+            ss_A->w_v[0].w_vector = SVal(z_dsize * n,true);
+            ss_A->dm_s_v.resize(1);
+            ss_A->dm_s_v[0].hi_rep = 1;
+            if (x_vec && y_vec) {
+                ss_A->dm_s_v[0].k_s = SVal(3);
+                ss_A->dm_s_v[0].hi = {SVal(z_dsize * n, true), SVal(x_dsize * n, true), SVal(y_dsize * n, true)};
+            } else if (x_vec) {
+                ss_A->dm_s_v[0].k_s = 2;
+                ss_A->dm_s_v[0].hi = {SVal(z_dsize * n, true), SVal(x_dsize * n, true)};
+            } else if (y_vec) {
+                ss_A->dm_s_v[0].k_s = 2;
+                ss_A->dm_s_v[0].hi = {SVal(z_dsize * n, true), SVal(y_dsize * n, true)};
+            }
+            algo_p->ss_v.push_back(ss_A);
+            return algo_p;
+        }
+        /*=====================================================================*/
+        /*--------------------------------foldl--------------------------------*/
+        AlgoParameters_p get_params_foldl(uint64_t n,
+            size_t x_dsize, size_t y_dsize, bool x_vec, bool y_vec)
+        {
+            if (!x_vec && !y_vec) return get_params_apply();
+
+            AlgoParameters_p algo_p = new AlgoParameters();
+            algo_p->num_v = 2;
+            Superstep_p ss_omp_barrier = new Superstep();
+            ss_omp_barrier->nv = 1;
+            ss_omp_barrier->l_i = 42;
+            ss_omp_barrier->l_i_lat = 42;
+            ss_omp_barrier->w_v.resize(1);
+            ss_omp_barrier->w_v[0].w_scalar = 0;
+            ss_omp_barrier->w_v[0].w_vector = 0;
+            ss_omp_barrier->dm_s_v.resize(1);
+            ss_omp_barrier->dm_s_v[0].k_s = 1;
+            ss_omp_barrier->dm_s_v[0].hi_rep = 1;
+            ss_omp_barrier->dm_s_v[0].hi = {0};
+            algo_p->ss_v.push_back(ss_omp_barrier);
+            Superstep_p ss_A = new Superstep();
+            algo_p->b_foot = (x_vec ? x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
+            ss_A->nv = 1;
+            ss_A->l_i = 0;
+            ss_A->l_i_lat = 0;
+            ss_A->w_v.resize(1);
+            ss_A->w_v[0].w_scalar = 0;
+            ss_A->w_v[0].w_vector = SVal(x_dsize * n, true);
+            ss_A->dm_s_v.resize(1);
+            ss_A->dm_s_v[0].hi_rep = 1;
+            if (x_vec && y_vec) {
+                ss_A->dm_s_v[0].k_s = 2;
+                ss_A->dm_s_v[0].hi = {SVal(x_dsize * n, true), SVal(y_dsize * n, true)};
+            } else if (x_vec) {
+                ss_A->dm_s_v[0].k_s = 1;
+                ss_A->dm_s_v[0].hi = {SVal(x_dsize * n, true)};
+            } else if (y_vec) {
+                ss_A->dm_s_v[0].k_s = 1;
+                ss_A->dm_s_v[0].hi = {SVal(y_dsize * n, true)};
+            }
+            algo_p->ss_v.push_back(ss_A);
+            return algo_p;
+        }
+        /*=====================================================================*/
+        /*--------------------------------foldr--------------------------------*/
+        AlgoParameters_p get_params_foldr(uint64_t n,
+            size_t x_dsize, size_t y_dsize, bool x_vec, bool y_vec)
+        {
+            if (!x_vec && !y_vec) return get_params_apply();
+
+            AlgoParameters_p algo_p = new AlgoParameters();
+            algo_p->num_v = 2;
+            Superstep_p ss_omp_barrier = new Superstep();
+            ss_omp_barrier->nv = 1;
+            ss_omp_barrier->l_i = 42;
+            ss_omp_barrier->l_i_lat = 42;
+            ss_omp_barrier->w_v.resize(1);
+            ss_omp_barrier->w_v[0].w_scalar = 0;
+            ss_omp_barrier->w_v[0].w_vector = 0;
+            ss_omp_barrier->dm_s_v.resize(1);
+            ss_omp_barrier->dm_s_v[0].k_s = 1;
+            ss_omp_barrier->dm_s_v[0].hi_rep = 1;
+            ss_omp_barrier->dm_s_v[0].hi = {0};
+            algo_p->ss_v.push_back(ss_omp_barrier);
+            Superstep_p ss_A = new Superstep();
+            algo_p->b_foot = (x_vec ? x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
+            ss_A->nv = 1;
+            ss_A->l_i = 0;
+            ss_A->l_i_lat = 0;
+            ss_A->w_v.resize(1);
+            ss_A->w_v[0].w_scalar = 0;
+            ss_A->w_v[0].w_vector = SVal(y_dsize * n, true);
+            ss_A->dm_s_v.resize(1);
+            ss_A->dm_s_v[0].hi_rep = 1;
+            if (x_vec && y_vec) {
+                ss_A->dm_s_v[0].k_s = 2;
+                ss_A->dm_s_v[0].hi = {SVal(x_dsize * n, true), SVal(y_dsize * n, true)};
+            } else if (x_vec) {
+                ss_A->dm_s_v[0].k_s = 1;
+                ss_A->dm_s_v[0].hi = {SVal(x_dsize * n, true)};
+            } else if (y_vec) {
+                ss_A->dm_s_v[0].k_s = 1;
+                ss_A->dm_s_v[0].hi = {SVal(y_dsize * n, true)};
+            }
+            algo_p->ss_v.push_back(ss_A);
+            return algo_p;
+        }
+        /*=====================================================================*/
+        /*---------------------------------dot---------------------------------*/
+        AlgoParameters_p get_params_dot(uint64_t n,
+            size_t z_dsize, size_t x_dsize, size_t y_dsize)
+        {
+            AlgoParameters_p algo_p = new AlgoParameters();
+            algo_p->num_v = 2;
+            Superstep_p ss_omp_barrier = new Superstep();
+            ss_omp_barrier->nv = 1;
+            ss_omp_barrier->l_i = 42;
+            ss_omp_barrier->l_i_lat = 42;
+            ss_omp_barrier->w_v.resize(1);
+            ss_omp_barrier->w_v[0].w_scalar = 0;
+            ss_omp_barrier->w_v[0].w_vector = 0;
+            ss_omp_barrier->dm_s_v.resize(1);
+            ss_omp_barrier->dm_s_v[0].k_s = 1;
+            ss_omp_barrier->dm_s_v[0].hi_rep = 1;
+            ss_omp_barrier->dm_s_v[0].hi = {0};
+            algo_p->ss_v.push_back(ss_omp_barrier);
+            Superstep_p ss_A = new Superstep();
+            algo_p->b_foot = y_dsize * n + x_dsize * n;
+            ss_A->nv = 1;
+            ss_A->l_i = 0;
+            ss_A->l_i_lat = 0;
+            ss_A->w_v.resize(1);
+            ss_A->w_v[0].w_scalar = 0;
+            ss_A->w_v[0].w_vector = SVal(2 * z_dsize * n, true);
+            ss_A->dm_s_v.resize(1);
+            ss_A->dm_s_v[0].k_s = 2;
+            ss_A->dm_s_v[0].hi_rep = 1;
+            ss_A->dm_s_v[0].hi = {SVal(y_dsize * n, true), SVal(x_dsize * n, true)};
+            algo_p->ss_v.push_back(ss_A);
+            // FIXME: A superstep for reduction is missing here, but it needs * threads -> not covered by SVal
+            z_dsize = z_dsize;
+            //algo_p->ss_v.push_back(ss_reduction);
+            return algo_p;
+        }
+        /*=====================================================================*/
+        /*---------------------------------eWiseAdd---------------------------------*/
+        AlgoParameters_p get_params_eWiseAdd(uint64_t n, size_t z_dsize, size_t x_dsize, size_t y_dsize,
+        bool x_vec, bool y_vec)
+        {
+            AlgoParameters_p algo_p = new AlgoParameters();
+            algo_p->num_v = 2;
+            Superstep_p ss_omp_barrier = new Superstep();
+            ss_omp_barrier->nv = 1;
+            ss_omp_barrier->l_i = 42;
+            ss_omp_barrier->l_i_lat = 42;
+            ss_omp_barrier->w_v.resize(1);
+            ss_omp_barrier->w_v[0].w_scalar = 0;
+            ss_omp_barrier->w_v[0].w_vector = 0;
+            ss_omp_barrier->dm_s_v.resize(1);
+            ss_omp_barrier->dm_s_v[0].k_s = 1;
+            ss_omp_barrier->dm_s_v[0].hi_rep = 1;
+            ss_omp_barrier->dm_s_v[0].hi = {0};
+            algo_p->ss_v.push_back(ss_omp_barrier);
+            Superstep_p ss_A = new Superstep();
+            algo_p->b_foot = z_dsize * n + (x_vec ? x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
+            ss_A->nv = 1;
+            ss_A->l_i = 0;
+            ss_A->l_i_lat = 0;
+            ss_A->w_v.resize(1);
+            ss_A->w_v[0].w_scalar = 0;
+            ss_A->w_v[0].w_vector = SVal(z_dsize * n, true);
+            ss_A->dm_s_v.resize(1);
+            ss_A->dm_s_v[0].hi_rep = 1;
+            if (x_vec && y_vec) {
+                ss_A->dm_s_v[0].k_s = SVal(3);
+                ss_A->dm_s_v[0].hi = {SVal(z_dsize * n, true), SVal(x_dsize * n, true), SVal(y_dsize * n, true)};
+            } else if (x_vec) {
+                ss_A->dm_s_v[0].k_s = 2;
+                ss_A->dm_s_v[0].hi = {SVal(z_dsize * n, true), SVal(x_dsize * n, true)};
+            } else if (y_vec) {
+                ss_A->dm_s_v[0].k_s = 2;
+                ss_A->dm_s_v[0].hi = {SVal(z_dsize * n, true), SVal(y_dsize * n, true)};
+            } else {
+                ss_A->dm_s_v[0].k_s = 1;
+                ss_A->dm_s_v[0].hi = {SVal(z_dsize * n, true)};
+            }
+            algo_p->ss_v.push_back(ss_A);
+            return algo_p;
+        }
+        /*=====================================================================*/
+        /*---------------------------------eWiseMul---------------------------------*/
+        AlgoParameters_p get_params_eWiseMul(uint64_t n, size_t z_dsize, size_t x_dsize, size_t y_dsize,
+        bool x_vec, bool y_vec)
+        {
+            AlgoParameters_p algo_p = new AlgoParameters();
+            algo_p->num_v = 2;
+            Superstep_p ss_omp_barrier = new Superstep();
+            ss_omp_barrier->nv = 1;
+            ss_omp_barrier->l_i = 42;
+            ss_omp_barrier->l_i_lat = 42;
+            ss_omp_barrier->w_v.resize(1);
+            ss_omp_barrier->w_v[0].w_scalar = 0;
+            ss_omp_barrier->w_v[0].w_vector = 0;
+            ss_omp_barrier->dm_s_v.resize(1);
+            ss_omp_barrier->dm_s_v[0].k_s = 1;
+            ss_omp_barrier->dm_s_v[0].hi_rep = 1;
+            ss_omp_barrier->dm_s_v[0].hi = {0};
+            algo_p->ss_v.push_back(ss_omp_barrier);
+            Superstep_p ss_A = new Superstep();
+            algo_p->b_foot = z_dsize * n + (x_vec ? x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
+            ss_A->nv = 1;
+            ss_A->l_i = 0;
+            ss_A->l_i_lat = 0;
+            ss_A->w_v.resize(1);
+            ss_A->w_v[0].w_scalar = 0;
+            ss_A->w_v[0].w_vector = SVal(z_dsize * n, true);
+            ss_A->dm_s_v.resize(1);
+            ss_A->dm_s_v[0].hi_rep = 1;
+            if (x_vec && y_vec) {
+                ss_A->dm_s_v[0].k_s = SVal(3);
+                ss_A->dm_s_v[0].hi = {SVal(z_dsize * n, true), SVal(x_dsize * n, true), SVal(y_dsize * n, true)};
+            } else if (x_vec) {
+                ss_A->dm_s_v[0].k_s = 2;
+                ss_A->dm_s_v[0].hi = {SVal(z_dsize * n, true), SVal(x_dsize * n, true)};
+            } else if (y_vec) {
+                ss_A->dm_s_v[0].k_s = 2;
+                ss_A->dm_s_v[0].hi = {SVal(z_dsize * n, true), SVal(y_dsize * n, true)};
+            } else {
+                ss_A->dm_s_v[0].k_s = 1;
+                ss_A->dm_s_v[0].hi = {SVal(z_dsize * n, true)};
+            }
+            algo_p->ss_v.push_back(ss_A);
+            return algo_p;
+        }
+        /*=====================================================================*/
+        /*--------------------------------eWiseMuladd-------------------------------*/
+        AlgoParameters_p get_params_eWiseMuladd(uint64_t n,
+            size_t z_dsize, size_t a_dsize, size_t x_dsize, size_t y_dsize, bool a_vec)
+        {
+            AlgoParameters_p algo_p = new AlgoParameters();
+            algo_p->num_v = 2;
+            Superstep_p ss_omp_barrier = new Superstep();
+            ss_omp_barrier->nv = 1;
+            ss_omp_barrier->l_i = 42;
+            ss_omp_barrier->l_i_lat = 42;
+            ss_omp_barrier->w_v.resize(1);
+            ss_omp_barrier->w_v[0].w_scalar = 0;
+            ss_omp_barrier->w_v[0].w_vector = 0;
+            ss_omp_barrier->dm_s_v.resize(1);
+            ss_omp_barrier->dm_s_v[0].k_s = 1;
+            ss_omp_barrier->dm_s_v[0].hi_rep = 1;
+            ss_omp_barrier->dm_s_v[0].hi = {0};
+            algo_p->ss_v.push_back(ss_omp_barrier);
+            Superstep_p ss_A = new Superstep();
+            algo_p->b_foot = (z_dsize + x_dsize + y_dsize) * n + (a_vec ? a_dsize * n : 0);
+            ss_A->nv = 1;
+            ss_A->l_i = 0;
+            ss_A->l_i_lat = 0;
+            ss_A->w_v.resize(1);
+            ss_A->w_v[0].w_scalar = 0;
+            ss_A->w_v[0].w_vector = SVal(2 * z_dsize * n, true);
+            ss_A->dm_s_v.resize(1);
+            ss_A->dm_s_v[0].hi_rep = 1;
+            if (a_vec) {
+                ss_A->dm_s_v[0].k_s = SVal(4);
+                ss_A->dm_s_v[0].hi = {SVal(z_dsize * n, true), SVal(x_dsize * n, true), SVal(y_dsize * n, true), SVal(a_dsize * n, true)};
+            } else {
+                ss_A->dm_s_v[0].k_s = SVal(3);
+                ss_A->dm_s_v[0].hi = {SVal(z_dsize * n, true), SVal(x_dsize * n, true), SVal(y_dsize * n, true)};
+            }
+            algo_p->ss_v.push_back(ss_A);
+            return algo_p;
+        }
+        /*==================================================================*/
+
+    } // namespace PaHIS
 
     // TSIrCo performance model
     namespace tsirco
@@ -945,10 +1829,10 @@ namespace HW_model
         typedef struct Superstep
         {
             uint64_t nv; // Number of supersteps of this type
-            size_t lvl;  // Memory level
-            size_t ops_scalar, ops_SIMD;
-            uint64_t ks; // Number of access streams
-            // For large ks over same-sized hi, use hi_rep to define after which idx hi values are repeated
+            size_t l_i;  // Memory level
+            size_t w_scalar, w_vector;
+            uint64_t k_s; // Number of access streams
+            // Total count of last hi entry (min 1; 1 = no extra repetition, N = last entry appears N times)
             uint64_t hi_rep;
             std::vector<uint64_t> hi; // Access sizes for each stream
         } *Superstep_p;
@@ -971,7 +1855,7 @@ namespace HW_model
                 throw std::invalid_argument("Missing required algorithm parameters: num_v and ss_v");
             }
 
-            if (algo_params->ss_v.size() != static_cast<size_t>(algo_params->num_v))
+            if (algo_params->ss_v.size() != (size_t)(algo_params->num_v))
             {
                 throw std::invalid_argument("ss_v should have " + std::to_string(algo_params->num_v) +
                                             " elements, but got " + std::to_string(algo_params->ss_v.size()));
@@ -980,11 +1864,17 @@ namespace HW_model
             for (size_t i = 0; i < algo_params->ss_v.size(); i++)
             {
                 Superstep_p ss = algo_params->ss_v[i];
-                if (ss->hi.size() + ss->hi_rep != static_cast<size_t>(ss->ks))
+                if (ss->hi_rep == 0)
                 {
                     throw std::invalid_argument("Superstep type " + std::to_string(i + 1) +
-                                                " has ks=" + std::to_string(ss->ks) +
-                                                " but hi has " + std::to_string(ss->hi.size()) + " elements");
+                                                " has hi_rep=0 (must be >= 1)");
+                }
+                if (ss->hi.size() + ss->hi_rep - 1 != (size_t)(ss->k_s))
+                {
+                    throw std::invalid_argument("Superstep type " + std::to_string(i + 1) +
+                                                " has k_s=" + std::to_string(ss->k_s) +
+                                                " but hi has " + std::to_string(ss->hi.size()) +
+                                                " elements with hi_rep=" + std::to_string(ss->hi_rep));
                 }
             }
         }
@@ -1002,32 +1892,31 @@ namespace HW_model
             for (size_t i = 0; i < algo_params->ss_v.size(); i++)
             {
                 Superstep_p ss = algo_params->ss_v[i];
-                uint64_t sum_hi = 0;
-                for (uint64_t h : ss->hi)
-                {
-                    sum_hi += h;
-                }
 
                 std::cout << "  - Superstep type " << (i + 1) << ":\n";
                 std::cout << "    - Count: " << ss->nv << " ("
                           << std::fixed << std::setprecision(1)
-                          << (static_cast<double>(ss->nv) * 100.0 / algo_params->n) << "% of total)\n";
-                std::cout << "    - Memory level: " << ss->lvl << "\n";
-                std::cout << "    - Access streams (ks): " << ss->ks << "\n";
+                          << ((double)(ss->nv) * 100.0 / algo_params->n) << "% of total)\n";
+                std::cout << "    - Memory level: " << ss->l_i << "\n";
+                std::cout << "    - Access streams (k_s): " << ss->k_s << "\n";
 
                 std::cout << "    - Access sizes (hi): ";
+                uint64_t sum_hi = 0;
                 for (size_t j = 0; j < ss->hi.size(); j++)
                 {
+                    sum_hi += ss->hi[j];
                     std::cout << ss->hi[j];
                     if (j < ss->hi.size() - 1)
                     {
                         std::cout << ", ";
                     }
-                    else if (ss->hi_rep > 0)
+                    else if (ss->hi_rep > 1)
                     {
-                        std::cout << " (X" << ss->hi_rep + 1 << ")";
+                        std::cout << " (X" << ss->hi_rep << ")";
                     }
                 }
+                if (ss->hi_rep > 1 && !ss->hi.empty())
+                    sum_hi += ss->hi.back() * (ss->hi_rep - 1);
                 std::cout << "\n";
 
                 std::cout << "    - Volume per superstep: " << HW_model::format_bytes(sum_hi) << "\n";
@@ -1035,90 +1924,54 @@ namespace HW_model
 #endif
         }
 
-        // // Calculate memory footprint
-        // uint64_t get_mem_footprint(AlgoParameters_p algo_params)
-        // {
-        //     uint64_t memory_footprint = 0;
-
-        //     // Calculate total memory footprint across all superstep types
-        //     for (size_t i = 0; i < algo_params->ss_v.size(); i++)
-        //     {
-        //         Superstep_p ss = algo_params->ss_v[i];
-        //         uint64_t sum_hi = 0, itter = 0;
-        //         for (itter = 0; itter < ss->hi.size(); ++itter)
-        //         {
-        //             sum_hi += ss->hi[itter];
-        //         }
-        //         sum_hi += ss->hi_rep * ss->hi[ss->hi.size() - 1];
-        //         memory_footprint += static_cast<uint64_t>(ss->nv) * sum_hi;
-        //     }
-        //     return memory_footprint;
-        // }
-
         // Adjust memory level for supersteps
         void adjust_lvl_naive(HW_model::HWParameters_p hw_params,
-                              AlgoParameters_p algo_params, size_t target_threads, bool NUMA_optimism)
+                              AlgoParameters_p algo_params, size_t target_threads, int Numa_opt)
         {
             // The base level for auto-adjustment is the maximum level of all supersteps
             size_t target_level = hw_params->d - 1;
             bool adjust_level = false;
             for (size_t t = 0; t < algo_params->ss_v.size(); t++)
-                if (!(algo_params->ss_v[t]->lvl) || algo_params->ss_v[t]->lvl == 42)
+                if (!(algo_params->ss_v[t]->l_i) || algo_params->ss_v[t]->l_i == 42)
                     adjust_level = true;
             if (!adjust_level)
                 return;
 
             // Naive search for the appropriate memory level (d)
-            size_t pi_mult = 1;
+            // p and P are pre-adjusted per thread/policy config:
+            //   P[lvl] = effective cumulative thread capacity at level lvl
+            //   bench_mem_multiplier = threads / P[lvl] (how many level-lvl
+            //   components the threads span beyond one)
+            bool is_spread_policy = (hw_params->d_numa < 0);
+            size_t abs_d_numa = (size_t)(std::abs(hw_params->d_numa));
 
+            // Numa_opt: -1 = pessimistic, 0 = balanced, 1 = optimistic
+            // Tsirco has a single l_i (no separate l_i_lat), so:
+            //   -1 and 0 both enforce NUMA constraint (collapse to same behavior)
+            //   1 skips NUMA constraint entirely
             for (size_t lvl = 0; lvl < hw_params->d; lvl++)
             {
-                pi_mult *= hw_params->p[lvl];
-                
-                // Extract policy from d_numa sign: positive = close, negative = spread
-                bool is_spread_policy = (hw_params->d_numa < 0);
-                size_t abs_d_numa = static_cast<size_t>(std::abs(hw_params->d_numa));
-                
-                // Calculate pi_of_next_level for spread policy
-                size_t pi_of_next_level = (lvl + 1 < hw_params->d) ? hw_params->p[lvl + 1] : 1;
-                
-                // NUMA constraint logic differs between close and spread policies
+                // NUMA constraint check
                 bool numa_constraint_satisfied;
-                if (NUMA_optimism) {
-                    // NUMA optimistic: ignore NUMA constraints
+                if (Numa_opt >= 1) {
                     numa_constraint_satisfied = true;
                 } else if (lvl + 1 < abs_d_numa) {
-                    // Not at NUMA boundary: no constraint
                     numa_constraint_satisfied = true;
                 } else {
-                    // At NUMA boundary: apply policy-specific constraint
                     if (is_spread_policy) {
-                        // Spread policy: threads must be less than next level capacity
+                        size_t pi_of_next_level = (lvl + 1 < hw_params->d) ? hw_params->p[lvl + 1] : 1;
                         numa_constraint_satisfied = (target_threads <= pi_of_next_level);
                     } else {
-                        // Close policy: threads must fit in current level
-                        numa_constraint_satisfied = (target_threads <= pi_mult);
+                        numa_constraint_satisfied = (target_threads <= hw_params->P[lvl]);
                     }
                 }
-                
-                // Calculate bench_mem_multiplier based on policy
-                size_t bench_mem_multiplier;
-                if (is_spread_policy) {
-                    // Spread policy: min(threads, system_cores // pi_mult)
-                    // Calculate max_system_cores as pi_mult of the last level
-                    size_t max_system_cores = 1;
-                    for (size_t i = 0; i < hw_params->d; ++i) {
-                        max_system_cores *= hw_params->p[i];
-                    }
-                    bench_mem_multiplier = std::min(target_threads, max_system_cores / pi_mult);
-                } else {
-                    // Close policy: (threads // pi_mult) if (threads // pi_mult) else 1
-                    bench_mem_multiplier = (target_threads / pi_mult) ? (target_threads / pi_mult) : 1;
-                }
-                
-                // Apply bench_mem_multiplier to effective memory size
+
+                // Effective memory: m[lvl] scaled by how many level-lvl
+                // components the threads span (from pre-adjusted P)
+                size_t bench_mem_multiplier = (target_threads / hw_params->P[lvl])
+                                              ? (target_threads / hw_params->P[lvl]) : 1;
                 uint64_t effective_memory = hw_params->m[lvl] * bench_mem_multiplier;
-                
+
                 if ((algo_params->b_foot <= effective_memory) && numa_constraint_satisfied)
                 {
                     target_level = lvl + 1;
@@ -1127,10 +1980,10 @@ namespace HW_model
             }
             for (size_t t = 0; t < algo_params->ss_v.size(); t++)
             {
-                if (!(algo_params->ss_v[t]->lvl))
-                    algo_params->ss_v[t]->lvl = target_level;
-                else if (algo_params->ss_v[t]->lvl == 42)
-                    algo_params->ss_v[t]->lvl = hw_params->d;
+                if (!(algo_params->ss_v[t]->l_i))
+                    algo_params->ss_v[t]->l_i = target_level;
+                else if (algo_params->ss_v[t]->l_i == 42)
+                    algo_params->ss_v[t]->l_i = hw_params->d;
             }
         }
 
@@ -1143,20 +1996,20 @@ namespace HW_model
          * @param algo_params Algorithm parameters
          * @param target_threads Number of threads
          * @param stream_aggregator Method to aggregate streams ("max" or "sum")
-         * @param NUMA_optimistic Whether to assume optimal NUMA behavior (default: false)
+         * @param Numa_opt NUMA optimization: -1 = pessimistic, 0 = balanced, 1 = optimistic (default: 0)
          * @return Predicted execution cost in seconds
          */
         double predict_cost(HW_model::HWParameters_p hw_params,
                             AlgoParameters_p algo_params,
                             size_t target_threads,
                             const std::string &stream_aggregator = "max",
-                            bool NUMA_optimistic = false)
+                            int Numa_opt = 0)
         {
 #ifdef DEBUG_COST_MODELS
             std::cout << "===== TSIrCo Cost Prediction =====\n\n";
             std::cout << "Threads: " << target_threads << "\n";
             std::cout << "Stream aggregator: " << stream_aggregator << "\n";
-            std::cout << "NUMA optimistic: " << (NUMA_optimistic ? "true" : "false") << "\n";
+            std::cout << "Numa_opt: " << Numa_opt << "\n";
 #endif
 
             algo_params_validate(algo_params);
@@ -1164,7 +2017,7 @@ namespace HW_model
             hw_params_validate(hw_params);
             // hw_params_print(hw_params);
 
-            adjust_lvl_naive(hw_params, algo_params, target_threads, NUMA_optimistic);
+            adjust_lvl_naive(hw_params, algo_params, target_threads, Numa_opt);
 
             // Calculate cost for each superstep type
             double total_cost = 0.0;
@@ -1174,12 +2027,12 @@ namespace HW_model
             for (size_t t = 0; t < algo_params->ss_v.size(); t++)
             {
                 Superstep_p ss = algo_params->ss_v[t];
-                if (!ss->ks) continue;
+                if (!ss->k_s) continue;
                 // Extract parameters
                 uint64_t num_supersteps = ss->nv;
-                size_t lvl = ss->lvl;
+                size_t lvl = ss->l_i;
                 std::vector<uint64_t> &hi = ss->hi;
-                uint64_t hi_extras = ss->hi_rep;
+                uint64_t hi_extras = (ss->hi_rep > 1) ? ss->hi_rep - 1 : 0;
 
                 // Ensure level index is valid
                 if (lvl <= 0 || lvl > hw_params->d)
@@ -1190,18 +2043,10 @@ namespace HW_model
                 }
 
                 // Levels are 1-indexed in the model, adjust for 0-based arrays
-                size_t lvl_idx = static_cast<size_t>(lvl - 1);
+                size_t lvl_idx = (size_t)(lvl - 1);
 
                 double g_level = hw_params->g[lvl_idx];
                 double ls_level = hw_params->ls[lvl_idx];
-                size_t kmax_level = hw_params->kmax[lvl_idx];
-
-                // Check if ks exceeds kmax
-                if (ss->ks > kmax_level)
-                {
-                    std::cerr << "Warning: Superstep type " << (t + 1) << " has ks=" << ss->ks
-                              << " exceeding kmax=" << kmax_level << " for level " << lvl << "\n";
-                }
 
                 // Calculate access sizes
                 uint64_t sum_hi = 0;
@@ -1268,20 +2113,20 @@ namespace HW_model
             spmv_coo->num_v = 2;
             Superstep_p ss_omp_barrier = new Superstep();
             ss_omp_barrier->nv = 1;
-            ss_omp_barrier->ops_scalar = 0;
-            ss_omp_barrier->ops_SIMD = 0;
-            ss_omp_barrier->lvl = 42;
-            ss_omp_barrier->ks = 1;
-            ss_omp_barrier->hi_rep = 0;
+            ss_omp_barrier->w_scalar = 0;
+            ss_omp_barrier->w_vector = 0;
+            ss_omp_barrier->l_i = 42;
+            ss_omp_barrier->k_s = 1;
+            ss_omp_barrier->hi_rep = 1;
             ss_omp_barrier->hi = {0};
             spmv_coo->ss_v.push_back(ss_omp_barrier);
             Superstep_p ss_coo = new Superstep();
             ss_coo->nv = nnz;
-            ss_coo->ops_scalar = 2;
-            ss_coo->ops_SIMD = 0;
-            ss_coo->lvl = 0;
-            ss_coo->ks = 5;
-            ss_coo->hi_rep = 0;
+            ss_coo->w_scalar = 2;
+            ss_coo->w_vector = 0;
+            ss_coo->l_i = 0;
+            ss_coo->k_s = 5;
+            ss_coo->hi_rep = 1;
             ss_coo->hi = {A_rowidx_size, A_colidx_size, A_dsize, x_dsize, y_dsize};
             spmv_coo->ss_v.push_back(ss_coo);
             return spmv_coo;
@@ -1302,10 +2147,10 @@ namespace HW_model
             // spmv_coo->b_foot = (2 * idx_size + dtype_size) * nnz + dtype_size * (m + n);
             // Superstep_p ss_coo = new Superstep();
             // ss_coo->nv = nnz / batch_sz;
-            // ss_coo->ops_scalar = 2 * batch_sz;
-            // ss_coo->ops_SIMD = 0;
-            // ss_coo->lvl = 0;
-            // ss_coo->ks = 2 * batch_sz + 3;
+            // ss_coo->w_scalar = 2 * batch_sz;
+            // ss_coo->w_vector = 0;
+            // ss_coo->l_i = 0;
+            // ss_coo->k_s = 2 * batch_sz + 3;
             // ss_coo->hi_rep = 2 * batch_sz - 1;                                                          // 5 streams
             // ss_coo->hi = {idx_size * batch_sz, idx_size * batch_sz, dtype_size * batch_sz, dtype_size}; // 8 bytes per stream
             // spmv_coo->ss_v.push_back(ss_coo);
@@ -1326,31 +2171,31 @@ namespace HW_model
         spmv_csr->num_v = 3;
         Superstep_p ss_omp_barrier = new Superstep();
         ss_omp_barrier->nv = 1;
-        ss_omp_barrier->ops_scalar = 0;
-        ss_omp_barrier->ops_SIMD = 0;
-        ss_omp_barrier->lvl = 42;
-        ss_omp_barrier->ks = 1;
-        ss_omp_barrier->hi_rep = 0;
+        ss_omp_barrier->w_scalar = 0;
+        ss_omp_barrier->w_vector = 0;
+        ss_omp_barrier->l_i = 42;
+        ss_omp_barrier->k_s = 1;
+        ss_omp_barrier->hi_rep = 1;
         ss_omp_barrier->hi = {0};
         spmv_csr->ss_v.push_back(ss_omp_barrier);
         // Superstep A (pipelined) - internal loop
         Superstep_p ss_A = new Superstep();
         ss_A->nv = (nnz > m) ? nnz - m : 0;
-        ss_A->ops_scalar = 2;
-        ss_A->ops_SIMD = 0;
-        ss_A->lvl = 0;
-        ss_A->ks = 3;
-        ss_A->hi_rep = 0;
+        ss_A->w_scalar = 2;
+        ss_A->w_vector = 0;
+        ss_A->l_i = 0;
+        ss_A->k_s = 3;
+        ss_A->hi_rep = 1;
         ss_A->hi = {A_colidx_size, A_dsize, x_dsize};
 
         // Superstep A + B (pipelined)  - internal loop + row processing + y write
         Superstep_p ss_AB = new Superstep();
         ss_AB->nv = m;
-        ss_AB->ops_scalar = 2;
-        ss_AB->ops_SIMD = 0;
-        ss_AB->lvl = 0;
-        ss_AB->ks = 5;
-        ss_AB->hi_rep = 0;
+        ss_AB->w_scalar = 2;
+        ss_AB->w_vector = 0;
+        ss_AB->l_i = 0;
+        ss_AB->k_s = 5;
+        ss_AB->hi_rep = 1;
         ss_AB->hi = {A_rowptr_size, y_dsize, A_colidx_size, A_dsize, x_dsize};
 
         spmv_csr->ss_v.push_back(ss_A);
@@ -1378,21 +2223,21 @@ namespace HW_model
             // // Superstep A (pipelined) - internal loop
             // Superstep_p ss_A = new Superstep();
             // ss_A->nv = nnz / batch_sz - m;
-            // ss_A->ops_scalar = 2 * batch_sz;
-            // ss_A->ops_SIMD = 0;
-            // ss_A->lvl = 0;
-            // ss_A->ks = 2 + batch_sz;
+            // ss_A->w_scalar = 2 * batch_sz;
+            // ss_A->w_vector = 0;
+            // ss_A->l_i = 0;
+            // ss_A->k_s = 2 + batch_sz;
             // ss_A->hi_rep = batch_sz - 1;
             // ss_A->hi = /* A */ {idx_size * batch_sz, dtype_size * batch_sz, dtype_size};
 
             // // Superstep A + B (pipelined)  - internal loop + row processing + y write
             // Superstep_p ss_AB = new Superstep();
             // ss_AB->nv = m;
-            // ss_AB->ops_scalar = 2 * batch_sz;
-            // ss_AB->ops_SIMD = 0;
-            // ss_AB->lvl = 0;
+            // ss_AB->w_scalar = 2 * batch_sz;
+            // ss_AB->w_vector = 0;
+            // ss_AB->l_i = 0;
             // // Assuming that rowPtr and y are also batched/accessed consecutively (works for cachelines...not easy algorithmically)
-            // ss_AB->ks = 4 + batch_sz;
+            // ss_AB->k_s = 4 + batch_sz;
             // ss_AB->hi_rep = batch_sz - 1;
             // ss_AB->hi = /* B */ {idx_size, dtype_size,
             //                     /* A */ idx_size * batch_size, dtype_size * batch_size, dtype_size};
@@ -1411,11 +2256,11 @@ namespace HW_model
             algo_p->num_v = 2;
             Superstep_p ss_omp_barrier = new Superstep();
             ss_omp_barrier->nv = 1;
-            ss_omp_barrier->ops_scalar = 0;
-            ss_omp_barrier->ops_SIMD = 0;
-            ss_omp_barrier->lvl = 42;
-            ss_omp_barrier->ks = 1;
-            ss_omp_barrier->hi_rep = 0;
+            ss_omp_barrier->w_scalar = 0;
+            ss_omp_barrier->w_vector = 0;
+            ss_omp_barrier->l_i = 42;
+            ss_omp_barrier->k_s = 1;
+            ss_omp_barrier->hi_rep = 1;
             ss_omp_barrier->hi = {0};
             algo_p->ss_v.push_back(ss_omp_barrier);
             Superstep_p ss_A = new Superstep();
@@ -1423,22 +2268,22 @@ namespace HW_model
             {
                 algo_p->b_foot = x_dsize;
                 ss_A->nv = 1;
-                ss_A->ops_scalar = 0;
-                ss_A->ops_SIMD = 0;
-                ss_A->lvl = 0;
-                ss_A->ks = 1;
-                ss_A->hi_rep = 0;
+                ss_A->w_scalar = 0;
+                ss_A->w_vector = 0;
+                ss_A->l_i = 0;
+                ss_A->k_s = 1;
+                ss_A->hi_rep = 1;
                 ss_A->hi = {x_dsize};
             }
             else
             {
                 algo_p->b_foot = x_dsize * n + (y_vec ? y_dsize * n : 0);
                 ss_A->nv = 1;
-                ss_A->ops_scalar = 0;
-                ss_A->ops_SIMD = 0;
-                ss_A->lvl = 0;
-                ss_A->ks = 1 + (y_vec ? 1 : 0);
-                ss_A->hi_rep = 0;
+                ss_A->w_scalar = 0;
+                ss_A->w_vector = 0;
+                ss_A->l_i = 0;
+                ss_A->k_s = 1 + (y_vec ? 1 : 0);
+                ss_A->hi_rep = 1;
                 if (y_vec)
                     ss_A->hi = {x_dsize * n, y_dsize * n};
                 else
@@ -1456,21 +2301,21 @@ namespace HW_model
             algo_p->num_v = 2;
             Superstep_p ss_omp_barrier = new Superstep();
             ss_omp_barrier->nv = 1;
-            ss_omp_barrier->ops_scalar = 0;
-            ss_omp_barrier->ops_SIMD = 0;
-            ss_omp_barrier->lvl = 42;
-            ss_omp_barrier->ks = 1;
-            ss_omp_barrier->hi_rep = 0;
+            ss_omp_barrier->w_scalar = 0;
+            ss_omp_barrier->w_vector = 0;
+            ss_omp_barrier->l_i = 42;
+            ss_omp_barrier->k_s = 1;
+            ss_omp_barrier->hi_rep = 1;
             ss_omp_barrier->hi = {0};
             algo_p->ss_v.push_back(ss_omp_barrier);
             Superstep_p ss_A = new Superstep();
             algo_p->b_foot = dtype_size * n;
             ss_A->nv = 1;
-            ss_A->ops_scalar = 0;
-            ss_A->ops_SIMD = 0;
-            ss_A->lvl = 0;
-            ss_A->ks = 1;
-            ss_A->hi_rep = 0;
+            ss_A->w_scalar = 0;
+            ss_A->w_vector = 0;
+            ss_A->l_i = 0;
+            ss_A->k_s = 1;
+            ss_A->hi_rep = 1;
             ss_A->hi = {dtype_size * n};
             algo_p->ss_v.push_back(ss_A);
             return algo_p;
@@ -1485,11 +2330,11 @@ namespace HW_model
             Superstep_p ss_A = new Superstep();
             algo_p->b_foot = 0;
             ss_A->nv = 1;
-            ss_A->ops_scalar = 1;
-            ss_A->ops_SIMD = 0;
-            ss_A->lvl = 0;
-            ss_A->ks = 0;
-            ss_A->hi_rep = 0;
+            ss_A->w_scalar = 1;
+            ss_A->w_vector = 0;
+            ss_A->l_i = 0;
+            ss_A->k_s = 0;
+            ss_A->hi_rep = 1;
             ss_A->hi = {};
             algo_p->ss_v.push_back(ss_A);
             return algo_p;
@@ -1504,22 +2349,22 @@ namespace HW_model
             algo_p->num_v = 2;
             Superstep_p ss_omp_barrier = new Superstep();
             ss_omp_barrier->nv = 1;
-            ss_omp_barrier->ops_scalar = 0;
-            ss_omp_barrier->ops_SIMD = 0;
-            ss_omp_barrier->lvl = 42;
-            ss_omp_barrier->ks = 1;
-            ss_omp_barrier->hi_rep = 0;
+            ss_omp_barrier->w_scalar = 0;
+            ss_omp_barrier->w_vector = 0;
+            ss_omp_barrier->l_i = 42;
+            ss_omp_barrier->k_s = 1;
+            ss_omp_barrier->hi_rep = 1;
             ss_omp_barrier->hi = {0};
             algo_p->ss_v.push_back(ss_omp_barrier);
             Superstep_p ss_A = new Superstep();
             algo_p->b_foot = z_dsize * n + 
                 (x_vec ? x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
             ss_A->nv = 1;
-            ss_A->ops_scalar = 0;
-            ss_A->ops_SIMD = n;
-            ss_A->lvl = 0;
-            ss_A->ks = 1 + (x_vec ? 1 : 0) + (y_vec ? 1 : 0);
-            ss_A->hi_rep = 0;
+            ss_A->w_scalar = 0;
+            ss_A->w_vector = n;
+            ss_A->l_i = 0;
+            ss_A->k_s = 1 + (x_vec ? 1 : 0) + (y_vec ? 1 : 0);
+            ss_A->hi_rep = 1;
             if (x_vec && y_vec)
                 ss_A->hi = {z_dsize * n, x_dsize * n, y_dsize * n};
             else if (x_vec)
@@ -1541,21 +2386,21 @@ namespace HW_model
             algo_p->num_v = 2;
             Superstep_p ss_omp_barrier = new Superstep();
             ss_omp_barrier->nv = 1;
-            ss_omp_barrier->ops_scalar = 0;
-            ss_omp_barrier->ops_SIMD = 0;
-            ss_omp_barrier->lvl = 42;
-            ss_omp_barrier->ks = 1;
-            ss_omp_barrier->hi_rep = 0;
+            ss_omp_barrier->w_scalar = 0;
+            ss_omp_barrier->w_vector = 0;
+            ss_omp_barrier->l_i = 42;
+            ss_omp_barrier->k_s = 1;
+            ss_omp_barrier->hi_rep = 1;
             ss_omp_barrier->hi = {0};
             algo_p->ss_v.push_back(ss_omp_barrier);
             Superstep_p ss_A = new Superstep();
             algo_p->b_foot = (x_vec ?  x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
             ss_A->nv = 1;
-            ss_A->ops_scalar = 0;
-            ss_A->ops_SIMD = n;
-            ss_A->lvl = 0;
-            ss_A->ks = (x_vec ? 1 : 0) + (y_vec ? 1 : 0);
-            ss_A->hi_rep = 0;
+            ss_A->w_scalar = 0;
+            ss_A->w_vector = n;
+            ss_A->l_i = 0;
+            ss_A->k_s = (x_vec ? 1 : 0) + (y_vec ? 1 : 0);
+            ss_A->hi_rep = 1;
             if (x_vec && y_vec)
                 ss_A->hi = {x_dsize * n, y_dsize * n};
             else if (x_vec)
@@ -1577,21 +2422,21 @@ namespace HW_model
             algo_p->num_v = 2;
             Superstep_p ss_omp_barrier = new Superstep();
             ss_omp_barrier->nv = 1;
-            ss_omp_barrier->ops_scalar = 0;
-            ss_omp_barrier->ops_SIMD = 0;
-            ss_omp_barrier->lvl = 42;
-            ss_omp_barrier->ks = 1;
-            ss_omp_barrier->hi_rep = 0;
+            ss_omp_barrier->w_scalar = 0;
+            ss_omp_barrier->w_vector = 0;
+            ss_omp_barrier->l_i = 42;
+            ss_omp_barrier->k_s = 1;
+            ss_omp_barrier->hi_rep = 1;
             ss_omp_barrier->hi = {0};
             algo_p->ss_v.push_back(ss_omp_barrier);
             Superstep_p ss_A = new Superstep();
             algo_p->b_foot = (x_vec ? x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
             ss_A->nv = 1;
-            ss_A->ops_scalar = 0;
-            ss_A->ops_SIMD = n;
-            ss_A->lvl = 0;
-            ss_A->ks = (x_vec ? 1 : 0) + (y_vec ? 1 : 0);
-            ss_A->hi_rep = 0;
+            ss_A->w_scalar = 0;
+            ss_A->w_vector = n;
+            ss_A->l_i = 0;
+            ss_A->k_s = (x_vec ? 1 : 0) + (y_vec ? 1 : 0);
+            ss_A->hi_rep = 1;
             if (x_vec && y_vec)
                 ss_A->hi = {x_dsize * n, y_dsize * n};
             else if (x_vec)
@@ -1611,23 +2456,25 @@ namespace HW_model
             algo_p->num_v = 2;
             Superstep_p ss_omp_barrier = new Superstep();
             ss_omp_barrier->nv = 1;
-            ss_omp_barrier->ops_scalar = 0;
-            ss_omp_barrier->ops_SIMD = 0;
-            ss_omp_barrier->lvl = 42;
-            ss_omp_barrier->ks = 1;
-            ss_omp_barrier->hi_rep = 0;
+            ss_omp_barrier->w_scalar = 0;
+            ss_omp_barrier->w_vector = 0;
+            ss_omp_barrier->l_i = 42;
+            ss_omp_barrier->k_s = 1;
+            ss_omp_barrier->hi_rep = 1;
             ss_omp_barrier->hi = {0};
             algo_p->ss_v.push_back(ss_omp_barrier);
             Superstep_p ss_A = new Superstep();
             algo_p->b_foot = y_dsize * n + x_dsize * n;
             ss_A->nv = 1;
-            ss_A->ops_scalar = 0;
-            ss_A->ops_SIMD = 2 * n;
-            ss_A->lvl = 0;
-            ss_A->ks = 2;
-            ss_A->hi_rep = 0;
+            ss_A->w_scalar = 0;
+            ss_A->w_vector = 2 * n;
+            ss_A->l_i = 0;
+            ss_A->k_s = 2;
+            ss_A->hi_rep = 1;
             ss_A->hi = {y_dsize * n, x_dsize * n};
             algo_p->ss_v.push_back(ss_A);
+            // FIXME: A superstep for reduction is missing here, but it needs * threads -> not covered by SVal
+            z_dsize = z_dsize;
             return algo_p;
         }
         /*=====================================================================*/
@@ -1640,21 +2487,21 @@ namespace HW_model
             algo_p->num_v = 2;
             Superstep_p ss_omp_barrier = new Superstep();
             ss_omp_barrier->nv = 1;
-            ss_omp_barrier->ops_scalar = 0;
-            ss_omp_barrier->ops_SIMD = 0;
-            ss_omp_barrier->lvl = 42;
-            ss_omp_barrier->ks = 1;
-            ss_omp_barrier->hi_rep = 0;
+            ss_omp_barrier->w_scalar = 0;
+            ss_omp_barrier->w_vector = 0;
+            ss_omp_barrier->l_i = 42;
+            ss_omp_barrier->k_s = 1;
+            ss_omp_barrier->hi_rep = 1;
             ss_omp_barrier->hi = {0};
             algo_p->ss_v.push_back(ss_omp_barrier);
             Superstep_p ss_A = new Superstep();
             algo_p->b_foot = z_dsize * n + (x_vec ? x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
             ss_A->nv = 1;
-            ss_A->ops_scalar = 0;
-            ss_A->ops_SIMD = n;
-            ss_A->lvl = 0;
-            ss_A->ks = 1 + (x_vec ? 1 : 0) + (y_vec ? 1 : 0);
-            ss_A->hi_rep = 0;
+            ss_A->w_scalar = 0;
+            ss_A->w_vector = n;
+            ss_A->l_i = 0;
+            ss_A->k_s = 1 + (x_vec ? 1 : 0) + (y_vec ? 1 : 0);
+            ss_A->hi_rep = 1;
             if (x_vec && y_vec)
                 ss_A->hi = {z_dsize * n, x_dsize * n, y_dsize * n};
             else if (x_vec)
@@ -1676,21 +2523,21 @@ namespace HW_model
             algo_p->num_v = 2;
             Superstep_p ss_omp_barrier = new Superstep();
             ss_omp_barrier->nv = 1;
-            ss_omp_barrier->ops_scalar = 0;
-            ss_omp_barrier->ops_SIMD = 0;
-            ss_omp_barrier->lvl = 42;
-            ss_omp_barrier->ks = 1;
-            ss_omp_barrier->hi_rep = 0;
+            ss_omp_barrier->w_scalar = 0;
+            ss_omp_barrier->w_vector = 0;
+            ss_omp_barrier->l_i = 42;
+            ss_omp_barrier->k_s = 1;
+            ss_omp_barrier->hi_rep = 1;
             ss_omp_barrier->hi = {0};
             algo_p->ss_v.push_back(ss_omp_barrier);
             Superstep_p ss_A = new Superstep();
             algo_p->b_foot = z_dsize * n + (x_vec ? x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
             ss_A->nv = 1;
-            ss_A->ops_scalar = 0;
-            ss_A->ops_SIMD = n;
-            ss_A->lvl = 0;
-            ss_A->ks = 1 + (x_vec ? 1 : 0) + (y_vec ? 1 : 0);
-            ss_A->hi_rep = 0;
+            ss_A->w_scalar = 0;
+            ss_A->w_vector = n;
+            ss_A->l_i = 0;
+            ss_A->k_s = 1 + (x_vec ? 1 : 0) + (y_vec ? 1 : 0);
+            ss_A->hi_rep = 1;
             if (x_vec && y_vec)
                 ss_A->hi = {z_dsize * n, x_dsize * n, y_dsize * n};
             else if (x_vec)
@@ -1713,21 +2560,21 @@ namespace HW_model
             algo_p->num_v = 2;
             Superstep_p ss_omp_barrier = new Superstep();
             ss_omp_barrier->nv = 1;
-            ss_omp_barrier->ops_scalar = 0;
-            ss_omp_barrier->ops_SIMD = 0;
-            ss_omp_barrier->lvl = 42;
-            ss_omp_barrier->ks = 1;
-            ss_omp_barrier->hi_rep = 0;
+            ss_omp_barrier->w_scalar = 0;
+            ss_omp_barrier->w_vector = 0;
+            ss_omp_barrier->l_i = 42;
+            ss_omp_barrier->k_s = 1;
+            ss_omp_barrier->hi_rep = 1;
             ss_omp_barrier->hi = {0};
             algo_p->ss_v.push_back(ss_omp_barrier);
             Superstep_p ss_A = new Superstep();
             algo_p->b_foot = (z_dsize + x_dsize + y_dsize) * n + (a_vec ? a_dsize * n : 0);
             ss_A->nv = 1;
-            ss_A->ops_scalar = 0;
-            ss_A->ops_SIMD = 2 * n;
-            ss_A->lvl = 0;
-            ss_A->ks = 3 + (a_vec ? 1 : 0);
-            ss_A->hi_rep = 0;
+            ss_A->w_scalar = 0;
+            ss_A->w_vector = 2 * n;
+            ss_A->l_i = 0;
+            ss_A->k_s = 3 + (a_vec ? 1 : 0);
+            ss_A->hi_rep = 1;
             if (a_vec)
                 ss_A->hi = {z_dsize * n, x_dsize * n, y_dsize * n, a_dsize * n};
             else
@@ -1740,4 +2587,4 @@ namespace HW_model
     } // namespace TSIrCo
 } // namespace cost_models
 
-#endif // TSIrCo_MODEL_BASELINE_HPP
+#endif // PAHIS_MODEL_BASELINE_HPP
