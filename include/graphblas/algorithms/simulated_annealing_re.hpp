@@ -472,7 +472,7 @@ namespace grb {
 				}
 
 				// add new mask
-				masks.emplace_back( grb::Vector< bool, backend >( n ) );
+				masks.emplace_back( grb::Vector< MaskType, backend >( n ) );
 				auto &new_mask = masks.at(i);
 				rc = rc ? rc : grb::resize( new_mask, n );
 				rc = rc ? rc : grb::set< descr >( new_mask, frontier, static_cast< MaskType >(true) );
@@ -594,7 +594,7 @@ namespace grb {
 
 #ifdef TIMING
 			if( s == 0 ){
-				std::cerr << "Starting simulated_annealing_RE_ising" << "\n";
+				std::cerr << "Starting simulated_annealing_RE_Ising" << "\n";
 			}
 			auto start = std::chrono::high_resolution_clock::now();
 #endif
@@ -658,7 +658,8 @@ namespace grb {
 			start = std::chrono::high_resolution_clock::now();
 #endif
 
-			std::vector< grb::Vector< bool, backend > > masks ;
+			using MaskType = bool;
+			std::vector< grb::Vector< MaskType, backend > > masks ;
 			rc = rc ? rc : matrix_partition< descr >( masks, couplings, h, rand, seed );
 #ifdef TIMING
 				end = std::chrono::high_resolution_clock::now();
