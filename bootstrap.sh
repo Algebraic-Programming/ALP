@@ -118,6 +118,14 @@ spblas_prefix=
 no_solver_lib=
 enable_extra_solver_lib=no
 
+if [[ "$OSTYPE" == "darwin"* ]]; then
+	echo "Mac OS X detected. Making the following modifications:"
+	echo " - realpath does not support -e, omitting. Please check the inferred install path is correct."
+	REALPATH=realpath
+else
+	REALPATH=realpath -e
+fi
+
 if [[ "$#" -lt 1 ]]; then
 	echo "No argument given, at least --prefix=<path/to/install/directory/> is mandatory"
 	echo
@@ -225,7 +233,7 @@ echo
 # quotes to support spaces as well
 prefix="${prefix/#\~/$HOME}"
 parent_dir_relative=$(dirname "${prefix}")
-PARENT_DIR="$(realpath -e -q "${parent_dir_relative}")"
+PARENT_DIR="$($REALPATH -q "${parent_dir_relative}")"
 validate_command_result "$?" "Parent directory path '${parent_dir_relative}' for --prefix \
 does not exist: please create it before invocation"
 BASENAME=$(basename "${prefix}")
