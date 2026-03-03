@@ -7,12 +7,13 @@ on:
 
 jobs:
   build-wheels:
-    name: Build wheels on ${{ matrix.os }}
+    name: Build wheels on ${{ matrix.os }} and python 3.${{ matrix.pyversion }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
+        pyversion: [ 9, 10, 11, 12 ]
     steps:
       - name: Checkout (with submodules)
         uses: actions/checkout@v4
@@ -43,8 +44,8 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
 
+          python-version: '3.${{ matrix.pyversion }}'
       - name: Install cibuildwheel
         run: |
           python -m pip install --upgrade pip
@@ -52,7 +53,7 @@ jobs:
 
       - name: Build wheels
         env:
-          CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-*"
+          CIBW_BUILD: "cp3${{ matrix.pyversion }}-*"
           CIBW_SKIP: "*-musllinux* pp*"
           CIBW_ARCHS_LINUX: "x86_64"
           CIBW_ARCHS_MACOS: "arm64"
@@ -196,7 +197,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: alp-graphblas-wheels-${{ matrix.os }}
+          name: alp-graphblas-wheels-${{ matrix.os }}-py3${{ matrix.pyversion }}
           path: wheelhouse/*.whl
 
   publish:
