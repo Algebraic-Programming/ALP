@@ -37,6 +37,7 @@ J[1,3] = 4
 J[2,3] = -1
 J[4,1] = 3
 J[4,1] = -2
+h = np.zeros( N )
 
 # You can also import a matrix as follows:
 from scipy.io import mmread
@@ -71,7 +72,7 @@ states_numpy = np.random.randint(0,2, (n_replicas, N), dtype=np.int8 )
 betas_numpy = np.logspace( 1e-2, 1e+2, n_replicas, dtype=np.float64 )
 
 # Initialize energies
-energies_numpy = np.diag(states_numpy@J@states_numpy.T)/2 + np.dot(states_numpy,h )
+energies_numpy = np.diag(states_numpy@J@states_numpy.T)/2 + np.dot(states_numpy, h)
 
 niterations = 100
 verbose = 0
