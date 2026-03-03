@@ -220,12 +220,6 @@ jobs:
           path: dist
           pattern: alp-graphblas-wheels-*
           merge-multiple: true
-      - name: Publish to TestPyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository-url: https://test.pypi.org/legacy/
-          packages-dir: dist/
-          verbose: true
 
       - name: Create GitHub Release and upload wheels
         uses: softprops/action-gh-release@v1
@@ -233,6 +227,13 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
           files: dist/*.whl
+
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: dist/
+          verbose: true
 
       - name: Skip in-publish verification
         shell: bash

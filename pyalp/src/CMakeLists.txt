@@ -231,9 +231,7 @@ set(PYTHON_VERSION ${PYTHON_VERSION_STRING})
 set(pybind11_VERSION ${pybind11_VERSION})
 
 # This is a simplified list. A more robust solution would inspect the build targets.
-set(pyalp_ALGORITHMS "conjugate_gradient")
-set(pyalp_ALGORITHMS "SARE_Ising")
-set(pyalp_ALGORITHMS "SARE_QUBO")
+set(pyalp_ALGORITHMS "conjugate_gradient simulated_annealing_replica_exchange")
 set(pyalp_BACKENDS "reference, reference_omp")
 
 # Configure the metadata file from the template
