@@ -82,6 +82,7 @@ namespace grb {
 		 *  bSB — core optimisation routine                             *
 		 *-------------------------------------------------------------*/
 		template< Descriptor descr = descriptors::no_operation,
+			bool DISCRETIZEJX = true, // if true, the method is dSB
 			typename IsingHType,
 			typename IOType,
 			typename RSI,
@@ -120,7 +121,10 @@ namespace grb {
 			grb::Vector< bool, backend > & mask,
 			grb::Vector< IsingHType, backend > & sol,
 			size_t & iterations,
-			// default semiring, minus, divide
+			// Parameters present in
+			// Goto et al., “High-performance combinatorial optimization based on classical mechanics"
+			const IOType a0 = 1,
+			// default semiring, divide
 			const Ring & ring = Ring(),
 			const Minus & minus = Minus(),
 			const Divide & divide = Divide(),
@@ -187,14 +191,24 @@ namespace grb {
 #endif
 
 			rc = rc ? rc : grb::foldl< descr_dense >( sumJ2, static_cast<IOType>( N - 1 ), divide );
-			IOType xi = 0.5;
+			IOType c0 = 0.5;
 			IOType sqrt_sumJ2 = zero_itype;
 			sqrt_sumJ2 = sqrtX( static_cast<IOType>( sumJ2 ) );
-			rc = rc ? rc : grb::foldl< descr_dense >( xi, sqrt_sumJ2, divide );
+			rc = rc ? rc : grb::foldl< descr_dense >( c0, sqrt_sumJ2, divide );
 #ifdef DEBUG_IMSB
-			// for debugging purposes, print xi
-			std::cout << "xi: " << xi << '\n';
+			// for debugging purposes, print c0
+			std::cout << "c0: " << c0 << '\n';
 #endif
+			if( DISCRETIZEJX ){
+				// sol[i] = sign(x_comp[i]); which in graphblas is:
+				rc = rc ? rc : grb::eWiseLambda< descr_dense >(
+					[&sol,&x_comp]( const size_t i ) {
+						(void) i;
+						sol[i] = sign<IOType, IsingHType>(x_comp[i]);
+					},
+					sol, x_comp
+				);
+			}
 
 			/* ---- iteration variables ---- */
 			IOType ps  = p_init;
@@ -204,11 +218,16 @@ namespace grb {
 
 			for ( iterations = 0; iterations < num_iters; ++iterations ) {
 
-			    /* y_comp += ((-1+ps)*x_comp + xi*(Jx + h)) * dt */
+			    /* y_comp += ((-a0+ps)*x_comp + c0*(Jx + h)) * dt */
 
 			    // Jx <- J * x_comp
-				grb::set( Jx, zero );
-				rc = rc ? rc : grb::mxv< descr_dense >( Jx, J, x_comp, ring );
+				rc = rc ? rc : grb::set( temp, zero );
+				if( DISCRETIZEJX ){
+					// this makes the method dSB !
+					rc = rc ? rc : grb::mxv< descr_dense >( temp, J, sol, ring );
+				}else{
+					rc = rc ? rc : grb::mxv< descr_dense >( temp, J, x_comp, ring );
+				}
 				assert( rc == grb::SUCCESS );
 #ifdef DEBUG_IMSB
 				vector_print( Jx, "Jx" );
@@ -224,16 +243,16 @@ namespace grb {
 				vector_print( temp, "temp = Jx + h" );
 #endif
 
-			    // temp <- xi * temp
-			    rc = rc ? rc : grb::foldl< descr_dense >( 
-					temp, xi, ring.getMultiplicativeMonoid() 
+			    // temp <- c0 * temp
+			    rc = rc ? rc : grb::foldl< descr_dense >(
+					temp, c0, ring.getMultiplicativeMonoid()
 				);
 				assert( rc == grb::SUCCESS );
 #ifdef DEBUG_IMSB
-				vector_print( temp, "xi * temp" );
+				vector_print( temp, "c0 * temp" );
 #endif
-			    // temp <- temp + (-1+ps) * x_comp
-			    const IOType scale = -1.0 + ps;
+			    // temp <- temp + (-a0+ps) * x_comp
+			    const IOType scale = -a0 + ps;
 				rc = rc ? rc : grb::eWiseMul< descr_dense >( temp, scale, x_comp, ring );
 				assert( rc == grb::SUCCESS );
 #ifdef DEBUG_IMSB
@@ -248,8 +267,8 @@ namespace grb {
 				vector_print( y_comp, "y_comp (a)" );
 #endif
 
-			    /* x_comp += dt * y_comp */
-			    rc = rc ? rc : grb::eWiseMul< descr_dense >( x_comp, dt, y_comp, ring );
+			    /* x_comp += a0 * dt * y_comp */
+			    rc = rc ? rc : grb::eWiseMul< descr_dense >( x_comp, a0 * dt, y_comp, ring );
 				assert( rc == grb::SUCCESS );
 #ifdef DEBUG_IMSB
 				vector_print( x_comp, "x_comp" );

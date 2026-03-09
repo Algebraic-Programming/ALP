@@ -151,6 +151,7 @@ struct input {
 	bool verify;
 	// filename of reference solution vector (not implemented)
 	std::string filename_ref_solution;
+	int seed = 0;
 };
 
 bool input::use_default_data = false;
@@ -228,8 +229,28 @@ void read_matrix_data_from_array(
 }
 
 template< typename Dtype >
-void read_vector_data(const std::string &filename, std::vector<Dtype> &data) {
+void read_vector_data(const std::string &filename, std::vector<Dtype> &data, const int seed = -69420) {
     // Implementation for reading vector data from file
+	const std::size_t N = std::get<0>(Storage::getData());
+	if( filename == "zero" ){
+		data.resize(N);
+		std::fill( data.begin(), data.end(), 0 );
+		return;
+	}
+	if( filename == "rand" ){
+		if( seed == -69420 ){
+			std::cerr << "For random data, a seed must be given!\n";
+			return;
+		}
+		std::minstd_rand rng ( seed );
+		std::uniform_real_distribution< IOType > rand ( -0.1, 0.1 );
+
+		data.resize( N );
+		for( auto &a : data ){
+			a = rand(rng);
+		}
+		return;
+	}
     try {
         std::ifstream file( filename );
         if( !file.is_open() ) {
@@ -271,6 +292,9 @@ void read_vector_data_from_array(
 void ioProgram( const struct input &data_in, bool &success ) {
 
     using namespace test_data;
+
+	const size_t s = grb::spmd<>::pid();
+
 	success = false;
 	// Parse and store matrix in singleton class
 	auto &Jdata = std::get<2>(Storage::getData());
@@ -290,16 +314,17 @@ void ioProgram( const struct input &data_in, bool &success ) {
     } else {
         // read from files if provided
         read_matrix_data<NonzeroT>( data_in.filename_Jmatrix, Jdata, data_in.direct );
-        read_vector_data<JType>( data_in.filename_h, h );
-        read_vector_data<IOType>( data_in.filename_x, x );
-        read_vector_data<IOType>( data_in.filename_y, y );
+		read_vector_data<JType>( data_in.filename_h, h  );
+		read_vector_data<IOType>( data_in.filename_x, x, data_in.seed + 2*s );
+		read_vector_data<IOType>( data_in.filename_y, y, data_in.seed + 2*s + 1 );
+
 		if(data_in.verify) {
 			if(data_in.filename_ref_solution.empty()) {
 				std::cerr << "Reference solution file not provided for verification\n";
 				return;
 			}
+			read_vector_data<solType>( data_in.filename_ref_solution, sol );
 		}
-		read_vector_data<JType>( data_in.filename_ref_solution, sol );
     }
 
 	success = true;
@@ -438,6 +463,12 @@ void grbProgram(
 	rc = rc ? rc : wait();
 	out.times.preamble = timer.time();
 
+	std::cerr << "Calling bSB with parameters:\n";
+	std::cerr << "\t num_iters = " << num_iters << "\n";
+	std::cerr << "\t dt = " << dt << "\n";
+	std::cerr << "\t p0 = " << p0 << "\n";
+	std::cerr << "\t p1 = " << p1 << "\n";
+
 	// by default, copy input requested repetitions to output repititions performed
 	out.rep = data_in.rep;
 	// time a single call
@@ -507,6 +538,11 @@ void grbProgram(
 		}
 		sleep( 1 );
 	}
+	auto best_energy = energies[0];
+	for( size_t i = 1; i < num_iters; ++i ){
+		best_energy = std::min< IOType >(best_energy, energies[i]);
+	}
+	std::cerr << 1 << "," << num_iters << "," << out.times.useful << "," << best_energy << std::endl;
 
 	// start postamble
 	timer.reset();
@@ -530,8 +566,6 @@ void grbProgram(
 	// finish timing
 	const double time_taken = timer.time();
 	out.times.postamble = time_taken;
-
-
 
     if( rc != grb::SUCCESS ) {
         std::cerr << "bSB returned error code " << rc << '\n';
@@ -567,7 +601,7 @@ void grbProgram(
 // supported command line arguments
 void printhelp( char *progname ) {
 	std::cout << " Use: \n";
-	std::cout << progname << " [--use-default-data] [--j-matrix-fname STR] [--h-fname STR] [--x-fname STR] [--y-fname STR] [--no-direct] [--num-iters INT] [--p0 FLOAT] [--p1 FLOAT] [--dt FLOAT] [--test-rep INT] [--test-outer-rep INT] [--verify] [--ref-solution-fname STR]\n";
+	std::cout << progname << " [--use-default-data] [--j-matrix-fname STR] [--h-fname STR] [--x-fname STR] [--y-fname STR] [--no-direct] [--num-iters INT] [--p0 FLOAT] [--p1 FLOAT] [--dt FLOAT] [--test-rep INT] [--test-outer-rep INT] [--verify] [--ref-solution-fname STR] [--seed INT]\n";
 	std::cout << "\n";
 	std::cout << " --use-default-data (no argument): use hardcoded default data from the test_data namespace for internal tests\n";
 	// input data parameters (mandatory if --use-default-data is not used)
@@ -691,6 +725,13 @@ bool parse_arguments(
 				in.outer = static_cast< size_t >( r );
 			} else {
 				std::cerr << "--test-outer-rep requires an argument\n";
+				return false;
+			}
+		} else if( arg == "--seed" ) {
+			if( i + 1 < argc ) {
+				in.seed = atoi( argv[ ++i ] );
+			} else {
+				std::cerr << "--seed requires an INT argument\n";
 				return false;
 			}
 		} else if( arg == "--p0" ) {
