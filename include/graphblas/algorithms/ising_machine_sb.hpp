@@ -218,7 +218,7 @@ namespace grb {
 
 			for ( iterations = 0; iterations < num_iters; ++iterations ) {
 
-			    /* y_comp += ((-a0+ps)*x_comp + c0*(Jx + h)) * dt */
+			    /* y_comp += (dt*(-a0+ps)*x_comp) + (dt*c0*(Jx + h)) */
 
 			    // Jx <- J * x_comp
 				rc = rc ? rc : grb::set( temp, zero );
@@ -243,29 +243,28 @@ namespace grb {
 				vector_print( temp, "temp = Jx + h" );
 #endif
 
-			    // temp <- c0 * temp
-			    rc = rc ? rc : grb::foldl< descr_dense >(
-					temp, c0, ring.getMultiplicativeMonoid()
+			    // y_comp <- y_comp + dt * c0 * temp
+			    rc = rc ? rc : grb::eWiseMul< descr_dense >(
+					y_comp, dt * c0, temp, ring
 				);
 				assert( rc == grb::SUCCESS );
 #ifdef DEBUG_IMSB
 				vector_print( temp, "c0 * temp" );
 #endif
-			    // temp <- temp + (-a0+ps) * x_comp
+			    // y_comp <- y_comp + dt * (-a0+ps) * x_comp
 			    const IOType scale = -a0 + ps;
-				rc = rc ? rc : grb::eWiseMul< descr_dense >( temp, scale, x_comp, ring );
+				rc = rc ? rc : grb::eWiseMul< descr_dense >( y_comp, dt * scale, x_comp, ring );
 				assert( rc == grb::SUCCESS );
 #ifdef DEBUG_IMSB
 				std::cout << "scale: " << scale << '\n';
-				vector_print( temp, "temp + (-1+ps) * x_comp" );
+				vector_print( y_comp, "y_comp + (-a0+ps) * x_comp" );
 #endif
 
-			    // y_comp += dt * temp
-			    rc = rc ? rc : grb::eWiseMul< descr_dense >( y_comp, dt, temp, ring );
 				assert( rc == grb::SUCCESS );
 #ifdef DEBUG_IMSB
 				vector_print( y_comp, "y_comp (a)" );
 #endif
+				// ----------------------------------------------------
 
 			    /* x_comp += a0 * dt * y_comp */
 			    rc = rc ? rc : grb::eWiseMul< descr_dense >( x_comp, a0 * dt, y_comp, ring );
@@ -278,7 +277,11 @@ namespace grb {
 				// mask = np.abs(x_comp) > 1
 			    rc = rc ? rc : grb::eWiseLambda< descr_dense >( [&mask, &x_comp]( const size_t i ) {
 					(void) i;
+<<<<<<< HEAD
 					// rewrite this to use graphblas language
+=======
+					// TODO: rewrite this to use graphblas language
+>>>>>>> 07cc78607 (One less eWiseMul in kernel)
 					mask[i] = std::abs(x_comp[i]) > 1;
 					}, mask, x_comp
 				);
