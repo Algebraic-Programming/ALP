@@ -39,9 +39,9 @@ namespace grb {
 	namespace algorithms {
 
 		template< typename IOType, Backend backend >
-		void vector_print( grb::Vector< IOType, backend > & x_comp, const std::string & vector_name ) {
+		void vector_print( const grb::Vector< IOType, backend > & v, const std::string & vector_name ) {
 			grb::PinnedVector< IOType > pinnedVector;
-			pinnedVector = grb::PinnedVector< IOType >( x_comp, grb::SEQUENTIAL );
+			pinnedVector = grb::PinnedVector< IOType >( v, grb::SEQUENTIAL );
 			std::cout << "First 10 nonzeroes of " << vector_name << " = [ ";
 			for( size_t k = 0; k < pinnedVector.nonzeroes() && k < 10; ++k ) {
 				const IOType & nonzeroValue = pinnedVector.getNonzeroValue( k );
@@ -82,28 +82,28 @@ namespace grb {
 		 *  bSB — core optimisation routine                             *
 		 *-------------------------------------------------------------*/
 		template< Descriptor descr = descriptors::no_operation,
-			bool DISCRETIZEJX = true, // if true, the method is dSB
+			bool DISCRETIZEJX, // if true, the method is dSB
 			typename IsingHType,
 			typename IOType,
 			typename RSI,
 			typename NZI,
 			Backend backend,
-			class Ring = Semiring< 
-				grb::operators::add< IOType >, 
-				grb::operators::mul< IOType >, 
-				grb::identities::zero, 
+			class Ring = Semiring<
+				grb::operators::add< IOType >,
+				grb::operators::mul< IOType >,
+				grb::identities::zero,
 				grb::identities::one
 			>,
 			class Minus = operators::subtract< IOType >,
 			class Divide = operators::divide< IOType >,
-			class RingIType = Semiring< 
-				grb::operators::add< IsingHType >, 
-				grb::operators::mul< IsingHType >, 
-				grb::identities::zero, 
+			class RingIType = Semiring<
+				grb::operators::add< IsingHType >,
+				grb::operators::mul< IsingHType >,
+				grb::identities::zero,
 				grb::identities::one
 			>
 		>
-		grb::RC bSB( std::vector< IOType > & energies,                   // output length num_iters
+		grb::RC SB( std::vector< IOType > & energies,                   // output length num_iters
 			grb::Vector< IOType, backend > & x_comp,                     // in/out, size N
 			grb::Vector< IOType, backend > & y_comp,                     // in/out, size N
 			const grb::Matrix< IsingHType, backend, RSI, RSI, NZI > & J, // NxN, symmetric
@@ -277,11 +277,7 @@ namespace grb {
 				// mask = np.abs(x_comp) > 1
 			    rc = rc ? rc : grb::eWiseLambda< descr_dense >( [&mask, &x_comp]( const size_t i ) {
 					(void) i;
-<<<<<<< HEAD
 					// rewrite this to use graphblas language
-=======
-					// TODO: rewrite this to use graphblas language
->>>>>>> 07cc78607 (One less eWiseMul in kernel)
 					mask[i] = std::abs(x_comp[i]) > 1;
 					}, mask, x_comp
 				);
@@ -289,8 +285,8 @@ namespace grb {
 #ifdef DEBUG_IMSB
 				vector_print( mask, "mask" );
 #endif
-				rc = rc ? rc : grb::foldl< descr_dense >(  
-					y_comp, mask, zero, 
+				rc = rc ? rc : grb::foldl< descr_dense >( 
+					y_comp, mask, zero,
 					grb::operators::right_assign<IOType>()
 				);
 #ifdef DEBUG_IMSB
@@ -353,6 +349,113 @@ namespace grb {
 
 			return SUCCESS;
 		}
+
+		/*
+		 * Wrapper for SB that specializes the function to the discrete Simulated Bifurcation algorithm
+		 */
+		template< Descriptor descr = descriptors::no_operation,
+			typename IsingHType,
+			typename IOType,
+			typename solType,
+			typename RSI,
+			typename NZI,
+			Backend backend,
+			class Ring = Semiring<
+				grb::operators::add< IOType >,
+				grb::operators::mul< IOType >,
+				grb::identities::zero,
+				grb::identities::one
+			>,
+			class Divide = operators::divide< IOType >,
+			class RingIType = Semiring<
+				grb::operators::add< IsingHType >,
+				grb::operators::mul< IsingHType >,
+				grb::identities::zero,
+				grb::identities::one
+			>
+		>
+		inline constexpr grb::RC dSB( std::vector< IOType > & energies,                   // output length num_iters
+			grb::Vector< IOType, backend > & x_comp,                     // in/out, size N
+			grb::Vector< IOType, backend > & y_comp,                     // in/out, size N
+			const grb::Matrix< IsingHType, backend, RSI, RSI, NZI > & J, // NxN, symmetric
+			const grb::Vector< IsingHType, backend > & h,                    // size N
+			const IOType p_init,
+			const IOType p_end,
+			const std::size_t num_iters,
+			const IOType dt,
+			// workspace
+			grb::Matrix< IsingHType, backend, RSI, RSI, NZI > & J2,
+			grb::Vector< IOType, backend > & temp,
+			grb::Vector< IsingHType, backend > & temp_int,
+			grb::Vector< bool, backend > & mask,
+			grb::Vector< solType, backend > & sol,
+			size_t & iterations,
+			const IOType a0 = 1,
+			// default semiring, divide
+			const Ring & ring = Ring(),
+			const Divide & divide = Divide(),
+			const IOType zero = 0,
+			const RingIType & ringIType = RingIType(),
+			const IsingHType zero_itype = 0,
+			const std::function< IOType( IOType ) > & sqrtX = std_sqrt< IOType, IOType > ) {
+				return SB< descr, true >( energies, x_comp, y_comp, J, h, p_init, p_end, num_iters, dt,
+						J2, temp, temp_int, mask, sol, iterations,
+						a0, ring, divide, zero, ringIType, zero_itype, sqrtX);
+			}
+
+		/*
+		 * Wrapper for SB that specializes the function to the ballistic Simulated Bifurcation algorithm
+		 */
+		template< Descriptor descr = descriptors::no_operation,
+			typename IsingHType,
+			typename IOType,
+			typename solType,
+			typename RSI,
+			typename NZI,
+			Backend backend,
+			class Ring = Semiring<
+				grb::operators::add< IOType >,
+				grb::operators::mul< IOType >,
+				grb::identities::zero,
+				grb::identities::one
+			>,
+			class Divide = operators::divide< IOType >,
+			class RingIType = Semiring<
+				grb::operators::add< IsingHType >,
+				grb::operators::mul< IsingHType >,
+				grb::identities::zero,
+				grb::identities::one
+			>
+		>
+		inline constexpr grb::RC bSB( std::vector< IOType > & energies,
+			grb::Vector< IOType, backend > & x_comp,
+			grb::Vector< IOType, backend > & y_comp,
+			const grb::Matrix< IsingHType, backend, RSI, RSI, NZI > & J,
+			const grb::Vector< IsingHType, backend > & h,
+			const IOType p_init,
+			const IOType p_end,
+			const std::size_t num_iters,
+			const IOType dt,
+			// workspace
+			grb::Matrix< IsingHType, backend, RSI, RSI, NZI > & J2,
+			grb::Vector< IOType, backend > & temp,
+			grb::Vector< IsingHType, backend > & temp_int,
+			grb::Vector< bool, backend > & mask,
+			grb::Vector< solType, backend > & sol,
+			size_t & iterations,
+			const IOType a0 = 1,
+			// default semiring, divide
+			const Ring & ring = Ring(),
+			const Divide & divide = Divide(),
+			const IOType zero = 0,
+			const RingIType & ringIType = RingIType(),
+			const IsingHType zero_itype = 0,
+			const std::function< IOType( IOType ) > & sqrtX = std_sqrt< IOType, IOType > ) {
+				return SB< descr, false >( energies, x_comp, y_comp, J, h, p_init, p_end, num_iters, dt,
+						J2, temp, temp_int, mask, sol, iterations,
+						a0, ring, divide, zero, ringIType, zero_itype, sqrtX);
+			}
+
 
 	} // algorithms namespace
 

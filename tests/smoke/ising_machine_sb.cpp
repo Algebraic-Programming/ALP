@@ -41,7 +41,8 @@ using namespace grb;
 using namespace algorithms;
 
 using IOType = double;
-using JType = int;
+using JType = float;
+using solType = int8_t;
 
 /** Parser type */
 typedef grb::utils::MatrixFileReader<
@@ -463,7 +464,8 @@ void grbProgram(
 	rc = rc ? rc : wait();
 	out.times.preamble = timer.time();
 
-	std::cerr << "Calling bSB with parameters:\n";
+
+	std::cerr << "Calling SB with parameters:\n";
 	std::cerr << "\t num_iters = " << num_iters << "\n";
 	std::cerr << "\t dt = " << dt << "\n";
 	std::cerr << "\t p0 = " << p0 << "\n";
@@ -474,7 +476,13 @@ void grbProgram(
 	// time a single call
 	if( out.rep == 0 ) {
 		timer.reset();
-		rc = bSB(
+#ifdef _DISCRETE_SB
+	 rc = grb::algorithms::dSB(
+#elif defined(_BALLISTIC_SB)
+	 rc = grb::algorithms::bSB(
+#else
+	static_assert(false, "Please define macro _BALLISTIC_SB or _DISCRETE_SB to choose algorithm");
+#endif
             energies, x0, y0, J, h, p0, p1, num_iters, dt,
             J2, Jx, temp, temp_int, mask, sol, out.iterations
         );
@@ -515,7 +523,13 @@ void grbProgram(
 		timer.reset();
 		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
 			if( rc == SUCCESS ) {
-				rc = bSB(
+#ifdef _DISCRETE_SB
+	 rc = grb::algorithms::dSB(
+#elif defined(_BALLISTIC_SB)
+	 rc = grb::algorithms::bSB(
+#else
+	static_assert(false, "Please define macro _BALLISTIC_SB or _DISCRETE_SB to choose algorithm");
+#endif
                     energies, x0, y0, J, h, p0, p1, num_iters, dt,
                     J2, Jx, temp, temp_int, mask, sol, out.iterations
                 );
@@ -568,7 +582,7 @@ void grbProgram(
 	out.times.postamble = time_taken;
 
     if( rc != grb::SUCCESS ) {
-        std::cerr << "bSB returned error code " << rc << '\n';
+        std::cerr << "SB returned error code " << rc << '\n';
     } else {
 		if (data_in.verify) {
 			// print all energies
