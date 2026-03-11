@@ -57,7 +57,7 @@ namespace grb {
 		// 	}
 		// };
 		template< typename IType, typename ReturnType >
-		inline ReturnType sign(IType x) {
+		constexpr inline ReturnType sign(IType x) {
 			return (x > 0) - (x < 0);
 		}
 
@@ -191,6 +191,7 @@ namespace grb {
 			IOType sqrt_sumJ2 = zero_itype;
 			sqrt_sumJ2 = sqrtX( static_cast<IOType>( sumJ2 ) );
 			rc = rc ? rc : grb::foldl< descr_dense >( c0, sqrt_sumJ2, divide );
+			rc = rc ? rc : grb::wait();
 #ifdef DEBUG_IMSB
 			// for debugging purposes, print c0
 			std::cout << "c0: " << c0 << '\n';
@@ -204,6 +205,8 @@ namespace grb {
 					},
 					sol, x_comp
 				);
+			    rc = rc ? rc : grb::set( temp, zero );
+				rc = rc ? rc : grb::mxv< descr_dense >( temp, J, sol, ring );
 			}
 
 			/* ---- iteration variables ---- */
@@ -216,12 +219,14 @@ namespace grb {
 
 			    /* y_comp += (dt*(-a0+ps)*x_comp) + (dt*c0*(Jx + h)) */
 
-			    // Jx <- J * x_comp
-				rc = rc ? rc : grb::set( temp, zero );
 				if( DISCRETIZEJX ){
-					// this makes the method dSB !
-					rc = rc ? rc : grb::mxv< descr_dense >( temp, J, sol, ring );
+					// Jx <- J * sol + h
+					// NOTE: temp is set to J@sol by the energy calculation at the end of the loop,
+					// The first iteration is taken care of in the initialization
+					rc = rc ? rc : grb::foldl< descr_dense >( temp, h, ring.getAdditiveMonoid() );
 				}else{
+					// Jx <- J * x_comp + h
+					rc = rc ? rc : grb::set( temp, h );
 					rc = rc ? rc : grb::mxv< descr_dense >( temp, J, x_comp, ring );
 				}
 
@@ -259,10 +264,12 @@ namespace grb {
 				vector_print( x_comp, "x_comp" );
 #endif
 
+				rc = rc ? rc : grb::wait();
 			    /* y_comp[ |x|>1 ] = 0 */
 			    rc = rc ? rc : grb::eWiseLambda< descr_dense >( [&y_comp, &x_comp]( const size_t i ) {
 					(void) i;
-					// TODO: rewrite this to use graphblas language
+					// not TODO: rewrite this to use graphblas language~
+					// This seems better like this.
 					y_comp[i] = (std::abs(x_comp[i]) > 1) ? 0 : y_comp[i];
 					}, y_comp, x_comp
 				);
@@ -277,7 +284,7 @@ namespace grb {
 				rc = rc ? rc : foldl< descr_dense >( x_comp, static_cast<IOType>(1), grb::operators::min < IOType >() );
 				assert( rc == grb::SUCCESS );
 #ifdef DEBUG_IMSB
-				std::cout << "i =  " << iter << "\n ";
+				std::cout << "i =  " << iterations << "\n ";
 				vector_print( x_comp, "x_comp_alp " );
 				vector_print( y_comp, "y_comp_alp" );
 #endif
