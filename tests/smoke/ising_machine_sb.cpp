@@ -17,7 +17,9 @@
 
 #include <exception>
 #include <iostream>
+#include <random>
 #include <vector>
+#include <algorithm>
 #include <cmath>
 
 #include <inttypes.h>
@@ -70,7 +72,7 @@ typedef grb::utils::Singleton<
         std::vector<JType>,        // h vector
         std::vector<IOType>,       // x vector
         std::vector<IOType>,       // y vector
-        std::vector<JType>        // sol_ref vector
+        std::vector<solType>        // sol_ref vector
         // Add more types as needed
     >
 > Storage;
@@ -92,7 +94,7 @@ namespace test_data {
 		0.0373, 0.0540, 0.0486, -0.0877, -0.0418,
 		-0.0261, 0.0018, -0.0710, 0.0507, -0.0483
 	};
-	const std::vector<JType> sol_ref_data = { 1, -1, 1, 1, 1, -1, -1, -1, 1, 1 };
+	const std::vector<solType> sol_ref_data = { 1, -1, 1, 1, 1, -1, -1, -1, 1, 1 };
 	// matrix in format of list of nested pairs ((i, j), value)
 	const std::vector<std::pair< std::pair< size_t, size_t >, JType > > j_matrix_data = {
 		{{1, 1}, -1}, {{2, 2}, -1}, {{3, 1}, 1}, {{3, 3}, -1},
@@ -143,11 +145,11 @@ struct input {
 	size_t rep;
 	size_t outer; // number of outer repetitions for benchmarking
 	// number of iterations for Ising machine SB
-	size_t num_iters;
+	size_t num_iters = test_data::num_iters;
 	// p0, p1, dt parameters for Ising machine SB
-	IOType p0;
-	IOType p1;
-	IOType dt;
+	IOType p0 = test_data::p0;
+	IOType p1 = test_data::p1;
+	IOType dt = test_data::dt;
 	// whether to verify output against reference data
 	bool verify;
 	// filename of reference solution vector (not implemented)
@@ -162,8 +164,8 @@ struct output {
 	size_t rep;
 	size_t iterations;
 	grb::utils::TimerResults times;
-    std::unique_ptr< PinnedVector< JType > > pinnedSolutionVector;
-    std::unique_ptr< PinnedVector< JType > > pinnedRefSolutionVector;
+    std::unique_ptr< PinnedVector< solType > > pinnedSolutionVector;
+    std::unique_ptr< PinnedVector< solType > > pinnedRefSolutionVector;
 };
 
 template< typename Dtype >
@@ -311,7 +313,7 @@ void ioProgram( const struct input &data_in, bool &success ) {
         read_vector_data_from_array<JType>( test_data::h_array_data, h );
         read_vector_data_from_array<IOType>( test_data::x_array_data, x );
         read_vector_data_from_array<IOType>( test_data::y_array_data, y );
-        read_vector_data_from_array<JType>( test_data::sol_ref_data, sol );
+        read_vector_data_from_array<solType>( test_data::sol_ref_data, sol );
     } else {
         // read from files if provided
         read_matrix_data<NonzeroT>( data_in.filename_Jmatrix, Jdata, data_in.direct );
@@ -335,8 +337,6 @@ void grbProgram(
     const struct input &data_in, 
     struct output &out
 ) {
-    using namespace test_data;
-
 	// get user process ID
 	const size_t s = spmd<>::pid();
 	assert( s < spmd<>::nprocs() );
@@ -349,7 +349,6 @@ void grbProgram(
 	std::cout << "problem size n = " << n << "\n";
     grb::Vector<JType> h( n );
     grb::Vector<IOType> x0( n ), y0( n ); // initialy
-    // ... populate J with test (random) values
     grb::RC rc = grb::SUCCESS;
 
     // load into GraphBLAS
@@ -366,6 +365,9 @@ void grbProgram(
 			>( data.cend() ),
 			SEQUENTIAL
 		);
+
+		// class grb::Operator mul = grb::operators::mul< JType >;
+		// rc = rc ? rc : grb::foldl( J, static_cast< JType >(1/2), mul );
 		/* Once internal issue #342 is resolved this can be re-enabled
 		RC io_rc = buildMatrixUnique(
 			J,
@@ -402,6 +404,11 @@ void grbProgram(
 			h_data.cend(),
 			SEQUENTIAL
 		);
+		// if( FROM_QUBO ){
+			// class grb::Operator mul = grb::operators::mul< IOType >;
+			// rc = rc ? rc : grb::foldl( h, static_cast< IOType >(1/2), mul );
+		// }
+
     }
 
     // build vector x with data from singleton
@@ -430,22 +437,24 @@ void grbProgram(
         std::cerr << "Vector build failed\n";
         return;
     }
+	const auto num_iters = data_in.num_iters;
+	const auto dt = data_in.dt;
+	const auto p0 = data_in.p0;
+	const auto p1 = data_in.p1;
 
     // energies is array of length num_iters, initialized to 0
     std::vector< IOType > energies( num_iters, 0 );
 
-    grb::Vector< IOType > Jx( n );
     grb::Vector< IOType > temp( n );
     grb::Vector< JType > temp_int( n );
-    grb::Vector< bool > mask( n );
     grb::Matrix< JType > J2( n, n );
     rc = rc ? rc : grb::resize( J2, grb::nnz(J) );
     if(rc != grb::SUCCESS) {
         std::cerr << "Matrix resize failed for J2\n";
         return;
     }
-    grb::Vector< JType > sol( n );
-    grb::Vector< JType > sol_ref( n );
+    grb::Vector< solType > sol( n );
+    grb::Vector< solType > sol_ref( n );
 	if(data_in.verify) {
 		// build vector sol_ref with data from singleton
 		const auto &sol_ref_data = std::get<6>(Storage::getData());
@@ -484,7 +493,7 @@ void grbProgram(
 	static_assert(false, "Please define macro _BALLISTIC_SB or _DISCRETE_SB to choose algorithm");
 #endif
             energies, x0, y0, J, h, p0, p1, num_iters, dt,
-            J2, Jx, temp, temp_int, mask, sol, out.iterations
+            J2, temp, temp_int, sol, out.iterations
         );
 
 		rc = rc ? rc : wait();
@@ -516,6 +525,7 @@ void grbProgram(
 					<< "Time taken was " << single_time << " ms. "
 					<< "Deduced inner repetitions parameter of " << out.rep << " "
 					<< "to take 1 second or more per inner benchmark.\n";
+
 			}
 		}
 	} else {
@@ -531,7 +541,7 @@ void grbProgram(
 	static_assert(false, "Please define macro _BALLISTIC_SB or _DISCRETE_SB to choose algorithm");
 #endif
                     energies, x0, y0, J, h, p0, p1, num_iters, dt,
-                    J2, Jx, temp, temp_int, mask, sol, out.iterations
+                    J2, temp, temp_int, sol, out.iterations
                 );
 			}
 			if( grb::Properties<>::isNonblockingExecution ) {
@@ -541,7 +551,7 @@ void grbProgram(
 		const double time_taken = timer.time();
 		out.times.useful = time_taken / static_cast< double >( out.rep );
 		// print timing at root process
-		if( grb::spmd<>::pid() == 0 ) {
+		if( s == 0 ) {
 			std::cout << "Time taken for " << out.rep << " "
 				<< "Ising Machine SB calls (hot start): " << out.times.useful << ". "
 				<< "Error code is " << grb::toString( rc ) << std::endl;
@@ -549,6 +559,7 @@ void grbProgram(
 			std::cout << "\tmilliseconds per iteration: "
 				<< ( out.times.useful / static_cast< double >( out.iterations ) )
 				<< "\n";
+
 		}
 		sleep( 1 );
 	}
@@ -570,12 +581,12 @@ void grbProgram(
 		return;
 	}
 
-	out.pinnedRefSolutionVector = std::unique_ptr< PinnedVector< JType > >(
-		new PinnedVector< JType >( sol_ref, SEQUENTIAL ) );
+	out.pinnedRefSolutionVector = std::unique_ptr< PinnedVector< solType > >(
+		new PinnedVector< solType >( sol_ref, SEQUENTIAL ) );
 
 	// output
-	out.pinnedSolutionVector = std::unique_ptr< PinnedVector< JType > >(
-		new PinnedVector< JType >( sol, SEQUENTIAL ) );
+	out.pinnedSolutionVector = std::unique_ptr< PinnedVector< solType > >(
+		new PinnedVector< solType >( sol, SEQUENTIAL ) );
 
 	// finish timing
 	const double time_taken = timer.time();
@@ -588,27 +599,26 @@ void grbProgram(
 			// print all energies
 			for (std::size_t i = 0; i < num_iters; ++i) {
 	#ifdef DEBUG_IMSB
-			std::cout << "Energy at iteration " << i << " = " << energies[i] << '\n';
-	#endif
-			if( energies[i] != energies_ref[i]) {
-	#ifdef DEBUG_IMSB
-				std::cerr << "Error: Energy at iteration " << i << " does not match reference value.\n";
-				std::cerr << "Expected: " << energies_ref[i] << ", got: " << energies[i] << '\n';
-	#endif
-				out.error_code = 40;
-				return ;
-			}
+				std::cout << "Energy at iteration " << i << " = " << energies[i] << '\n';
+		#endif
+				if( energies[i] != test_data::energies_ref[i]) {
+		#ifdef DEBUG_IMSB
+					std::cerr << "Error: Energy at iteration " << i << " does not match reference value.\n";
+					std::cerr << "Expected: " << test_data::energies_ref[i] << ", got: " << energies[i] << '\n';
+		#endif
+					out.error_code = 40;
+					return ;
+				}
 			}
 			std::cout << "All energies match reference values.\n";
 			std::cout << "TEST OK\n"; 
 		} else {
 			std::cout << "No verification performed (verification disabled).\n";
+		}
 	}
-}
 
-    	// set error code
+    // set error code
 	out.error_code = rc;
-
 }
 
 
@@ -667,10 +677,6 @@ bool parse_arguments(
 	in.rep = grb::config::BENCHMARKING::inner();
 	// get outer number of iterations
 	in.outer = grb::config::BENCHMARKING::outer();
-	in.p0 = 0.0;
-	in.p1 = 0.0;
-	in.dt = 0.0;
-	in.num_iters = 0;
 	in.verify = false;
 
 	bool jmatrix_set = false, h_set = false, x_set = false, y_set = false, refsol_set = false;
@@ -816,15 +822,6 @@ bool parse_arguments(
 		}
 	}
 
-	// set defaults for solver parameters if not set
-	if( in.p0 == 0.0 && in.p1 == 0.0 && in.dt == 0.0 ) {
-		in.p0 = test_data::p0;
-		in.p1 = test_data::p1;
-		in.dt = test_data::dt;
-	}
-	if( in.num_iters == 0 ) {
-		in.num_iters = test_data::num_iters;
-	}
 	return true;
 }
 
@@ -929,8 +926,8 @@ int main( int argc, char ** argv ) {
 	if( !(out.pinnedSolutionVector) ) {
 		std::cerr << "no output vector to inspect" << std::endl;
 	} else {
-		const PinnedVector< JType > &solution = *(out.pinnedSolutionVector);
-        const PinnedVector< JType > &solution_ref = *(out.pinnedRefSolutionVector);
+		const PinnedVector< solType > &solution = *(out.pinnedSolutionVector);
+        const PinnedVector< solType > &solution_ref = *(out.pinnedRefSolutionVector);
 		std::cout << "Size of x is " << solution.size() << std::endl;
 		if( solution.size() > 0 ) {
 			print_vector( solution, 30, "SOLUTION" );
@@ -944,8 +941,8 @@ int main( int argc, char ** argv ) {
 
 	// verify output vector if requested
 	if( in.verify ) {
-		const PinnedVector< JType > &solution = *(out.pinnedSolutionVector);
-        const PinnedVector< JType > &solution_ref = *(out.pinnedRefSolutionVector);
+		const PinnedVector< solType > &solution = *(out.pinnedSolutionVector);
+        const PinnedVector< solType > &solution_ref = *(out.pinnedRefSolutionVector);
 		assert(solution.size() == solution_ref.size());
 		assert(solution.size() == std::get<0>(Storage::getData()));
 		JType norm2 = 0;

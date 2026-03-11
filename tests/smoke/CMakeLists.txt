@@ -144,20 +144,6 @@ add_grb_executables( conjugate_gradient_complex conjugate_gradient.cpp
 	COMPILE_DEFINITIONS _CG_COMPLEX
 )
 
-add_grb_executables( simulated_annealing_re_from_mpi simulated_annealing_re_from_mpi.cpp
-	BACKENDS bsp1d
-	ADDITIONAL_LINK_LIBRARIES test_utils_headers
-)
-
-add_grb_executables( simulated_annealing_re_ising simulated_annealing_re_ising.cpp
-	BACKENDS reference reference_omp hyperdags nonblocking
-	ADDITIONAL_LINK_LIBRARIES test_utils_headers
-)
-
-add_grb_executables( simulated_annealing_re_planted_sol simulated_annealing_re_planted_sol.cpp
-	BACKENDS reference reference_omp hyperdags nonblocking bsp1d
-)
-
 add_grb_executables( ising_machine_dsb ising_machine_sb.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
