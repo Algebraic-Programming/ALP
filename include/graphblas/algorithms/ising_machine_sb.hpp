@@ -50,31 +50,62 @@ namespace grb {
 		}
 
 
-		// // Custom unary operator for sign extraction
-		// struct signum {
-		// 	constexpr IOType operator()( const IOType x ) const noexcept {
-		// 		return ( x > 0 ) - ( x < 0 );
-		// 	}
-		// };
-		template< typename IType, typename ReturnType >
-		constexpr inline ReturnType sign(IType x) {
-			return (x > 0) - (x < 0);
-		}
-
-		// Custom unary operator for hard clipping to [-1,1]
-		template< typename IOType >
-		struct clip11 {
-			constexpr IOType operator()( const IOType x ) const noexcept {
-				return std::min<IOType>( 1.0, std::max<IOType>( -1.0, x ) );
+		// Custom type to trick assigning into doing sign calculation
+		template< typename RetType >
+		struct Sign {
+			RetType val;
+			Sign(){}
+			// the trick is to trigger a custom conversion
+			template< typename T >
+			Sign(const T x){
+				val = (x > 0) - (x < 0);
 			}
+
+			operator RetType() const { return val; }
+		};
+
+		// Custom type to trick assigning into doing hard clipping to [-1,1]
+		template< typename IOType, int min = -1, int max = 1 >
+		struct Clip {
+			IOType val;
+			Clip(){}
+			// the trick is to trigger a custom conversion when initializing
+			Clip(const IOType x){
+				val = std::min<IOType>( static_cast<IOType>(max),
+						std::max<IOType>( static_cast<IOType>(min), x ) );
+			}
+
+			operator IOType() const { return val; }
 		};
 
 		// // Unary predicate to build a structural mask |x|>1
-		// struct abs_gt1 {
-		// 	constexpr bool operator()( const IOType x ) const noexcept {
-		// 		return std::abs( x ) > 1.0;
-		// 	}
-		// };
+		template< typename T,
+			int threshold = 1, int newval = 0 >
+		struct AbsGtAssign {
+			T val;
+			AbsGtAssign(){}
+			// the trick is to trigger a custom conversion
+			AbsGtAssign(const T x){
+				val = x;
+			}
+
+
+		};
+		template<typename T, int threshold = 1, int newval = 0 >
+		T operator+( const T y, const AbsGtAssign<T,threshold,newval>& x ) {
+			if( std::abs<T>( x.val ) > threshold ){
+				return static_cast<T>(newval);
+			}
+			return y;
+		}
+
+		template<typename T, int threshold = 1, int newval = 0 >
+		T& operator+=( T& y, const AbsGtAssign<T,threshold,newval> x ) {
+			if( std::abs<T>( x.val ) > threshold ){
+				y = static_cast<T>( newval );
+			}
+			return y;
+		}
 
 		/*-------------------------------------------------------------*
 		 *  bSB — core optimisation routine                             *
@@ -198,13 +229,9 @@ namespace grb {
 #endif
 			if( DISCRETIZEJX ){
 				// sol[i] = sign(x_comp[i]); which in graphblas is:
-				rc = rc ? rc : grb::eWiseLambda< descr_dense >(
-					[&sol,&x_comp]( const size_t i ) {
-						(void) i;
-						sol[i] = sign<IOType, IsingHType>(x_comp[i]);
-					},
-					sol, x_comp
-				);
+				rc = rc ? rc : grb::foldl< descr_dense >(
+						sol, x_comp,
+						grb::operators::right_assign<solType, Sign< solType >, solType >() );
 			    rc = rc ? rc : grb::set( temp, zero );
 				rc = rc ? rc : grb::mxv< descr_dense >( temp, J, sol, ring );
 			}
@@ -266,13 +293,8 @@ namespace grb {
 
 				rc = rc ? rc : grb::wait();
 			    /* y_comp[ |x|>1 ] = 0 */
-			    rc = rc ? rc : grb::eWiseLambda< descr_dense >( [&y_comp, &x_comp]( const size_t i ) {
-					(void) i;
-					// not TODO: rewrite this to use graphblas language~
-					// This seems better like this.
-					y_comp[i] = (std::abs(x_comp[i]) > 1) ? 0 : y_comp[i];
-					}, y_comp, x_comp
-				);
+
+			    rc = rc ? rc : grb::foldl< descr_dense >(  y_comp, x_comp, grb::operators::add< IOType, AbsGtAssign<IOType>, IOType >());
 				assert( rc == grb::SUCCESS );
 #ifdef DEBUG_IMSB
 				vector_print( y_comp, "y_comp (b)" );
@@ -280,8 +302,9 @@ namespace grb {
 				assert( rc == grb::SUCCESS );
 
 			    /* x_comp = clip( x_comp ) */
-				rc = rc ? rc : foldl< descr_dense >( x_comp, static_cast<IOType>(-1), grb::operators::max < IOType >() );
-				rc = rc ? rc : foldl< descr_dense >( x_comp, static_cast<IOType>(1), grb::operators::min < IOType >() );
+				rc = rc ? rc : foldl< descr_dense >( x_comp,
+						static_cast<IOType>(69420),
+						grb::operators::left_assign<Clip< IOType, -1, 1 >, IOType, IOType>() );
 				assert( rc == grb::SUCCESS );
 #ifdef DEBUG_IMSB
 				std::cout << "i =  " << iterations << "\n ";
@@ -291,13 +314,9 @@ namespace grb {
 
 			    /* Energy evaluation */
 				// sol[i] = sign(x_comp[i]); which in graphblas is:
-				rc = rc ? rc : grb::eWiseLambda< descr_dense >(
-					[&sol,&x_comp]( const size_t i ) {
-						(void) i;
-						sol[i] = sign<IOType, solType>( x_comp[i] );
-					},
-					sol, x_comp
-				);
+				rc = rc ? rc : grb::foldl< descr_dense >(
+						sol, x_comp,
+						grb::operators::right_assign<solType, Sign< solType >, solType >() );
 
 				assert( rc == grb::SUCCESS );
 #ifdef DEBUG_IMSB
