@@ -49,6 +49,7 @@
 #include <graphblas/utils/iterators/utils.hpp>
 
 #include <graphblas/reference/init.hpp>
+#include <graphblas/reference/SptrsvSchedule.hpp>
 #include <graphblas/reference/compressed_storage.hpp>
 
 #include "NonzeroWrapper.hpp"
@@ -235,6 +236,259 @@ namespace grb {
 			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
 		) noexcept {
 			return A.valbuf[ 1 ];
+		}
+
+		/**
+		 * \internal
+		 * Retrieves an optimised sptrsv-specific schedule.
+		 * \endinternal
+		 */
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		const internal::SptrsvSchedule< NIT > * getSptrsvData(
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
+		) noexcept {
+			return A.sptrsvSchedule;
+		}
+
+		template<
+			typename InputType, typename RIT, typename CIT, typename NIT,
+			typename NumRangesIt
+		>
+		void allocateSptrsvSchedule(
+			grb::Matrix< InputType, reference, RIT, CIT, NIT > &A,
+			const NIT n, const size_t nThreads, const size_t nSteps,
+			const NumRangesIt nRanges, const NumRangesIt nRanges_end
+		) {
+			if( A.sptrsvSchedule != nullptr ) {
+				throw std::runtime_error( "SptrsvSchedule was already initialised" );
+			}
+			A.sptrsvSchedule = new SptrsvSchedule<NIT>(n, nThreads);
+
+			auto &sptrsv = *(A.sptrsvSchedule);
+
+			sptrsv.supersteps = nSteps;
+			{
+				std::vector< NIT > tmp( nRanges, nRanges_end );
+				sptrsv.nRanges = std::move( tmp );
+			}
+
+			// disable default trivial schedule
+			sptrsv.data[ 0 ] = nullptr;
+			sptrsv.endPositions[ 0 ] = nullptr;
+
+			#pragma omp parallel
+			{
+				auto localIt = nRanges;
+				const size_t s = omp_get_thread_num();
+				const size_t actualNumThreads = omp_get_num_threads();
+				if( actualNumThreads < nThreads ) {
+					throw std::runtime_error( "Unexpected number of threads" );
+				}
+				std::advance( localIt, s );
+				if( sptrsv.data[ s ] || sptrsv.endPositions[ s ] ) {
+					throw std::runtime_error( "A thread-local schedule already existed" );
+				}
+				sptrsv.alloc( s, *localIt );
+			}
+		}
+
+		/**
+		 * This schedule ingestion method expects the schedule as an iterator-pair
+		 * over a container of doubly-nested vectors. Each such vector v iterated
+		 * over, corresponds to a superstep. For a given superstep's v, v[s][k] has
+		 * that s indicates the thread ID and k indicates the floor( k / 2 )-th range
+		 * to be processed in that superstep and at that thread. Even-numbered k
+		 * indicate lower bounds of the range, while odd k indicate their upper
+		 * bounds.
+		 *
+		 * \note This is not an ideal way to pass around schedules, as it assumes the
+		 *       container element types are doubly-nested STL vectors-- it is hence
+		 *       not a generic approach.
+		 */
+		template<
+			typename InputType, typename RIT, typename CIT, typename NIT, typename It
+		>
+		void setSptrsvSchedule(
+			grb::Matrix< InputType, reference, RIT, CIT, NIT > &A,
+			const It &bounds_begin, const It &bounds_end,
+			const size_t nThreads
+		) {
+			if( A.sptrsvSchedule == nullptr ) {
+				throw std::runtime_error( "SptrsvSchedule was not initialised" );
+			}
+			auto &sptrsv = *(A.sptrsvSchedule);
+			if( sptrsv.nThreads != nThreads ) {
+				throw std::runtime_error( "SptrsvSchedule was allocated with different "
+					"nThreads" );
+			}
+
+			// re-sort A, if enabled
+			sptrsv.is_sorted = true;
+			if( config::tuning::SpTRSV::sortingMode == 2 ) {
+				// CRS first
+				{
+					const auto &crs = internal::getCRS( A );
+					const size_t nThreads = A.m < config::OMP::minLoopSize()
+						? 1
+						: std::min(
+							config::OMP::threads(),
+							A.nz / config::CACHE_LINE_SIZE::value()
+						);
+					#pragma omp parallel for num_threads( nThreads )
+					for( size_t i = 0; i < A.m; ++i ) {
+						std::vector< std::pair< int, double > > pairs;
+						for( size_t k = crs.col_start[ i ]; k < crs.col_start[ i + 1 ]; ++k ) {
+							pairs.push_back( std::make_pair( crs.row_index[ k ], crs.values[ k ] ) );
+						}
+						std::sort( pairs.begin(), pairs.end(),
+							[]( const std::pair< int, double > &left, const std::pair< int, double > &right ) {
+								return left.first < right.first;
+							} );
+						auto it = pairs.cbegin();
+						for( size_t k = crs.col_start[ i ]; k < crs.col_start[ i + 1 ]; ++k, ++it ) {
+							assert( it != pairs.cend() );
+							crs.row_index[ k ] = it->first;
+							crs.values[ k ] = it->second;
+						}
+					}
+				}
+				// then CCS
+				{
+					const auto &ccs = internal::getCCS( A );
+					const size_t nThreads = A.n < config::OMP::minLoopSize()
+						? 1
+						: std::min(
+							config::OMP::threads(),
+							A.nz / config::CACHE_LINE_SIZE::value()
+						);
+					#pragma omp parallel for num_threads( nThreads )
+					for( size_t i = 0; i < A.n; ++i ) {
+						std::vector< std::pair< int, double > > pairs;
+						for( size_t k = ccs.col_start[ i ]; k < ccs.col_start[ i + 1 ]; ++k ) {
+							pairs.push_back( std::make_pair( ccs.row_index[ k ], ccs.values[ k ] ) );
+						}
+						std::sort( pairs.begin(), pairs.end(),
+							[]( const std::pair< int, double > &left, const std::pair< int, double > &right ) {
+								return left.first < right.first;
+							} );
+						auto it = pairs.cbegin();
+						for( size_t k = ccs.col_start[ i ]; k < ccs.col_start[ i + 1 ]; ++k, ++it ) {
+							assert( it != pairs.cend() );
+							ccs.row_index[ k ] = it->first;
+							ccs.values[ k ] = it->second;
+						}
+					}
+				}
+			} else if( config::tuning::SpTRSV::sortingMode == 1 ) {
+				{
+					const auto &crs = internal::getCRS( A );
+					const size_t nThreads = A.m < config::OMP::minLoopSize()
+						? 1
+						: std::min(
+							config::OMP::threads(),
+							A.nz / config::CACHE_LINE_SIZE::value()
+						);
+					#pragma omp parallel for num_threads( nThreads )
+					for( size_t i = 0; i < A.m; ++i ) {
+						const auto index_it = std::find(
+							crs.row_index + crs.col_start[ i ],
+							crs.row_index + crs.col_start[ i + 1 ],
+							i
+						);
+						if( !std::is_void< InputType >::value ) {
+							const size_t index = std::distance( crs.row_index, index_it );
+							std::swap( crs.values[ index ], crs.values[ crs.col_start[ i ] ] );
+						}
+						std::swap( *index_it, crs.row_index[ crs.col_start[ i ] ] );
+					}
+				}
+				{
+					const auto &ccs = internal::getCCS( A );
+					const size_t nThreads = A.n < config::OMP::minLoopSize()
+						? 1
+						: std::min(
+							config::OMP::threads(),
+							A.nz / config::CACHE_LINE_SIZE::value()
+						);
+					#pragma omp parallel for num_threads( nThreads )
+					for( size_t i = 0; i < A.n; ++i ) {
+						const auto start = ccs.row_index + ccs.col_start[ i ];
+						const auto end = ccs.row_index + ccs.col_start[ i + 1 ];
+						const auto index_it = std::find( start, end, i );
+						if( index_it == end ) {
+							throw std::runtime_error( "No diagonal element present" );
+						} else if( index_it != start ) {
+							if( !std::is_void< InputType >::value ) {
+								const size_t index = std::distance( ccs.row_index, index_it );
+								std::swap( ccs.values[ index ], ccs.values[ ccs.col_start[ i ] ] );
+							}
+							std::swap( *index_it, ccs.row_index[ ccs.col_start[ i ] ] );
+						}
+					}
+				}
+			} else {
+				sptrsv.is_sorted = false;
+			}
+
+			sptrsv.is_simple = true;
+			#pragma omp parallel
+			{
+				bool simple_local = true;
+				It bounds = bounds_begin;
+				const size_t actualNumThreads = omp_get_num_threads();
+				if( actualNumThreads != nThreads ) {
+					throw std::runtime_error( "Unexpected number of threads" );
+				}
+				const size_t s = omp_get_thread_num();
+				// get buffer as an array of NIT, which we will write to in one pass
+				NIT *__restrict__ array = reinterpret_cast< NIT * >(sptrsv.data[ s ]);
+				// get the number of ranges for a given superstep at this thread that this
+				// function should populate
+				NIT *__restrict__ end = reinterpret_cast< NIT * >(sptrsv.endPositions[ s ]);
+				// dynamic assertion: there should be at least one superstep
+				assert( bounds != bounds_end );
+				// start ingestion
+				size_t count = 0;
+				do {
+					assert( bounds->size() == nThreads );
+					size_t nRanges = 0;
+					// get this superstep's and this thread's vector v[s]
+					const auto &v = (*bounds)[s];
+					// go range-by-range
+					for( auto it = v.cbegin(); it != v.cend(); ++it ) {
+						// we have a range, parse it
+						const NIT l = *it++;
+						assert( it != v.cend() );
+						const NIT h = *it + 1;
+						assert( h >= l );
+						const NIT n = h - l;
+						if( count >= sptrsv.supersteps ) {
+							throw std::runtime_error( "Too many supersteps" );
+						}
+						// store it
+						assert( nRanges < sptrsv.nRanges[ s ] );
+						*array++ = l;
+						*array++ = n;
+						(void) ++nRanges;
+					}
+					// store the number of ranges in the end array
+					assert( count < sptrsv.supersteps );
+					if( nRanges != 1 ) {
+						simple_local = false;
+					}
+					*end++ = nRanges;
+					// forward to the next superstep
+					(void) ++count;
+					(void) ++bounds;
+				} while( bounds != bounds_end );
+				if( count != sptrsv.supersteps ) {
+					throw std::runtime_error( "Unexpected number of supersteps" );
+				}
+				if( !simple_local ) {
+					#pragma omp critical
+					sptrsv.is_simple = false;
+				}
+			}
 		}
 
 		template<
@@ -1225,6 +1479,30 @@ namespace grb {
 			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
 		) noexcept;
 
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		friend const internal::SptrsvSchedule< NIT > * internal::getSptrsvData(
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
+		) noexcept;
+
+		template<
+			typename InputType, typename RIT, typename CIT, typename NIT,
+			typename NumRangesIt
+		>
+		friend void internal::allocateSptrsvSchedule(
+			grb::Matrix< InputType, reference, RIT, CIT, NIT > &A,
+			const NIT n, const size_t nThreads, const size_t nSteps,
+			const NumRangesIt nRanges, const NumRangesIt nRanges_end
+		);
+
+		template<
+			typename InputType, typename RIT, typename CIT, typename NIT, typename It
+		>
+		friend void internal::setSptrsvSchedule(
+			grb::Matrix< InputType, reference, RIT, CIT, NIT > &A,
+			const It &bounds, const It &bounds_end,
+			const size_t nThreads
+		);
+
 		friend const grb::Matrix<
 			D, reference,
 			ColIndexType, ColIndexType, NonzeroIndexType
@@ -1354,6 +1632,11 @@ namespace grb {
 			utils::AutoDeleter< char > _local_deleter[ 6 ];
 
 			/**
+			 * Optimised schedule for sptrsv operations on this matrix.
+			 */
+			internal::SptrsvSchedule< NonzeroIndexType > * sptrsvSchedule;
+
+			/**
 			 * Internal constructor for manual construction of matrices.
 			 *
 			 * Should be followed by a manual call to #initialize.
@@ -1405,7 +1688,7 @@ namespace grb {
 				id( std::numeric_limits< uintptr_t >::max() ), remove_id( false ),
 				m( _m ), n( _n ), cap( _cap ), nz( _offset_array[ _m ] ),
 				coorArr{ nullptr, buf1 }, coorBuf{ nullptr, buf2 },
-				valbuf{ nullptr, buf3 }
+				valbuf{ nullptr, buf3 }, sptrsvSchedule( nullptr )
 			{
 				assert( (_m > 0 && _n > 0) || _column_indices[ 0 ] == 0 );
 				CRS.replace( _values, _column_indices );
@@ -1426,6 +1709,8 @@ namespace grb {
 				const size_t rows, const size_t cols,
 				const size_t cap_in
 			) {
+				// SpTrsvSchedule should be manually set always by a requested tuning phase
+				sptrsvSchedule = nullptr;
 #ifdef _DEBUG_REFERENCE_MATRIX
 				std::cerr << "\t in Matrix< reference >::initialize...\n"
 					<< "\t\t matrix size " << rows << " by " << cols << "\n"
@@ -1598,6 +1883,7 @@ namespace grb {
 					_deleter[ i ] = std::move( other._deleter[ i ] );
 					_local_deleter[ i ] = std::move( other._local_deleter[ i ] );
 				}
+				sptrsvSchedule = other.sptrsvSchedule;
 
 				// invalidate other fields
 				for( unsigned int i = 0; i < 2; ++i ) {
@@ -1610,6 +1896,7 @@ namespace grb {
 				other.n = 0;
 				other.cap = 0;
 				other.nz = 0;
+				other.sptrsvSchedule = nullptr;
 			}
 
 			/**
@@ -2229,6 +2516,9 @@ namespace grb {
 					std::cout << "destructor: removing ID " << id << "\n";
 #endif
 					internal::reference_mapper.remove( id );
+				}
+				if( sptrsvSchedule ) {
+					delete sptrsvSchedule;
 				}
 			}
 

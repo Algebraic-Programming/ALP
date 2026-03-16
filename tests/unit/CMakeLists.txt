@@ -378,6 +378,12 @@ add_grb_executables( launch_benchmark_frommpi_manual launcherAndBenchmarker.cpp
 	COMPILE_DEFINITIONS NO_LPF_AUTO_INIT
 )
 
+# tests for experimental features
+
+add_grb_executables( dense_sptrsv dense_sptrsv.cpp
+	BACKENDS reference reference_omp
+)
+
 # targets to list and build the test for this category
 get_property( unit_tests_list GLOBAL PROPERTY tests_category_unit )
 add_custom_target( "list_tests_category_unit"

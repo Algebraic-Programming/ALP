@@ -338,6 +338,149 @@ namespace grb {
 	}
 
 	/**
+	 * Computes \f$ x \f$ from \f$ Tx=b \f$.
+	 *
+	 * \warning This is an experimental feature.
+	 *
+	 * Here, \f$ T, b \f$ are given while \f$ T \f$ additionally must be either
+	 * lower- or upper-triangular. The output \f$ x \f$ may furthermore be masked.
+	 *
+	 * @param[in,out] xb On input: the vector b. On output: the vector x.
+	 *                   When #grb::EXECUTE is given this vector must have
+	 *                   sufficient capacity to store both any pre-existing
+	 *                   nonzeroes in \f$ b \f$ plus the nonzeroes in the (masked)
+	 *                   result of \f$ x \f$.
+	 *                   When #grb::RESIZE is given, the vector contents are
+	 *                   unchanged, however its capacity may be enlarged in order
+	 *                   to ensure the above-described condition.
+	 *
+	 * \note On input, \a xb may contain both implicit and explicit zeroes.
+	 *
+	 * \note On output, \a xb may contain both implicit and explicit zeroes, even
+	 *       if on input it did not.
+	 *
+	 * @param[in] mask   The mask that acts on \f$ x \f$. This vector has either
+	 *                   size zero or size equal to that of \a x.
+	 *
+	 * \note If \a mask has size zero, it is interpreted as though the operation
+	 *       unmasked.
+	 *
+	 * @param[in] T       The upper- or lower-triangular input matrix. This must be
+	 *                    a square matrix with size equal to that of \a xb.
+	 * @param[in] forward Whether to perform forward substitution (i.e., \f$ T \f$
+	 *                    is lower-triangular), or to perform backward substitution
+	 *                    instead (i.e., \f$ T \f$ is upper-triangular).
+	 *
+	 * \note With the structural information ALP/Dense passes as template
+	 *       information, \a forward would not be required.
+	 *
+	 * @param[in] semiring    The semiring under which to perform the SpTrsv.
+	 * @param[in] subtraction The inverse of the additive operator of \a semiring.
+	 * @param[in] division    The inverse of the multiplicative operator of
+	 *                        \a semiring.
+	 *
+	 * \note That is, this operation in fact requires a field structure and not a
+	 *       semiring. A future extension to ALP may provide such a structure
+	 *       explicitly.
+	 *
+	 * @param[in] phase       The requested phase of the computation. Only
+	 *                        #grb::EXECUTE and #grb::RESIZE are supported.
+	 *
+	 * \todo Expand documentation.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Semiring,
+		class Subtraction,
+		class Division,
+		typename IOType, typename InputType1, typename InputType2,
+		typename Coords, typename RIT, typename CIT, typename NIT,
+		Backend backend
+	>
+	RC sptrsv(
+		Vector< IOType, backend, Coords > &xb,
+		const Vector< InputType2, backend, Coords > &mask,
+		const Matrix< InputType1, backend, RIT, CIT, NIT > &T,
+		const bool forward,
+		const Semiring &semiring = Semiring(),
+		const Subtraction &subtraction = Subtraction(),
+		const Division &division = Division(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_semiring< Semiring >::value &&
+			grb::is_operator< Subtraction >::value &&
+			grb::is_operator< Division >::value &&
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value,
+		void >::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cerr << "Selected backend does not implement masked grb::sptrsv\n";
+#endif
+#ifndef NDEBUG
+		const bool selected_backend_does_not_support_masked_sptrsv = false;
+		assert( selected_backend_does_not_support_masked_sptrsv );
+#endif
+		(void) xb;
+		(void) mask;
+		(void) T;
+		(void) semiring;
+		(void) subtraction;
+		(void) division;
+		(void) phase;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Computes \f$ x \f$ from \f$ Tx = b \f$, unmasked variant.
+	 *
+	 * \warning This is an experimental feature.
+	 *
+	 * \todo Extend documentation
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Semiring,
+		class Subtraction,
+		class Division,
+		typename IOType, typename InputType1,
+		typename Coords, typename RIT, typename CIT, typename NIT,
+		Backend backend
+	>
+	RC sptrsv(
+		Vector< IOType, backend, Coords > &xb,
+		const Matrix< InputType1, backend, RIT, CIT, NIT > &T,
+		const bool forward,
+		const Semiring &semiring = Semiring(),
+		const Subtraction &subtraction = Subtraction(),
+		const Division &division = Division(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_semiring< Semiring >::value &&
+			grb::is_operator< Subtraction >::value &&
+			grb::is_operator< Division >::value &&
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType1 >::value,
+		void >::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cerr << "Selected backend does not implement masked grb::sptrsv\n";
+#endif
+#ifndef NDEBUG
+		const bool selected_backend_does_not_support_unmasked_sptrsv = false;
+		assert( selected_backend_does_not_support_unmasked_sptrsv );
+#endif
+		(void) xb;
+		(void) T;
+		(void) semiring;
+		(void) subtraction;
+		(void) division;
+		(void) phase;
+		return UNSUPPORTED;
+	}
+
+	/**
 	 * Executes an arbitrary element-wise user-defined function \a f on all
 	 * nonzero elements of a given matrix \a A.
 	 *

@@ -2224,6 +2224,658 @@ namespace grb {
 
 #ifndef _H_GRB_REFERENCE_OMP_BLAS2
 		/**
+		 * Backend-independent sptrsv kernel code.
+		 *
+		 * @tparam sorted 0: the matrix rows are not sorted,
+		 *                1: the matrix rows have diagonal elements at position 0,
+		 *                2: the matrix rows are sorted.
+		 *
+		 * @tparam forward True: perform forward substitution.
+		 *                 False: perform backward substitution.
+		 *
+		 * \note The above description assumes CRS.
+		 */
+		template<
+			int sorted, bool forward,
+			typename IOType, typename InputType1,
+			typename IND, typename NIT,
+			class Semiring, class Subtraction
+		>
+		inline void sptrsv_kernel(
+			const Compressed_Storage< InputType1, IND, NIT > &crs,
+			const size_t &i,
+			IOType *__restrict__ const &x,
+			IOType &divBy,
+			const Semiring &semiring,
+			const Subtraction &subtraction
+		) {
+			// static assertions
+			static_assert( sorted >= 0 && sorted < 3, "Illegal value for sorted; this "
+				"is an internal error, please submit a bug report" );
+			constexpr auto one =
+				Semiring::template One< typename Semiring::D1 >::value();
+
+			// NOTE: explicit vectorisation seems to cause significant slowdowns.
+			//       disabled but retained for future reference / more successful
+			//       optimisation
+			/*
+			// constants
+			constexpr size_t ind_blocksize =
+				grb::config::SIMD_BLOCKSIZE< IND >::value();
+			constexpr size_t blocksize = ind_blocksize < Semiring::blocksize
+				? ind_blocksize : Semiring::blocksize;
+			// constant bufer
+			IND cur_ind[ blocksize ];
+			// SIMD set
+			for( size_t r = 0; r < blocksize; ++r ) {
+				cur_ind[ r ] = i;
+			}
+			for( ; k + Semiring::blocksize < crs.col_start[ i + 1 ];
+				k += Semiring::blocksize
+			) {
+				typename Semiring::D1 values[ blocksize ];
+				typename Semiring::D3 tmp[ blocksize ];
+				IOType x_simd[ blocksize ];
+				IND indices[ blocksize ];
+				bool match[ blocksize ];
+				// streaming loads
+				for( size_t r = 0; r < blocksize; ++r ) {
+					values[ r ] = crs.template getValue( k + r, one );
+				}
+				for( size_t r = 0; r < blocksize; ++r ) {
+					indices[ r ] = crs.row_index[ k + r ];
+				}
+				// SIMD compute
+				for( size_t r = 0; r < blocksize; ++r ) {
+					match[ r ] = cur_ind[ r ] != indices[ r ];
+				}
+				// gather
+				for( size_t r = 0; r < blocksize; ++r ) {
+					if( match[ r ] ) {
+						x_simd[ r ] = x[ indices[ r ] ];
+					}
+				}
+				// masked SIMD compute
+				for( size_t r = 0; r < blocksize; ++r ) {
+					if( match[ r ] ) {
+						tmp[ r ] = values[ r ] * x_simd[ r ];
+					}
+				}
+				// masked SIMD reduce
+				for( size_t r = 0; r < blocksize; ++r ) {
+					if( match[ r ] ) {
+						reduced += tmp[ r ];
+					}
+				}
+				// diagonal detection; SIMD invert and reduce
+				for( size_t r = 0; r < blocksize; ++r ) {
+					match[ r ] = !match[ r ];
+				}
+				for( size_t r = 0; r < blocksize; ++r ) {
+					if( match[ r ] ) {
+						divBy += values[ r ];
+					}
+				}
+			}*/
+
+			if( sorted ) {
+				(void) divBy;
+			}
+			assert( crs.col_start[ i + 1 ] > crs.col_start[ i ] );
+			const size_t start = (!sorted) ? crs.col_start[ i ] : (
+				(sorted == 1) ? (crs.col_start[ i ] + 1) : (
+					forward ? crs.col_start[ i ] : (crs.col_start[ i ] + 1) )
+				);
+			const size_t end = (!sorted) ? crs.col_start[ i + 1 ] : (
+				(sorted == 1) ? crs.col_start[ i + 1 ] : (
+					forward ? (crs.col_start[ i + 1 ] - 1) : crs.col_start[ i + 1 ] )
+				);
+			for( size_t k = start; k < end; ++k ) {
+				const typename Semiring::D1 val = crs.template getValue( k, one );
+				const auto &ind = crs.row_index[ k ];
+				if( !sorted ) {
+					if( static_cast< size_t >(ind) == i ) {
+ #ifdef _DEBUG
+						std::cout << "\tskipping nonzero at " << i ", " << i << "\n";
+ #endif
+						divBy = val;
+						continue;
+					}
+				}
+ #ifdef _DEBUG
+				std::cout << "\t x[ " << i << " ] (" << x[i] << ") -= " << val << "* x[ "
+					<< ind << " ] (" << x[ind] << ")\n";
+ #endif
+				typename Semiring::D3 tmp;
+				(void) grb::apply( tmp, val, x[ ind ],
+					semiring.getMultiplicativeOperator() );
+				(void) grb::foldl( x[ i ], tmp, subtraction );
+			}
+		}
+
+		template<
+			typename IOType, int sorted, bool forward,
+			typename VIT, typename RCIT, typename NIT
+		>
+		inline static IOType getDiagonalEntry(
+			const Compressed_Storage< VIT, RCIT, NIT > &storage, const size_t &i,
+			const IOType &one
+		) {
+			assert( sorted >= 1 && sorted < 3 );
+			assert( storage.col_start[ i + 1 ] > storage.col_start[ i ] );
+			const size_t diag_index = sorted == 1 ? storage.col_start[ i ] : (
+				forward ? (storage.col_start[ i + 1 ] - 1) : storage.col_start[ i ] );
+			assert( storage.row_index[ diag_index ] == i );
+			return storage.template getValue( diag_index, one );
+		}
+#endif // end ifndef _H_GRB_REFERENCE_OMP_BLAS2
+
+		/** \internal Specialised dense unmasked sptrsv implementation, sequential */
+		template<
+			Descriptor descr, bool maybe_offset, int sorted, bool forward,
+			class Semiring, class Subtraction, class Division,
+			typename IOPtrType, typename InputType1,
+			typename RIT, typename CIT, typename NIT
+		>
+		RC dense_unmasked_sequential_sptrsv(
+			const IOPtrType &v_raw,
+			const Matrix< InputType1, reference, RIT, CIT, NIT > &T,
+			const NIT &offset, const NIT &n,
+			const Semiring &semiring,
+			const Subtraction &subtraction,
+			const Division &division,
+			const Phase &phase
+		) {
+			// static sanity checks
+			static_assert( sorted >= 0 && sorted < 3, "Invalid value for sorted; this "
+				"an internal error, please submit a bug report" );
+
+			// only execute and resize are supported
+			assert( phase == grb::EXECUTE );
+#ifdef NDEBUG
+			(void) phase;
+#endif
+
+			// get value type from the pointer
+			typedef typename std::remove_reference<
+				decltype( *std::declval< IOPtrType >() )
+			>::type IOType;
+
+			// in case of pattern matrices, get 1 from the semiring
+			const IOType one = semiring.getMultiplicativeMonoid().template
+				getIdentity< IOType >();
+
+			// switch forward or backward solve
+			if( forward ) {
+				const auto &crs = internal::getCRS( T );
+				if( !maybe_offset || offset == 0 ) {
+					for( size_t i = 0; i < n; ++i ) {
+						IOType divBy;
+						if( !sorted ) {
+							// in this case we will auto-detect the diagonal item
+							divBy = semiring.template getZero< IOType >();
+						} else {
+							divBy = getDiagonalEntry< IOType, sorted, forward >( crs, i, one );
+						}
+						assert( crs.col_start[ i ] <= crs.col_start[ i + 1 ] );
+						sptrsv_kernel< sorted, forward >( crs, i, v_raw, divBy, semiring,
+							subtraction );
+#ifdef _DEBUG
+						std::cout << "\trow v_raw[ " << i << " ] = " << v_raw[ i ] << " will be normalised with " << divBy
+							<< "\n";
+#endif
+						(void) grb::foldl( v_raw[ i ], divBy, division );
+					}
+				} else {
+					const size_t end = n + offset;
+					for( size_t i = offset; i < end; ++i ) {
+						IOType divBy;
+						if( !sorted ) {
+							divBy = semiring.template getZero< IOType >();
+						} else {
+							divBy = getDiagonalEntry< IOType, sorted, forward >( crs, i, one );
+						}
+						assert( crs.col_start[ i ] <= crs.col_start[ i + 1 ] );
+						sptrsv_kernel< sorted, forward >( crs, i, v_raw, divBy, semiring,
+							subtraction );
+#ifdef _DEBUG
+						std::cout << "\trow v_raw[ " << i << " ] = " << v_raw[ i ] << " will be normalised with " << divBy
+							<< "\n";
+#endif
+						(void) grb::foldl( v_raw[ i ], divBy, division );
+					}
+				}
+			} else {
+				const auto &ccs = internal::getCCS( T );
+				if( !maybe_offset || offset == 0 ) {
+					for( size_t i = n - 1; i < n; --i ) {
+						IOType divBy;
+						if( !sorted ) {
+							divBy = semiring.template getZero< IOType >();
+						} else {
+							divBy = getDiagonalEntry< IOType, sorted, forward >( ccs, i, one );
+						}
+						assert( ccs.col_start[ i ] <= ccs.col_start[ i + 1 ] );
+						sptrsv_kernel< sorted, forward >( ccs, i, v_raw, divBy, semiring,
+							subtraction );
+#ifdef _DEBUG
+						std::cout << "\t" << v_raw[ i ] << " will be normalised with " << divBy
+							<< "\n";
+#endif
+						(void) grb::foldl( v_raw[ i ], divBy, division );
+					}
+				} else {
+					for( size_t i = n - 1 + offset; i >= offset; --i ) {
+						IOType divBy;
+						if( !sorted ) {
+							divBy = semiring.template getZero< IOType >();
+						} else {
+							divBy = getDiagonalEntry< IOType, sorted, forward >( ccs, i, one );
+						}
+						assert( ccs.col_start[ i ] <= ccs.col_start[ i + 1 ] );
+						sptrsv_kernel< sorted, forward >( ccs, i, v_raw, divBy, semiring,
+							subtraction );
+#ifdef _DEBUG
+						std::cout << "\t" << v_raw[ i ] << " will be normalised with " << divBy
+							<< "\n";
+#endif
+						(void) grb::foldl( v_raw[ i ], divBy, division );
+					}
+				}
+			}
+
+			// done
+			return grb::SUCCESS;
+		}
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS2
+		/** \internal Specialised dense unmasked sptrsv implementation, OpenMP */
+		template<
+			Descriptor descr, bool forward,
+			class Semiring, class Subtraction, class Division,
+			typename IOType, typename InputType1,
+			typename RIT, typename CIT, typename NIT
+		>
+		RC dense_unmasked_omp_sptrsv(
+			IOType * const &v_raw,
+			const Matrix< InputType1, reference, RIT, CIT, NIT > &T,
+			const size_t &n,
+			const Semiring &semiring,
+			const Subtraction &subtraction,
+			const Division &division,
+			const Phase &phase
+		) {
+			// in dense unmasked, resize is a no-op
+			if( phase == grb::RESIZE ) { return grb::SUCCESS; }
+
+			// get SpTrsv schedule
+			const SptrsvSchedule< NIT > *sptrsvSchedule_p =
+				internal::getSptrsvData( T );
+			const SptrsvSchedule< NIT > default_schedule (n);
+			const SptrsvSchedule< NIT > &sptrsv = sptrsvSchedule_p == nullptr ?
+				default_schedule : *sptrsvSchedule_p;
+
+			// only execute and resize are supported
+			assert( phase == grb::EXECUTE );
+
+			// start parallel section
+			grb::RC ret = grb::SUCCESS;
+
+			if( sptrsv.is_simple ) {
+				#pragma omp parallel num_threads(sptrsv.nThreads)
+				{
+					grb::RC local_rc = grb::SUCCESS;
+					const int s = omp_get_thread_num();
+					const NIT *__restrict__ data =
+						reinterpret_cast< const NIT * >(sptrsv.data[ s ]);
+					assert( data != nullptr );
+					if( sptrsv.is_sorted ) {
+						for( size_t i = 0; i < sptrsv.supersteps; ++i ) {
+							const auto &lo = *data++;
+							const auto &no = *data++;
+							assert( lo < n );
+							assert( no + lo <= n );
+							local_rc = local_rc ? local_rc : dense_unmasked_sequential_sptrsv<
+									descr, true, config::tuning::SpTRSV::sortingMode, forward
+								>(
+									v_raw, T, lo, no, semiring, subtraction, division, phase
+								);
+							#pragma omp barrier
+						}
+					} else {
+						for( size_t i = 0; i < sptrsv.supersteps; ++i ) {
+							const NIT &lo = *data++;
+							const NIT &no = *data++;
+							assert( lo < n );
+							assert( no + lo <= n );
+							local_rc = local_rc ? local_rc : dense_unmasked_sequential_sptrsv<
+								descr, true, 0, forward
+							>(
+								v_raw, T, lo, no, semiring, subtraction, division, phase
+							);
+							#pragma omp barrier
+						}
+					}
+					if( local_rc != grb::SUCCESS ) {
+						#pragma omp atomic write
+						ret = local_rc;
+					}
+				}
+			} else {
+				#pragma omp parallel num_threads(sptrsv.nThreads)
+				{
+					grb::RC local_rc = grb::SUCCESS;
+					const int s = omp_get_thread_num();
+					const NIT *__restrict__ data =
+						reinterpret_cast< const NIT * >(sptrsv.data[ s ]);
+					const NIT *__restrict__ const end =
+						reinterpret_cast< const NIT * >(sptrsv.endPositions[ s ]);
+					assert( end != nullptr );
+					if( sptrsv.is_sorted ) {
+						for( size_t i = 0; i < sptrsv.supersteps; ++i ) {
+							for( size_t k = 0; k < end[ i ]; ++k ) {
+								const NIT &lo = *data++;
+								const NIT &no = *data++;
+								assert( lo < n );
+								assert( no + lo <= n );
+								local_rc = local_rc ? local_rc : dense_unmasked_sequential_sptrsv<
+										descr, true, config::tuning::SpTRSV::sortingMode, forward
+									>(
+										v_raw, T, lo, no, semiring, subtraction, division, phase
+									);
+							}
+							#pragma omp barrier
+						}
+					} else {
+						for( size_t i = 0; i < sptrsv.supersteps; ++i ) {
+							for( size_t k = 0; k < end[ i ]; ++k ) {
+								const NIT &lo = *data++;
+								const NIT &no = *data++;
+								assert( lo < n );
+								assert( no + lo <= n );
+								local_rc = local_rc ? local_rc : dense_unmasked_sequential_sptrsv<
+										descr, true, 0, forward
+									>(
+										v_raw, T, lo, no, semiring, subtraction, division, phase
+									);
+							}
+							#pragma omp barrier
+						}
+					}
+					if( local_rc != grb::SUCCESS ) {
+						#pragma omp atomic write
+						ret = local_rc;
+					}
+				}
+			}
+
+			// done
+			return ret;
+		}
+#endif
+
+		/**
+		 * \internal Implements sparse masked, sparse unmasked, and dense masked
+		 *           sptrsv.
+		 */
+		template<
+			Descriptor descr, bool forward,
+			bool masked, bool sparse,
+			class Semiring, class Subtraction, class Division,
+			typename IOType, typename InputType1, typename InputType2,
+			typename Coords, typename RIT, typename CIT, typename NIT
+		>
+		RC generic_sptrsv(
+			Vector< IOType, reference, Coords > &xb,
+			const Vector< InputType2, reference, Coords > &mask,
+			const Matrix< InputType1, reference, RIT, CIT, NIT > &T,
+			const size_t &n,
+			const Semiring &semiring,
+			const Subtraction &subtraction,
+			const Division &division,
+			const Phase &phase
+		) {
+			// static checks
+			static_assert( masked || sparse, "Internal logic error; please submit a bug "
+				"report" );
+
+			//dynamic checks
+			assert( grb::size( xb ) == n );
+			assert( !masked || grb::size( mask ) == n );
+			assert( grb::nrows( T ) == n );
+			assert( grb::ncols( T ) == n );
+
+			(void) descr;
+			(void) forward;
+			(void) masked;
+			(void) sparse;
+#ifdef NDEBUG
+			(void) xb;
+			(void) mask;
+			(void) T;
+			(void) n;
+#endif
+			(void) semiring;
+			(void) subtraction;
+			(void) division;
+			(void) phase;
+			std::cerr << "Warning: masked sptrsv not yet implemented\n";
+			return grb::UNSUPPORTED;
+		}
+
+	} // end grb::internal
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Semiring, class Subtraction, class Division,
+		typename IOType, typename InputType1,
+		typename Coords, typename RIT, typename CIT, typename NIT
+	>
+	RC sptrsv(
+		Vector< IOType, reference, Coords > &xb,
+		const Matrix< InputType1, reference, RIT, CIT, NIT > &T,
+		const bool forward,
+		const Semiring &semiring = Semiring(),
+		const Subtraction &subtraction = Subtraction(),
+		const Division &division = Division(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_semiring< Semiring >::value &&
+			grb::is_operator< Subtraction >::value &&
+			grb::is_operator< Division >::value &&
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType1 >::value,
+		void >::type * const = nullptr
+	) {
+		// check contract
+		constexpr bool dense = descr & descriptors::dense;
+		const size_t n = size( xb );
+		if( grb::nrows( T ) != n ) {
+			std::cerr << "Error, sptrsv (unmasked): matrix should have a number of rows "
+				<< "equal to the size of the input/output vector\n";
+			return grb::ILLEGAL;
+		}
+		if( grb::ncols( T ) != n ) {
+			std::cerr << "Error, sptrsv (unmasked): matrix should have a number of "
+				<< "columns equal to the size of the input/output vector\n";
+			return grb::ILLEGAL;
+		}
+		if( dense && grb::nnz( xb ) < n ) {
+			std::cerr << "Error, sptrsv (unmasked): sparse vector given in conjunction "
+				<< "with a dense descriptor\n";
+			return grb::ILLEGAL;
+		}
+
+		// check trivial
+		if( n == 0 ) { return grb::SUCCESS; }
+
+		// in the dense variant, resize does nothing
+		if( phase == grb::RESIZE ) { return grb::SUCCESS; }
+
+		// check dense dispatch
+		if( dense || grb::nnz( xb ) == n ) {
+#ifndef _H_GRB_REFERENCE_OMP_BLAS2
+			IOType *__restrict__ const xb_p = internal::getRaw( xb );
+			const NIT lo = 0;
+			const NIT no = n;
+			if( forward ) {
+				return internal::dense_unmasked_sequential_sptrsv< descr, false, 0, true >(
+					xb_p, T, lo, no, semiring, subtraction, division, phase );
+			} else {
+				return internal::dense_unmasked_sequential_sptrsv< descr, false, 0, false >(
+					xb_p, T, lo, no, semiring, subtraction, division, phase );
+			}
+#else
+			IOType * const xb_p = internal::getRaw( xb );
+			// The below code is only for testing (DBG):
+ #if 0
+			const auto sptrsv = internal::getSptrsvData( T );
+			#pragma omp parallel num_threads(sptrsv->nThreads)
+			{
+				const auto &crs = internal::getCRS( T );
+				const int *__restrict__ schedule = reinterpret_cast< int * >(
+					sptrsv->data[ omp_get_thread_num() ] );
+				for( size_t step = 0; step < sptrsv->supersteps; ++step ) {
+					const int &lo = *schedule++;
+					const int &no = *schedule++;
+					const int upper_limit = lo + no;
+					for( int row_idx = lo; row_idx < upper_limit; ++row_idx ) {
+						// if not sorted, enable this variant instead:
+						// IOType div = 0;
+						// for( unsigned int k = crs.col_start[ row_idx ]; k < crs.col_start[ row_idx + 1 ]; ++k ) {
+						for( unsigned int k = crs.col_start[ row_idx ]; k < crs.col_start[ row_idx + 1 ] - 1; ++k ) {
+							const int &j = crs.row_index[ k ];
+							const double &value = crs.values[ k ];
+							// if not sorted, enable this if-else:
+							// if( j == row_idx ) {
+							//	div = value;
+							// } else {
+								xb_p[ row_idx ] -= value * xb_p[ j ];
+							//}
+						}
+						#pragma omp critical
+						xb_p[ row_idx ] /= crs.values[ crs.col_start[ row_idx + 1 ] - 1 ];
+					}
+					#pragma omp barrier
+				}
+			}
+			return grb::SUCCESS;
+ #else
+			if( forward ) {
+				return internal::dense_unmasked_omp_sptrsv< descr, true >(
+					xb_p, T, n, semiring, subtraction, division, phase );
+			} else {
+				return internal::dense_unmasked_omp_sptrsv< descr, false >(
+					xb_p, T, n, semiring, subtraction, division, phase );
+			}
+ #endif
+#endif
+		} else {
+			grb::Vector< IOType, reference, Coords > no_mask( 0 );
+			if( forward ) {
+				return internal::generic_sptrsv< descr, false, true, true >(
+					xb, no_mask, T, n,
+					semiring, subtraction, division, phase
+				);
+			} else {
+				return internal::generic_sptrsv< descr, false, true, false>(
+					xb, no_mask, T, n,
+					semiring, subtraction, division, phase
+				);
+			}
+		}
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Semiring,
+		class Subtraction,
+		class Division,
+		typename IOType, typename InputType1, typename InputType2,
+		typename Coords, typename RIT, typename CIT, typename NIT
+	>
+	RC sptrsv(
+		Vector< IOType, reference, Coords > &xb,
+		const Vector< InputType2, reference, Coords > &mask,
+		const Matrix< InputType1, reference, RIT, CIT, NIT > &T,
+		const bool forward,
+		const Semiring &semiring = Semiring(),
+		const Subtraction &subtraction = Subtraction(),
+		const Division &division = Division(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_semiring< Semiring >::value &&
+			grb::is_operator< Subtraction >::value &&
+			grb::is_operator< Division >::value &&
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value,
+		void >::type * const = nullptr
+	) {
+		// check if can forward
+		if( grb::size( mask ) == 0 ) {
+			return sptrsv< descr >( xb, T, forward, semiring, subtraction, division,
+				phase );
+		}
+
+		// check contract
+		constexpr bool dense = descr & descriptors::dense;
+		const size_t n = size( xb );
+		if( grb::size( mask ) != n ) {
+			std::cerr << "Error, grb::sptrsv (masked): mask and input/output vector "
+				<< "should have the same size\n";
+			return grb::ILLEGAL;
+		}
+		if( grb::nrows( T ) != n ) {
+			std::cerr << "Error, grb::sptrsv (masked): matrix should have a number of "
+				<< "rows equal to the size of the input/output vector\n";
+			return grb::ILLEGAL;
+		}
+		if( grb::ncols( T ) != n ) {
+			std::cerr << "Error, grb::sptrsv (masked): matrix should have a number of "
+				<< "columns equal to the size of the input/output vector\n";
+			return grb::ILLEGAL;
+		}
+		if( dense && grb::nnz( mask ) < n ) {
+			std::cerr << "Error, grb::sptrsv (masked): sparse mask but dense descriptor "
+				<< "was given\n";
+			return grb::ILLEGAL;
+		}
+		if( dense && grb::nnz( xb ) < n ) {
+			std::cerr << "Error, grb::sptrsv (masked): sparse input vector given but "
+				"dense descriptor was given\n";
+			return grb::ILLEGAL;
+		}
+
+		if( dense || (grb::nnz( xb ) == n && grb::nnz( mask ) == n) ) {
+			if( forward ) {
+				return internal::generic_sptrsv< descr, true, false, true >(
+					xb, mask, T, n,
+					semiring, subtraction, division, phase
+				);
+			} else {
+				return internal::generic_sptrsv< descr, true, false, false >(
+					xb, mask, T, n,
+					semiring, subtraction, division, phase
+				);
+			}
+		} else {
+			if( forward ) {
+				return internal::generic_sptrsv< descr, true, true, true >(
+					xb, mask, T, n,
+					semiring, subtraction, division, phase );
+			} else {
+				return internal::generic_sptrsv< descr, true, true, false >(
+					xb, mask, T, n,
+					semiring, subtraction, division, phase );
+			}
+		}
+	}
+
+	namespace internal {
+
+#ifndef _H_GRB_REFERENCE_OMP_BLAS2
+		/**
 		 * A nonzero wrapper for use with grb::eWiseLambda over matrices.
 		 *
 		 * \internal In the general case, stores a pointer to values. Row and column

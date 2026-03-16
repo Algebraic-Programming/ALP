@@ -333,7 +333,34 @@ namespace grb {
 
 		/** @} */
 
-	} // namespace config
+
+		/**
+		 * Collects all optimisations with regards to tuning operations for specific
+		 * inputs, i.e., #grb::PHASE::TUNE.
+		 */
+		namespace tuning {
+
+			/**
+			 * Collects all options for SpTRSV tuning.
+			 */
+			struct SpTRSV {
+
+				/**
+				 * There are three sorting modes implemented:
+				 *  - 0: the matrix rows are not sorted;
+				 *  - 1: the matrix rows have diagonal elements at position 0;
+				 *  - 2: the matrix rows are sorted.
+				 * The above description assumes CRS, however, the chosen sorting mode is
+				 * also applied to the CCS (in which case the above three points apply with
+				 * `rows' substituted by `columns').
+				 */
+				static constexpr int sortingMode = 0;
+
+			};
+
+		} // namespace grb::config::tuning
+
+	} // namespace grb::config
 
 } // namespace grb
 
