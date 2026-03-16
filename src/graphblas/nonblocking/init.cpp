@@ -38,7 +38,7 @@ bool grb::internal::NONBLOCKING::warn_if_not_native = true;
 bool grb::internal::NONBLOCKING::manual_tile_size = false;
 size_t grb::internal::NONBLOCKING::manual_fixed_tile_size =
 	grb::config::ANALYTIC_MODEL::MIN_TILE_SIZE;
-size_t grb::internal::NONBLOCKING::num_threads = grb::config::OMP::threads();
+size_t grb::internal::NONBLOCKING::num_threads; // = grb::config::OMP::threads();
 
 template<>
 grb::RC grb::init< grb::nonblocking >(
