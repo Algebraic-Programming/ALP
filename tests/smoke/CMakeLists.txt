@@ -185,6 +185,21 @@ add_grb_executables( kcore_decomposition kcore_decomposition.cpp
 	BACKENDS reference reference_omp hyperdags nonblocking bsp1d hybrid
 )
 
+# transition path smoke tests
+add_grb_executable_custom( conjugate_gradient_tp_sequential conjugate_gradient_tp.cpp
+	LINK_LIBRARIES spsolver_sequential backend_headers_nodefs OpenMP::OpenMP_CXX
+)
+
+add_grb_executable_custom( conjugate_gradient_tp_shmem_parallel conjugate_gradient_tp.cpp
+	LINK_LIBRARIES spsolver_shmem_parallel backend_headers_nodefs OpenMP::OpenMP_CXX
+)
+
+if( TARGET spsolver_shmem_blocking )
+	add_grb_executable_custom( conjugate_gradient_tp_shmem_blocking conjugate_gradient_tp.cpp
+		LINK_LIBRARIES spsolver_shmem_blocking backend_headers_nodefs OpenMP::OpenMP_CXX
+	)
+endif()
+
 # targets to list and build the test for this category
 get_property( smoke_tests_list GLOBAL PROPERTY tests_category_smoke )
 add_custom_target( "list_tests_category_smoke"
