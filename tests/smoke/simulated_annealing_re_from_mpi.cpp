@@ -31,8 +31,6 @@
 #include <utils/print_vec_mat.hpp>
 #include <graphblas.hpp>
 
-const int LPF_MPI_AUTO_INITIALIZE = 0;
-
 using namespace grb;
 
 // #define DEBUG_SARE 1
@@ -49,7 +47,7 @@ inline bool ISCLOSE( const T1 &a, const T2 &b, const double tol = 1e-4){
 }
 
 // Backend to be used inside each process
-constexpr grb::Backend internal_backend = grb::reference;
+constexpr grb::Backend internal_backend = grb::_GRB_BACKEND;
 
 /** Parser type */
 typedef grb::utils::MatrixFileReader<
@@ -148,6 +146,8 @@ struct input {
     size_t rep = 0;
     size_t outer = 1;
     float timeout = 0;
+	int s = 1;
+	int nprocs = 1;
 };
 
 struct output {
@@ -164,7 +164,11 @@ struct output {
 
 template< typename Dtype >
 void read_matrix_data(const std::string &filename, std::vector<Dtype> &data, bool direct) {
-	const size_t s = grb::spmd<>::pid();
+	int s, nprocs;
+	auto MPI_RC = MPI_Comm_rank(MPI_COMM_WORLD, &s);
+	assert( MPI_RC == MPI_SUCCESS );
+	MPI_RC = MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+	assert( MPI_RC == MPI_SUCCESS );
 	if( s == 0 ){
 		// Implementation for reading matrix data from file
 		try {
@@ -204,30 +208,30 @@ void read_matrix_data(const std::string &filename, std::vector<Dtype> &data, boo
 		}
 	}
 
+	if( nprocs == 1 ) return;
 	grb::RC rc = grb::SUCCESS;
 
-	size_t n = std::get<0>(Storage::getData());
-	size_t nz = std::get<0>(Storage::getData());
+	int n = std::get<0>(Storage::getData());
+	int nz = std::get<0>(Storage::getData());
 
-	rc = rc ? rc : grb::collectives<>::broadcast( n, 0 );
-	rc = rc ? rc : grb::collectives<>::broadcast( nz, 0 );
-
+	MPI_Bcast( &n, 1, MPI_INT, 0, MPI_COMM_WORLD);
+	MPI_Bcast( &nz, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
 	std::get<0>(Storage::getData()) = n;
 	std::get<1>(Storage::getData()) = nz;
 
-	size_t sz = data.size();
-	rc = rc ? rc : grb::collectives<>::broadcast( sz, 0 );
+	int sz = data.size();
+	MPI_Bcast( &sz, 1, MPI_INT, 0, MPI_COMM_WORLD);
 	assert( rc == grb::SUCCESS );
 	data.resize( sz );
 
 	static_assert( std::is_same< Dtype, NonzeroT >::value,
         "Dtype is of unexpected type" );
 	assert( data.size() >= sz );
-	for(size_t i = 0 ; i < sz ; ++i){
-		rc = rc ? rc : grb::collectives<>::broadcast( std::get<0>( data[i].first ), 0 );
-		rc = rc ? rc : grb::collectives<>::broadcast( std::get<1>( data[i].first ), 0 );
-		rc = rc ? rc : grb::collectives<>::broadcast( std::get<1>( data[i] ), 0 );
+	for(int i = 0 ; i < sz ; ++i){
+		MPI_Bcast( &std::get<0>( data[i].first ), 1, MPI_INT, 0, MPI_COMM_WORLD);
+		MPI_Bcast( &std::get<1>( data[i].first ), 1, MPI_INT, 0, MPI_COMM_WORLD);
+		MPI_Bcast( &std::get<1>( data[i] ), 1, MPI_FLOAT, 0, MPI_COMM_WORLD);
 	}
 	assert( rc == grb::SUCCESS );
 
@@ -262,7 +266,12 @@ void read_matrix_data_from_array(
 
 template< typename Dtype >
 void read_vector_data(const std::string &filename, std::vector<Dtype> &data) {
-	const size_t s = grb::spmd<>::pid();
+	int s, nprocs;
+	auto MPI_RC = MPI_Comm_rank(MPI_COMM_WORLD, &s);
+	assert( MPI_RC == MPI_SUCCESS );
+	MPI_RC = MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+	assert( MPI_RC == MPI_SUCCESS );
+
 	if( s == 0 ){
 		// Implementation for reading vector data from file
 		try {
@@ -287,18 +296,17 @@ void read_vector_data(const std::string &filename, std::vector<Dtype> &data) {
 		}
 	}
 
+	if( nprocs == 1) return;
 	grb::RC rc = grb::SUCCESS;
-	size_t sz = data.size();
+	int sz = data.size();
 
-	rc = rc ? rc : grb::collectives<>::broadcast( sz, 0 );
+	MPI_Bcast( &sz, 1, MPI_INT, 0, MPI_COMM_WORLD);
 	assert( rc == grb::SUCCESS );
 
 
 	static_assert( std::is_floating_point< Dtype >::value );
 	data.resize( sz );
-	for(size_t i = 0 ; i < sz ; ++i){
-		rc = rc ? rc : grb::collectives<>::broadcast( data[i], 0 );
-	}
+	MPI_Bcast( data.data(), sz, MPI_FLOAT, 0, MPI_COMM_WORLD);
 	assert( rc == grb::SUCCESS );
 
 }
@@ -421,9 +429,9 @@ void grbProgram(
     std::cout<< "grbProgram: running simulated-annealing RE solver (stub)\n";
 
 	// get user process ID
-	const size_t s = spmd<>::pid();
-	const size_t nprocs = spmd<>::nprocs();
-	(void) nprocs;
+	const auto s = data_in.s;
+	const auto nprocs = data_in.nprocs;
+	// std::cerr << s << " / " << nprocs << std::endl;
 
     grb::utils::Timer timer;
 	timer.reset();
@@ -504,9 +512,9 @@ void grbProgram(
     const size_t n_replicas = ( data_in.n_replicas / nprocs ) + (( data_in.n_replicas % nprocs > s )? 1 : 0);
 
 #ifndef NDEBUG
-	size_t total_replicas = n_replicas;
-	const auto add_operator =  grb::operators::add< size_t >();
-	grb::collectives<>::allreduce( total_replicas, add_operator );
+	int total_replicas = n_replicas;
+	// TODO: restore this thing...
+	MPI_Allreduce( MPI_IN_PLACE, &total_replicas, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD );
 	std::cerr << total_replicas << " == " << data_in.n_replicas  << "\n";
 	assert( total_replicas == data_in.n_replicas );
 
@@ -584,8 +592,8 @@ void grbProgram(
 			std::cout << "Warning: call to Simulated Annealing RE did not converge\n";
 		}
 		if( rc == SUCCESS ) {
-			rc = collectives<>::reduce( single_time, 0, operators::max< double >() );
-
+			MPI_Allreduce( MPI_IN_PLACE, &single_time, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+			// rc = collectives<>::reduce( single_time, 0, operators::max< double >() );
 		}
 		if( rc != SUCCESS ) {
 			out.error_code = 25;
@@ -628,9 +636,10 @@ void grbProgram(
 				rc = grb::algorithms::simulated_annealing_RE_Ising(
 					J, h, states, energies, betas, best_state, out.best_energy, nsweeps, data_in.reference_energy, data_in.pt_time, data_in.seed + i
 				);
-				rc = rc ? rc : grb::collectives<>::allreduce( out.best_energy, grb::operators::min< EnergyType >() );
+				MPI_Allreduce( MPI_IN_PLACE, &out.best_energy, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
 			}
 			double time_taken = timer.time();
+			MPI_Allreduce( MPI_IN_PLACE, &time_taken, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 			grb::collectives<>::allreduce( time_taken, grb::operators::max< double >() );
 			min_time = std::min(min_time, time_taken);
 			max_time = std::max(max_time, time_taken);
@@ -778,28 +787,32 @@ bool parse_arguments( input &in, int argc, char ** argv ) {
 
 // --- Minimal main that uses the existing ioProgram / grbProgram entrypoints ---
 int main( int argc, char ** argv ) {
-    std::cout << "simulated_anealing_re runner\n";
-    input in;
-    output out;
-
 	// init MPI
 	if( MPI_Init( &argc, &argv ) != MPI_SUCCESS ) {
 		std::cerr << "MPI_Init returns with non-SUCCESS exit code." << std::endl;
 		return 10;
 	}
+    std::cout << "simulated_anealing_re runner\n";
+    input in;
+    output out;
+
 
     if ( !parse_arguments( in, argc, argv ) ) {
         printhelp( argv[0] );
         return 1;
     }
 
+	auto MPI_RC = MPI_Comm_rank(MPI_COMM_WORLD, &in.s);
+	assert( MPI_RC == MPI_SUCCESS );
+	MPI_RC = MPI_Comm_size(MPI_COMM_WORLD, &in.nprocs);
+	assert( MPI_RC == MPI_SUCCESS );
 
     std::cout << "seed=" << in.seed << " n_replicas=" << in.n_replicas << " nsweeps=" << in.nsweeps << " sweep=ising_sweep_spmd" << "\n";
 
     // Run IO program (populates Storage or similar)
     {
         bool success = false;
-		grb::Launcher< FROM_MPI > launcher( MPI_COMM_WORLD );
+		grb::Launcher< AUTOMATIC > launcher;
         grb::RC rc = launcher.exec( &ioProgram, in, success, true );
         if ( rc != SUCCESS ) {
             std::cerr << "I/O launcher failed: " << toString(rc) << "\n";
@@ -813,7 +826,7 @@ int main( int argc, char ** argv ) {
 
     // Run main GraphBLAS program that builds data and calls reSA stub
     {
-		grb::Launcher< FROM_MPI > launcher( MPI_COMM_WORLD );
+		grb::Launcher< AUTOMATIC > launcher;
         grb::RC rc = launcher.exec( &grbProgram, in, out, true );
         if ( rc != SUCCESS ) {
             std::cerr << "grbProgram launcher failed: " << toString(rc) << "\n";
@@ -821,12 +834,7 @@ int main( int argc, char ** argv ) {
         }
     }
 
-	int s;
-	if( MPI_Comm_rank(MPI_COMM_WORLD, &s) != MPI_SUCCESS ) {
-		std::cerr << "MPI_Comm_rank returns with non-SUCCESS exit code." << std::endl;
-		return 51;
-	}
-	if( s == 0 ){
+	if( in.s == 0 ){
 		std::cout << "Finished: error_code=" << out.error_code << " iterations=" << out.rep << " best_energy=" << out.best_energy << "\n";
 	}
 	

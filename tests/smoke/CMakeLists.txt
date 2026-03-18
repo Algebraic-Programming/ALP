@@ -145,8 +145,9 @@ add_grb_executables( conjugate_gradient_complex conjugate_gradient.cpp
 )
 
 add_grb_executables( simulated_annealing_re_from_mpi simulated_annealing_re_from_mpi.cpp
-	BACKENDS bsp1d
+	BACKENDS reference reference_omp nonblocking
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
+	ADDITIONAL_LINK_LIBRARIES MPI::MPI_CXX
 )
 
 add_grb_executables( simulated_annealing_re_ising simulated_annealing_re_ising.cpp
