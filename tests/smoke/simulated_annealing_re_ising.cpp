@@ -356,6 +356,7 @@ void grbProgram(
 	// get user process ID
 	const size_t s = spmd<>::pid();
 	assert( s < spmd<>::nprocs() );
+	const size_t nprocs = 1;
 
     grb::utils::Timer timer;
 	timer.reset();
@@ -456,7 +457,24 @@ void grbProgram(
 		rc = rc ? rc : grb::set( states.back(), states0.back() );
     }
 
-	grb::Vector< EnergyType > tmp_energy ( n );
+
+    // also make betas vector of size n_replicas and initialize with a geometric gradient
+    grb::Vector< JType > betas( n_replicas );
+    grb::Vector< EnergyType > energies( n_replicas );
+    grb::Vector< EnergyType > energies0( n_replicas );
+    grb::Vector< EnergyType > tmp_energy( n );
+
+    constexpr EnergyType logmin = std::log( 1e-3 );
+    constexpr EnergyType logmax = std::log( 1e+2 );
+    const EnergyType delta = (logmax - logmin) / (n_replicas * nprocs - 1);
+
+    for ( size_t r = 0; rc == grb::SUCCESS && r < n_replicas; ++r ) {
+        const EnergyType val = std::exp( logmin + ( n_replicas * s + r ) * delta );
+		rc = rc ? rc : grb::setElement( betas,  val, r );
+        rc = rc ? rc : grb::setElement( energies0, get_energy(  J, h, states[r], tmp_energy ), r );
+    }
+	rc = rc ? rc : grb::set( energies, energies0 );
+
 	EnergyType initial_energy = get_energy(  J, h, states[0], tmp_energy );
 
 	for ( size_t r = 0; r < n_replicas; ++r ) {
@@ -471,15 +489,6 @@ void grbProgram(
 		}
     #endif
 	}
-
-    // also make betas vector os size n_replicas and initialize with 10.0
-    grb::Vector< JType > betas( n_replicas );
-    grb::Vector< EnergyType > energies( n_replicas );
-    for ( size_t r = 0; rc == grb::SUCCESS && r < n_replicas; ++r ) {
-        rc = rc ? rc : grb::setElement( betas, static_cast< JType >( (10.0) * std::pow<JType>( 2, r ) ), r );
-        // rc = rc ? rc : grb::setElement( energies, get_energy(  J, h, states[r], tmp_energy ), r );
-    }
-	assert( rc == grb::SUCCESS );
 
 	grb::Vector< IOType > best_state ( n );
 
@@ -523,47 +532,41 @@ void grbProgram(
 			}
 		}
 	} else {
-		for( size_t i = 0; i < 2 ; ++i ){
-			for ( size_t r = 0; r < n_replicas; ++r ) {
-				rc = rc ? rc : grb::set(states[r], states0[r]);
-			}
-			out.best_energy = std::numeric_limits< EnergyType >::max();
-			rc = rc ? rc : grb::clear( energies );
-
-			rc = grb::algorithms::simulated_annealing_RE_Ising(
-			 J, h, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.reference_energy, data_in.pt_time, data_in.seed + i
-			);
-
-			assert( ISCLOSE( get_energy(  J, h, best_state, tmp_energy ), out.best_energy) );
-		}
+		const size_t n_warmup = 3;
+		size_t nsweeps = data_in.nsweeps, nsweeps0 = data_in.nsweeps;
+		out.iterations = data_in.nsweeps;
 		// do benchmark
 		double min_time = 1e9;
 		double max_time = 0;
 		double total_time = 0;
-		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
+
+		for( size_t i = 0; i < out.rep + n_warmup && rc == SUCCESS; ++i ) {
 			for ( size_t r = 0; r < n_replicas; ++r ) {
 				rc = rc ? rc : grb::set(states[r], states0[r]);
 			}
 			out.best_energy = std::numeric_limits< EnergyType >::max();
-			rc = rc ? rc : grb::clear( energies );
+			rc = rc ? rc : grb::set( energies, energies0 );
 			timer.reset();
 			if( rc == SUCCESS ) {
-				out.iterations = data_in.nsweeps;
-
-                rc = grb::algorithms::simulated_annealing_RE_Ising(
-			 J, h, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.reference_energy, data_in.pt_time, data_in.seed + i
-                );
+				rc = grb::algorithms::simulated_annealing_RE_Ising(
+					J, h, states, energies, betas, best_state, out.best_energy, nsweeps, data_in.reference_energy, data_in.pt_time, data_in.seed + i
+				);
+				rc = rc ? rc : grb::collectives<>::allreduce( out.best_energy, grb::operators::min< EnergyType >() );
 			}
-			if( grb::Properties<>::isNonblockingExecution ) {
-				rc = rc ? rc : wait();
-			}
-			const double time_taken = timer.time();
-
-			assert( ISCLOSE( get_energy(  J, h, best_state, tmp_energy ), out.best_energy) );
+			double time_taken = timer.time();
+			grb::collectives<>::allreduce( time_taken, grb::operators::max< double >() );
 			min_time = std::min(min_time, time_taken);
 			max_time = std::max(max_time, time_taken);
 			total_time +=  time_taken;
-			std::cerr << n_replicas << "," << data_in.nsweeps << "," << time_taken << "," << out.best_energy << std::endl;
+
+			if( i < n_warmup ){
+				continue;
+			}
+
+			if(s == 0){
+				std::cerr << n_replicas << "," << nsweeps << "," << time_taken << "," << out.best_energy << std::endl;
+			}
+
 		}
 
 		out.times.useful = total_time / static_cast< double >( out.rep );
