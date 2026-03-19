@@ -90,7 +90,9 @@ namespace grb {
 			std::minstd_rand rng ( seed );
 			std::exponential_distribution< EnergyType > rand ( 1.0 );
 
+			rc = rc ? rc : grb::wait( energies, states[n_replicas - 1] );
 			for( size_t i = n_replicas - 1 ; i > 0 ; --i ){
+				rc = rc ? rc : grb::wait( states[i-1] );
 				const EnergyType de = ( energies[ i ] - energies[ i-1 ]) * (betas[ i ] - betas[ i-1 ]);
 
 				if( -rand( rng ) < de ){
@@ -155,9 +157,11 @@ namespace grb {
 			rng.seed( seed + s );
 			const EnergyType myrand = -rand( rng );
 
+			rc = rc ? rc : grb::wait( energies, states[n_replicas - 1] );
 			for( size_t si = nprocs ; rc == grb::SUCCESS && si > 0; --si ){
 				if( si == s + 1 ){
 					for( size_t i = n_replicas - 1 ; i > 0 ; --i ){
+						rc = rc ? rc : grb::wait( states[i-1] );
 						const EnergyType de = ( energies[ i ] - energies[ i-1 ]) * (betas[ i ] - betas[ i-1 ]);
 
 						if( -rand( rng ) < de ){
@@ -333,12 +337,12 @@ namespace grb {
 				for( size_t j = 0 ; j < n_replicas ; ++j ){
 
 					energies[j] += sweep( states[j], betas[j], sweep_data );
-					rc = rc ? rc : grb::wait< backend >(); // should be done with nonblocking backend, I guess
-				
+
+					rc = rc ? rc : grb::wait(energies);
 					// update_best state and energy
 					if( energies[j] < best_energy ){
 						best_energy = energies[j];
-						best_state = states[j];
+						rc = rc ? rc : grb::set(best_state, states[j]);
 					}
 				} // n_replicas
 
@@ -428,6 +432,7 @@ namespace grb {
 			grb::RC rc = grb::SUCCESS;
 			const size_t n = grb::nrows( A );
 			const size_t s = spmd<>::pid();
+			constexpr grb::Descriptor dense_descr = descr | grb::descriptors::dense;
 			assert( n == grb::ncols( A ) ); // A needs to be square
 			// assert( grb::is_symmetric( A ) );
 			(void) s;
@@ -461,12 +466,12 @@ namespace grb {
 			for( size_t i = 0; rc == grb::SUCCESS && i < n ; ++i ) {
 				// find max of neighbors
 				rc = rc ? rc : grb::set< descr >( frontier, static_cast< AType >( 0 ) );
-				rc = rc ? rc : grb::mxv< descr | grb::descriptors::dense >( frontier, A, w, maxTimesRing );
-				rc = rc ? rc : grb::foldl< descr | grb::descriptors::dense >( frontier, w, gtOp );
+				rc = rc ? rc : grb::mxv< dense_descr >( frontier, A, w, maxTimesRing );
+				rc = rc ? rc : grb::foldl< dense_descr >( frontier, w, gtOp );
 
 				// is there any new node?
 				AType succ = static_cast< AType >( 0 );
-				rc = rc ? rc : grb::foldl< descr >( succ, frontier, addMonoid );
+				rc = rc ? rc : grb::foldl< dense_descr >( succ, frontier, addMonoid );
 				if( succ <= 0 ){
 					break;
 				}
@@ -676,7 +681,7 @@ namespace grb {
 			auto sweep_data = std::tie(
 					(const decltype(couplings)&) couplings,
 					(const decltype(local_fields)&) local_fields,
-					(const decltype(masks)&) masks,
+						(const decltype(masks)&) masks,
 					h,
 					rand,
 					delta,
@@ -734,7 +739,7 @@ namespace grb {
 #ifndef NDEBUG
 				const grb::Vector< StateType, backend > old_state = state;
 #endif
-				rc = rc ? rc : grb::wait< backend >();
+				rc = rc ? rc : grb::wait();
 				for(const auto &mask : masks ){
 					// dn = (2*state_slice - 1) * h_slice
 					rc = rc ? rc : grb::set< descr >( dn, mask, state );
@@ -785,7 +790,6 @@ namespace grb {
 					// update h
 					rc = rc ? rc : grb::mxv< descr >( h, couplings, delta, ring );
 				}
-				rc = rc ? rc : grb::wait< backend >();
 
 #ifndef NDEBUG
 				if( rc != grb::SUCCESS ){
