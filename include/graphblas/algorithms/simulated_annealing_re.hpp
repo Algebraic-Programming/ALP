@@ -127,11 +127,11 @@ namespace grb {
 
 			rng.seed( seed + s );
 			const EnergyType myrand = -rand( rng );
-			rc = rc ? rc : grb::wait();
 
 #ifdef SARE_WITH_MPI
 			MPI_Status *stat = MPI_STATUS_IGNORE;
 
+			rc = rc ? rc : grb::wait( energies, betas );
 			if( s < nprocs - 1 ){
 				msg[ 0 ].e = energies[ n_replicas - 1 ];
 				msg[ 0 ].b = betas[ n_replicas - 1 ];
@@ -142,6 +142,7 @@ namespace grb {
 
 				if( rc == grb::SUCCESS && ( msg[ 1 ].r < de ) ){
 					rc = rc ? rc : grb::set( tmp, states[ n_replicas - 1 ] );
+					rc = rc ? rc : grb::wait( tmp );
 
 					MPI_Send( grb::internal::getRaw(tmp), sizeof(StateType)*n, MPI_BYTE, s+1, 2*nprocs+s+1, MPI_COMM_WORLD);
 					MPI_Recv( grb::internal::getRaw( states[ n_replicas - 1 ] ), sizeof(StateType)*n, MPI_BYTE, s+1, 2*nprocs+s+1, MPI_COMM_WORLD, stat );
@@ -151,7 +152,9 @@ namespace grb {
 			}
 #endif // SARE_WITH_MPI
 
+			rc = rc ? rc : grb::wait( energies, states[n_replicas - 1] );
 			for( size_t i = n_replicas - 1 ; i > 0 ; --i ){
+				rc = rc ? rc : grb::wait( states[i-1] );
 				const EnergyType de = ( energies[ i ] - energies[ i-1 ]) * (betas[ i ] - betas[ i-1 ]);
 
 				if( -rand( rng ) < de ){
@@ -171,6 +174,7 @@ namespace grb {
 				const EnergyType de = ( msg[ 1 ].e - msg[ 0 ].e ) * ( msg[ 1 ].b - msg[ 0 ].b );
 				if( rc == grb::SUCCESS && ( msg[ 1 ].r < de ) ){
 					rc = rc ? rc : grb::set( tmp, states[ 0 ] );
+					rc = rc ? rc : grb::wait( tmp );
 
 					MPI_Recv( grb::internal::getRaw( states[ 0 ] ), sizeof(StateType)*n, MPI_BYTE, s-1, 2*nprocs+s, MPI_COMM_WORLD, stat );
 					MPI_Send( grb::internal::getRaw( tmp ), sizeof(StateType)*n, MPI_BYTE, s-1, 2*nprocs+s, MPI_COMM_WORLD);
@@ -315,12 +319,12 @@ namespace grb {
 				for( size_t j = 0 ; j < n_replicas ; ++j ){
 
 					energies[j] += sweep( states[j], betas[j], sweep_data );
-					rc = rc ? rc : grb::wait< backend >(); // should be done with nonblocking backend, I guess
-				
+
+					rc = rc ? rc : grb::wait(energies);
 					// update_best state and energy
 					if( energies[j] < best_energy ){
 						best_energy = energies[j];
-						best_state = states[j];
+						rc = rc ? rc : grb::set(best_state, states[j]);
 					}
 				} // n_replicas
 #ifdef TIMING
@@ -424,6 +428,7 @@ namespace grb {
 			masks.clear();
 			grb::RC rc = grb::SUCCESS;
 			const size_t n = grb::nrows( A );
+			constexpr grb::Descriptor dense_descr = descr | grb::descriptors::dense;
 			int s = 1, nprocs = 1;
 			assert( n == grb::ncols( A ) ); // A needs to be square
 			// assert( grb::is_symmetric( A ) );
@@ -462,12 +467,12 @@ namespace grb {
 			for( size_t i = 0; rc == grb::SUCCESS && i < n ; ++i ) {
 				// find max of neighbors
 				rc = rc ? rc : grb::set< descr >( frontier, static_cast< AType >( 0 ) );
-				rc = rc ? rc : grb::mxv< descr | grb::descriptors::dense >( frontier, A, w, maxTimesRing );
-				rc = rc ? rc : grb::foldl< descr | grb::descriptors::dense >( frontier, w, gtOp );
+				rc = rc ? rc : grb::mxv< dense_descr >( frontier, A, w, maxTimesRing );
+				rc = rc ? rc : grb::foldl< dense_descr >( frontier, w, gtOp );
 
 				// is there any new node?
 				AType succ = static_cast< AType >( 0 );
-				rc = rc ? rc : grb::foldl< descr >( succ, frontier, addMonoid );
+				rc = rc ? rc : grb::foldl< dense_descr >( succ, frontier, addMonoid );
 				if( succ <= 0 ){
 					break;
 				}
@@ -676,7 +681,7 @@ namespace grb {
 			auto sweep_data = std::tie(
 					(const decltype(couplings)&) couplings,
 					(const decltype(local_fields)&) local_fields,
-					(const decltype(masks)&) masks,
+						(const decltype(masks)&) masks,
 					h,
 					rand,
 					delta,
@@ -731,7 +736,7 @@ namespace grb {
 #ifndef NDEBUG
 				const grb::Vector< StateType, backend > old_state = state;
 #endif
-				rc = rc ? rc : grb::wait< backend >();
+				rc = rc ? rc : grb::wait();
 				for(const auto &mask : masks ){
 					// dn = (2*state_slice - 1) * h_slice
 					rc = rc ? rc : grb::set< descr >( dn, mask, state );
@@ -782,7 +787,6 @@ namespace grb {
 					// update h
 					rc = rc ? rc : grb::mxv< descr >( h, couplings, delta, ring );
 				}
-				rc = rc ? rc : grb::wait< backend >();
 
 #ifndef NDEBUG
 				if( rc != grb::SUCCESS ){
