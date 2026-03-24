@@ -163,40 +163,92 @@ struct output {
 };
 
 template< typename Dtype >
+void read_matrix_plaintext(const std::string &filename, std::vector<Dtype> &data, bool direct) {
+	Parser parser( filename, direct );
+	assert( parser.m() == parser.n() );
+	std::get<0>(Storage::getData()) = parser.n();
+	try {
+		std::get<1>(Storage::getData()) = parser.nz();
+	} catch( ... ) {
+		std::get<1>(Storage::getData()) = parser.entries();
+	}
+	/* Once internal issue #342 is resolved this can be re-enabled
+	for(
+		auto it = parser.begin( PARALLEL );
+		it != parser.end( PARALLEL );
+		++it
+	) {
+		data.push_back( *it );
+	}*/
+	for(
+		auto it = parser.begin( SEQUENTIAL );
+		it != parser.end( SEQUENTIAL );
+		++it
+	) {
+		data.push_back( Dtype( *it ) );
+#ifdef DEBUG_SARE
+		if( s == 0 ){
+			// print last data element from std::vector<NonzeroT> data
+			std::cout << "readmatrix_data: " << data.back().first.first << ", "
+				<< data.back().first.second << ", " << data.back().second << "\n";
+		}
+#endif
+	}
+}
+#if __has_include("H5Cpp.h")
+#include <H5Cpp.h>
+
+template< typename Dtype >
+void read_matrix_h5(const std::string &filename, std::vector<Dtype> &data, bool direct ) {
+	H5::H5File file ( filename, H5F_ACC_RDONLY );
+	std::cerr << " Loading data from " << filename << "\n";
+	H5::DataSet rows = file.openDataSet( "rows" );
+	H5::DataSet cols = file.openDataSet( "cols" );
+	H5::DataSet vals = file.openDataSet( "vals" );
+
+	const size_t nnz = rows.getInMemDataSize() / sizeof(uint32_t);
+	assert( nnz == cols.getInMemDataSize()/sizeof(uint32_t) );
+	assert( nnz == vals.getInMemDataSize()/sizeof(double) );
+	std::cerr << "#nnz = " << nnz << "\n";
+
+	std::vector<uint32_t> r (nnz); // these types must match input file types
+	std::vector<uint32_t> c (nnz);
+	std::vector<double> v (nnz);
+
+	rows.read(r.data(), H5::PredType::NATIVE_UINT32);
+	cols.read(c.data(), H5::PredType::NATIVE_UINT32);
+	vals.read(v.data(), H5::PredType::NATIVE_DOUBLE);
+
+	const uint64_t N = std::max(
+				*std::max_element(r.begin(), r.end()),
+				*std::max_element(c.begin(), c.end()) ) + 1;
+
+	std::get<0>(Storage::getData()) = N;
+	std::get<1>(Storage::getData()) = nnz;
+	data.resize(nnz);
+	for( size_t i = 0; i < nnz;++i){
+		data[i] = NonzeroT( r[i], c[i], v[i] );
+	}
+}
+#else
+template< typename Dtype >
+void read_matrix_h5(const std::string &filename, std::vector<Dtype> &data, bool direct ) {
+	return;
+}
+#warning "No HDF5 support"
+#endif
+
+template< typename Dtype >
 void read_matrix_data(const std::string &filename, std::vector<Dtype> &data, bool direct) {
 	const size_t s = grb::spmd<>::pid();
 	if( s == 0 ){
 		// Implementation for reading matrix data from file
 		try {
-			Parser parser( filename, direct );
-			assert( parser.m() == parser.n() );
-			std::get<0>(Storage::getData()) = parser.n();
-			try {
-				std::get<1>(Storage::getData()) = parser.nz();
-			} catch( ... ) {
-				std::get<1>(Storage::getData()) = parser.entries();
-			}
-			/* Once internal issue #342 is resolved this can be re-enabled
-			for(
-				auto it = parser.begin( PARALLEL );
-				it != parser.end( PARALLEL );
-				++it
-			) {
-				data.push_back( *it );
-			}*/
-			for(
-				auto it = parser.begin( SEQUENTIAL );
-				it != parser.end( SEQUENTIAL );
-				++it
-			) {
-				data.push_back( Dtype( *it ) );
-#ifdef DEBUG_SARE
-				if( s == 0 ){
-					// print last data element from std::vector<NonzeroT> data
-					std::cout << "readmatrix_data: " << data.back().first.first << ", "
-						<< data.back().first.second << ", " << data.back().second << "\n";
-				}
-#endif
+			const auto ext = filename.substr( filename.find_last_of('.'), 10);
+			if( ext == "h5" || ext == "hdf5" || ext == "he5"){
+				read_matrix_h5( filename, data, direct);
+			}else{
+				read_matrix_plaintext( filename, data, direct);
 			}
 		} catch( std::exception &e ) {
 			std::cerr << "I/O program failed: " << e.what() << "\n";
@@ -204,6 +256,8 @@ void read_matrix_data(const std::string &filename, std::vector<Dtype> &data, boo
 		}
 	}
 
+	// now broadcast data to other processes
+	if( nprocs == 1 ) return;
 	grb::RC rc = grb::SUCCESS;
 
 	size_t n = std::get<0>(Storage::getData());

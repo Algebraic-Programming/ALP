@@ -125,6 +125,8 @@ if( WITH_NONBLOCKING_BACKEND )
 endif( WITH_NONBLOCKING_BACKEND )
 
 
+find_package(HDF5 REQUIRED COMPONENTS C CXX)
+
 # library with utilities for tests, to be used optionally
 # i.e. NOT linked by default
 add_library( test_utils_headers INTERFACE )
