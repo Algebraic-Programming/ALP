@@ -144,6 +144,18 @@ add_grb_executables( conjugate_gradient_complex conjugate_gradient.cpp
 	COMPILE_DEFINITIONS _CG_COMPLEX
 )
 
+add_grb_executables( ising_machine_dsb ising_machine_sb.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+	ADDITIONAL_LINK_LIBRARIES test_utils_headers
+	COMPILE_DEFINITIONS _DISCRETE_SB
+)
+
+add_grb_executables( ising_machine_bsb ising_machine_sb.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+	ADDITIONAL_LINK_LIBRARIES test_utils_headers
+	COMPILE_DEFINITIONS _BALLISTIC_SB
+)
+
 add_grb_executables( gmres gmres.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers

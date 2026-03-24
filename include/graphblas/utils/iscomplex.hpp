@@ -50,8 +50,8 @@ namespace grb {
 		class is_complex {
 
 			static_assert(
-				std::is_floating_point< C >::value,
-				"is_complex: C is not a floating point type"
+				std::is_arithmetic< C >::value,
+				"is_complex: C is not a numerical (arithmetic) type"
 			);
 
 			public:

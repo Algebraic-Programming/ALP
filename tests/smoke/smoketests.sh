@@ -258,6 +258,19 @@ for BACKEND in ${BACKENDS[@]}; do
 			fi
 			echo " "
 
+			if [ -f "${TEST_BIN_DIR}/ising_machine_sb_${BACKEND}" ]
+			then
+			    echo ">>>      [x]           [ ]       Testing the Ising machine simulated bifurcation algorithm"
+			    echo "								   for a small 10-spin problem with known solution. This test" 
+				echo "								   verifies against a predefined solution vector. The test"
+			    echo "                                 employs the grb::Launcher in automatic mode. It uses"
+			    echo "                                 direct-mode file IO."
+			    $runner ${TEST_BIN_DIR}/ising_machine_sb_${BACKEND} --use-default-data --verify &> ${TEST_OUT_DIR}/ising_machine_sb_${BACKEND}_${P}_${T}.log
+			    head -1 ${TEST_OUT_DIR}/ising_machine_sb_${BACKEND}_${P}_${T}.log
+			    grep 'Test OK' ${TEST_OUT_DIR}/ising_machine_sb_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+			    echo " "
+			fi
+
 			NTEST=256
 			if [ -f "${TEST_BIN_DIR}/gmres_${BACKEND}" ]
 			then
