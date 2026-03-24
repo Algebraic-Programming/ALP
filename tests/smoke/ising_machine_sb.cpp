@@ -129,7 +129,7 @@ namespace test_data {
     };
 
     const IOType p0  = 0.;
-    const IOType p1  = 1.1;
+    const IOType p1  = 1;
     const IOType dt  = 0.25;
 
 } // namespace test_data

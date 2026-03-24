@@ -78,7 +78,8 @@ namespace grb {
 			operator IOType() const { return val; }
 		};
 
-		// // Unary predicate to build a structural mask |x|>1
+		// Type to trick addition operator into doing:
+		// y + x = 0 if abs(x) > 1 (threshold) else 0 (newval)
 		template< typename T,
 			int threshold = 1, int newval = 0 >
 		struct AbsGtAssign {
@@ -88,8 +89,6 @@ namespace grb {
 			AbsGtAssign(const T x){
 				val = x;
 			}
-
-
 		};
 		template<typename T, int threshold = 1, int newval = 0 >
 		T operator+( const T y, const AbsGtAssign<T,threshold,newval>& x ) {
@@ -238,7 +237,6 @@ namespace grb {
 
 			/* ---- iteration variables ---- */
 			IOType ps  = p_init;
-			const IOType dps = ( p_end - p_init ) / static_cast<IOType>( num_iters - 1 );
 			// assert len of energies == N
 			assert( energies.size() == num_iters );
 
@@ -349,7 +347,7 @@ namespace grb {
 				std::cout << "e: " << e << '\n';
 #endif
 				energies[ iterations ] = e;
-			    ps += dps;
+			    ps = ( p_init + (p_end * iterations)/num_iters );
 			}
 
 			return SUCCESS;
