@@ -293,7 +293,6 @@ void read_vector_data(const std::string &filename, std::vector<Dtype> &data) {
 	rc = rc ? rc : grb::collectives<>::broadcast( sz, 0 );
 	assert( rc == grb::SUCCESS );
 
-
 	static_assert( std::is_floating_point< Dtype >::value );
 	data.resize( sz );
 	for(size_t i = 0 ; i < sz ; ++i){
