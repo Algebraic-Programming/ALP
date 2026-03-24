@@ -529,8 +529,8 @@ namespace grb {
 		 *
 		 * Warning: This function allocates $O(n)$ memory for temporary vectors.
 		 *
-		 * @param[in,out] states        On input: initial (dense) states.
-		 *                              On output: optimized (dense) states.
+		 * @param[in,out] states        On input: initial (dense) 0/1 states.
+		 *                              On output: optimized (dense) 0/1 states.
 		 * @param[in]     couplings     The square (symmetric) couplings matrix.
 		 *                              The diagonal has to be zero!
 		 * @param[in]     local_fields  The vector of local fields.
@@ -665,6 +665,7 @@ namespace grb {
 
 			using MaskType = bool;
 			std::vector< grb::Vector< MaskType, backend > > masks ;
+			// here nonzero diagonal is an issue
 			rc = rc ? rc : matrix_partition< descr >( masks, couplings, h, rand, seed );
 #ifdef TIMING
 				end = std::chrono::high_resolution_clock::now();
@@ -787,7 +788,7 @@ namespace grb {
 					// Update delta_energy -= dot(dn, accept)
 					rc = rc ? rc : grb::dot< descr >( delta_energy, delta, h, ring );
 
-					// update h
+					// update h -- this works if couplings has zero diagonal
 					rc = rc ? rc : grb::mxv< descr >( h, couplings, delta, ring );
 				}
 
@@ -881,6 +882,10 @@ namespace grb {
 				const int seed = 42,
 				const Ring &ring = Ring()
 				){
+			// TODO: the right thing to do would be to put diagonal of Q into local_fields
+			// but for now we'll ignore this, and require the diagonal to be zero.
+			//
+			// Another thing here is that we possibly should accept lower/upper triangular Q and make it symmetric
 			grb::Vector< QType > empty_local_fields ( 0 );
 
 			return simulated_annealing_RE_Ising< backend, descr, true >(
