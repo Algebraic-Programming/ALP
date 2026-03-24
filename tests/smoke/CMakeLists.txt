@@ -148,6 +148,7 @@ add_grb_executables( simulated_annealing_re_from_mpi simulated_annealing_re_from
 	BACKENDS reference reference_omp nonblocking
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 	ADDITIONAL_LINK_LIBRARIES MPI::MPI_CXX
+	ADDITIONAL_LINK_LIBRARIES hdf5::hdf5 hdf5::hdf5_cpp
 )
 
 add_grb_executables( simulated_annealing_re_ising simulated_annealing_re_ising.cpp
