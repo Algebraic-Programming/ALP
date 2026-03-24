@@ -33,7 +33,10 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cmath>
+
+#if __has_include("mpi.h")
 #include <mpi.h>
+#endif
 
 #ifdef TIMING
 #include <iomanip>
@@ -105,6 +108,7 @@ namespace grb {
 			return rc;
 		}
 
+#if __has_include("mpi.h")
 		template<
 			typename TempType,
 			typename EnergyType
@@ -153,9 +157,6 @@ namespace grb {
 				msg = new struct data< TempType, EnergyType > [2];
 				pt_tmp = new grb::Vector< StateType, backend >( n );
 				rc = rc ? rc : grb::set( *pt_tmp, static_cast< StateType >( 0 ) );
-				// rc = rc ? rc : grb::rdma<>::register_global( msg[ 0 ] );
-				// rc = rc ? rc : grb::rdma<>::register_global( msg[ 1 ] );
-				// rc = rc ? rc : grb::rdma<>::register_global( *pt_tmp );
 			}
 			grb::Vector< StateType, backend > &tmp = *pt_tmp;
 
@@ -184,7 +185,6 @@ namespace grb {
 					rc = rc ? rc : grb::setElement( energies, msg[ 1 ].e, n_replicas - 1 );
 				}
 			}
-			// std::cerr << s << " " << "A done." << std::endl;
 
 			for( size_t i = n_replicas - 1 ; i > 0 ; --i ){
 				const EnergyType de = ( energies[ i ] - energies[ i-1 ]) * (betas[ i ] - betas[ i-1 ]);
@@ -223,6 +223,7 @@ namespace grb {
 #endif
 			return rc;
 		}
+#endif
 
 
 		/*
@@ -408,6 +409,7 @@ namespace grb {
 				// TODO: update best state to match best energy
 			}
 			
+#if __has_include("mpi.h")
 			if( msg != nullptr ){
 				// rc = rc ? rc : grb::rdma<>::deregister( msg[ 0 ] );
 				// rc = rc ? rc : grb::rdma<>::deregister( msg[ 1 ] );
@@ -415,6 +417,7 @@ namespace grb {
 				delete msg; msg = nullptr;
 				delete pt_tmp; pt_tmp = nullptr;
 			}
+#endif
 			return rc;
 		}
 
@@ -688,6 +691,7 @@ namespace grb {
 			using MaskType = bool;
 			std::vector< grb::Vector< MaskType, backend > > masks ;
 			// here nonzero diagonal is an issue
+
 			rc = rc ? rc : matrix_partition< descr >( masks, couplings, h, rand, seed );
 #ifdef TIMING
 				end = std::chrono::high_resolution_clock::now();
@@ -900,7 +904,7 @@ namespace grb {
 				EnergyType &best_energy,
 				const size_t &n_sweeps,
 				const EnergyType &goal = 0,
-				const size_t &pt_time = false,
+				const size_t &pt_time = 0,
 				const int seed = 42,
 				const Ring &ring = Ring()
 				){
