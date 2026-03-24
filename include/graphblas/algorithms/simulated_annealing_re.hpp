@@ -33,6 +33,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cmath>
+#include <mpi.h>
 
 #ifdef TIMING
 #include <iomanip>
@@ -105,15 +106,15 @@ namespace grb {
 		}
 
 		template<
-			typename StateType,
+			typename TempType,
 			typename EnergyType
 			>
 		struct data {
 				EnergyType e;
-				StateType b;
+				TempType b;
 				EnergyType r;
 			};
-		struct data< int8_t, double > *msg = nullptr;
+		struct data< float, double > *msg = nullptr;
 		grb::Vector< int8_t, grb::reference > *pt_tmp = nullptr;
 
 		/*
@@ -147,13 +148,14 @@ namespace grb {
 			assert( grb::size(energies) == n_replicas );
 			assert( grb::size(betas) == n_replicas );
 #endif
+
 			if( msg == nullptr ){
-				msg = new struct data< StateType, EnergyType > [2];
+				msg = new struct data< TempType, EnergyType > [2];
 				pt_tmp = new grb::Vector< StateType, backend >( n );
 				rc = rc ? rc : grb::set( *pt_tmp, static_cast< StateType >( 0 ) );
-				rc = rc ? rc : grb::rdma<>::register_global( msg[ 0 ] );
-				rc = rc ? rc : grb::rdma<>::register_global( msg[ 1 ] );
-				rc = rc ? rc : grb::rdma<>::register_global( *pt_tmp );
+				// rc = rc ? rc : grb::rdma<>::register_global( msg[ 0 ] );
+				// rc = rc ? rc : grb::rdma<>::register_global( msg[ 1 ] );
+				// rc = rc ? rc : grb::rdma<>::register_global( *pt_tmp );
 			}
 			grb::Vector< StateType, backend > &tmp = *pt_tmp;
 
@@ -163,35 +165,53 @@ namespace grb {
 			rng.seed( seed + s );
 			const EnergyType myrand = -rand( rng );
 
-			rc = rc ? rc : grb::wait( energies, states[n_replicas - 1] );
-			for( size_t si = nprocs ; rc == grb::SUCCESS && si > 0; --si ){
-				if( si == s + 1 ){
-					for( size_t i = n_replicas - 1 ; i > 0 ; --i ){
-						rc = rc ? rc : grb::wait( states[i-1] );
-						const EnergyType de = ( energies[ i ] - energies[ i-1 ]) * (betas[ i ] - betas[ i-1 ]);
+			MPI_Status *stat = MPI_STATUS_IGNORE;
 
-						if( -rand( rng ) < de ){
-							std::swap( states[i], states[i-1] );
-							std::swap( energies[i], energies[i-1] );
-						}
-					}
-				}
-				if( si == 1 ) continue;
-				if( si == s + 1 ){
-					msg[ 1 ].e = energies[ 0 ];
-					msg[ 1 ].b = betas[0];
-					msg[ 1 ].r = myrand;
-					rc = rc ? rc : grb::rdma<>::put( msg[ 1 ], si-1, msg[ 1 ] );
-					rc = rc ? rc : grb::set( tmp, states[0] );
-				}else if( si == s ){
-					msg[ 0 ].e = energies[ n_replicas - 1 ];
-					msg[ 0 ].b = betas[ n_replicas - 1 ];
-					msg[ 0 ].r = myrand;
-					rc = rc ? rc : grb::rdma<>::put( msg[ 0 ], si-2, msg[ 0 ] );
+			if( s < nprocs - 1 ){
+				msg[ 0 ].e = energies[ n_replicas - 1 ];
+				msg[ 0 ].b = betas[ n_replicas - 1 ];
+				msg[ 0 ].r = myrand;
+				MPI_Send( &(msg[0]), sizeof(msg[0]), MPI_BYTE, s+1, s+1, MPI_COMM_WORLD);
+				MPI_Recv( &(msg[1]), sizeof(msg[1]), MPI_BYTE, s+1, s+1, MPI_COMM_WORLD, stat );
+				const EnergyType de = ( msg[ 1 ].e - msg[ 0 ].e ) * ( msg[ 1 ].b - msg[ 0 ].b );
+
+				if( rc == grb::SUCCESS && ( msg[ 1 ].r < de ) ){
 					rc = rc ? rc : grb::set( tmp, states[ n_replicas - 1 ] );
-				}
 
-				rc = rc ? rc : grb::spmd<>::sync();
+					MPI_Send( grb::internal::getRaw(tmp), sizeof(StateType)*n, MPI_BYTE, s+1, 2*nprocs+s+1, MPI_COMM_WORLD);
+					MPI_Recv( grb::internal::getRaw( states[ n_replicas - 1 ] ), sizeof(StateType)*n, MPI_BYTE, s+1, 2*nprocs+s+1, MPI_COMM_WORLD, stat );
+
+					rc = rc ? rc : grb::setElement( energies, msg[ 1 ].e, n_replicas - 1 );
+				}
+			}
+			// std::cerr << s << " " << "A done." << std::endl;
+
+			for( size_t i = n_replicas - 1 ; i > 0 ; --i ){
+				const EnergyType de = ( energies[ i ] - energies[ i-1 ]) * (betas[ i ] - betas[ i-1 ]);
+
+				if( -rand( rng ) < de ){
+					std::swap( states[i], states[i-1] );
+					std::swap( energies[i], energies[i-1] );
+				}
+			}
+
+			if( s > 0 ){
+				msg[ 1 ].e = energies[ 0 ];
+				msg[ 1 ].b = betas[ 0 ];
+				msg[ 1 ].r = myrand;
+				MPI_Recv( &(msg[0]), sizeof(msg[0]), MPI_BYTE, s-1, s, MPI_COMM_WORLD, stat );
+				MPI_Send( &(msg[1]), sizeof(msg[1]), MPI_BYTE, s-1, s, MPI_COMM_WORLD);
+
+				const EnergyType de = ( msg[ 1 ].e - msg[ 0 ].e ) * ( msg[ 1 ].b - msg[ 0 ].b );
+				if( rc == grb::SUCCESS && ( msg[ 1 ].r < de ) ){
+					rc = rc ? rc : grb::set( tmp, states[ 0 ] );
+
+					MPI_Recv( grb::internal::getRaw( states[ 0 ] ), sizeof(StateType)*n, MPI_BYTE, s-1, 2*nprocs+s, MPI_COMM_WORLD, stat );
+					MPI_Send( grb::internal::getRaw( tmp ), sizeof(StateType)*n, MPI_BYTE, s-1, 2*nprocs+s, MPI_COMM_WORLD);
+
+					rc = rc ? rc : grb::setElement( energies, msg[ 0 ].e, 0 );
+				}
+			}
 
 #ifndef NDEBUG
 	
@@ -201,20 +221,6 @@ namespace grb {
 				}
 				assert( rc == grb::SUCCESS );
 #endif
-
-				const EnergyType de = ( msg[ 1 ].e - msg[ 0 ].e ) * ( msg[ 1 ].b - msg[ 0 ].b );
-
-				if( rc == grb::SUCCESS && ( msg[ 1 ].r < de ) ){
-					if( si == s + 1 ){
-						rc = rc ? rc : grb::rdma<>::get( si-2, tmp, states[ 0 ] );
-						rc = rc ? rc : grb::setElement( energies, msg[ 0 ].e, 0 );
-					}else if( si ==  s + 1 ){
-						rc = rc ? rc : grb::rdma<>::get( si-1, tmp, states[n_replicas - 1] );
-						rc = rc ? rc : grb::setElement( energies, msg[ 1 ].e, n_replicas - 1 );
-					}
-					rc = rc ? rc : grb::spmd<>::sync();
-				}
-			}
 			return rc;
 		}
 
@@ -315,6 +321,14 @@ namespace grb {
 #endif
 
 			best_energy = std::numeric_limits< EnergyType >::max();
+#ifdef TIMING
+			auto start = std::chrono::high_resolution_clock::now();
+			auto end = std::chrono::high_resolution_clock::now();
+			auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+			if( s == 0 ){
+				std::cerr << "Starting with sweep..." << "\n";
+			}
+#endif
 
 #ifdef TIMING
 			auto start = std::chrono::high_resolution_clock::now();
@@ -329,7 +343,6 @@ namespace grb {
 #ifdef TIMING
 				start = std::chrono::high_resolution_clock::now();
 #endif
-
 				for( size_t j = 0 ; j < n_replicas ; ++j ){
 
 					energies[j] += sweep( states[j], betas[j], sweep_data );
@@ -354,6 +367,14 @@ namespace grb {
 					// do a Parallel Tempering move
 					rc = pt( states, energies, betas, seed + i_sweep );
 				}
+#ifdef TIMING
+				end = std::chrono::high_resolution_clock::now();
+				duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+				if(s == 0){
+					std::cerr << "PT took " << (duration.count() / 1000.0) << " ms." << "\n";
+				}
+#endif
+
 #ifdef TIMING
 				end = std::chrono::high_resolution_clock::now();
 				duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
@@ -388,8 +409,11 @@ namespace grb {
 			}
 			
 			if( msg != nullptr ){
-				delete msg;
-				delete pt_tmp;
+				// rc = rc ? rc : grb::rdma<>::deregister( msg[ 0 ] );
+				// rc = rc ? rc : grb::rdma<>::deregister( msg[ 1 ] );
+				// rc = rc ? rc : grb::rdma<>::deregister( *pt_tmp );
+				delete msg; msg = nullptr;
+				delete pt_tmp; pt_tmp = nullptr;
 			}
 			return rc;
 		}
@@ -804,10 +828,10 @@ namespace grb {
 				get_energy(e2, new_state);
 				const auto real_delta = e2 - e1;
 				if( s == 0 ){
-					std::cerr << "\n\t Delta_energy: " << delta_energy;
-					std::cerr << "\n\t Real delta: " << real_delta;
-					std::cerr << "\n\t Discrepancy: " << real_delta - delta_energy;
-					std::cerr << std::endl;
+					// std::cerr << "\n\t Delta_energy: " << delta_energy;
+					// std::cerr << "\n\t Real delta: " << real_delta;
+					// std::cerr << "\n\t Discrepancy: " << real_delta - delta_energy;
+					// std::cerr << std::endl;
 				}
 				assert( ISCLOSE(real_delta, delta_energy ) );
 #endif
