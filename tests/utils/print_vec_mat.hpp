@@ -90,7 +90,7 @@ void print_vector(
 		os << it->second;
 		(void) ++it;
 	} else if( x_size > 0 ) {
-		os << 0;
+		os << '-';
 	}
 	size_t next_nnz, position;
 	next_nnz = it == end ? limit : it->first;
@@ -100,14 +100,18 @@ void print_vector(
 		// print sequence of zeroes
 		for( ; position < zero_streak; ++position ) {
 			os << ", ";
-			os << 0;
+			os << '-';
 		}
 		if( position < limit ) {
 			os << ", ";
 			os << it->second;
 			(void) ++position;
-			(void) ++it;
-			next_nnz = it->first;
+			if( it != end ){
+				(void) ++it;
+				next_nnz = it->first;
+			}else{
+				next_nnz = limit;
+			}
 		}
 	}
 	os << std::endl << "==============" << std::endl << std::endl;
