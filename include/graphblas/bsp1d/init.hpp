@@ -35,6 +35,7 @@
 #include <graphblas/utils/DMapper.hpp>
 #include <graphblas/utils/threadLocalStorage.hpp>
 
+#include <cstdint>  //uintptr_t
 #include <assert.h> //assertions
 
 #include <lpf/core.h>

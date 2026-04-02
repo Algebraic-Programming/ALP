@@ -62,7 +62,20 @@ namespace grb {
 		 */
 		static constexpr Descriptor no_operation = 0;
 
-		/** Inverts the mask prior to applying it. */
+		/**
+		 * Inverts the mask prior to applying it.
+		 *
+		 * Applying this descriptor to a sparse mask may still only generate output
+		 * where the mask has elements. To decide whether an output will be generated
+		 * at a given element in the mask, its value will be inverted.
+		 *
+		 * If instead the structural complement is to be taken as a mask, this
+		 * descriptor must be combined with #grb::descriptors::structural.
+		 * ALP/GraphBLAS forbids taking the structural inverse of matrix masks
+		 * (because then either the output matrix or the mask matrix has
+		 * \f$ \mathcal{O}(mn) \f$ values, which defeats any useful application of
+		 * GraphBLAS as this signifies one of the containers is, in fact, not sparse).
+		 */
 		static constexpr Descriptor invert_mask = 1;
 
 		/**
@@ -98,6 +111,11 @@ namespace grb {
 		 * i-th index, regardless of how that value evaluates. It evaluates false
 		 * if there was no value assigned.
 		 *
+		 * These semantics are inverted when this descriptor is combined with
+		 * #grb::descriptors::invert_mask: in that case, the mask evaluates true at
+		 * index \f$ i \f$ if the mask had no value at that index; and evaluates false
+		 * otherwise.
+		 *
 		 * @see structural_complement
 		 */
 		static constexpr Descriptor structural = 8;
@@ -113,6 +131,10 @@ namespace grb {
 		 * This ignores the actual values of the mask argument. The i-th element of
 		 * the mask now evaluates true if the mask has \em no value assigned to its
 		 * i-th index, and evaluates false otherwise.
+		 *
+		 * The application of this descriptor is forbidden for matrix mask arguments,
+		 * as otherwise either the output or the mask is dense or is (too) close to
+		 * being dense.
 		 */
 		static constexpr Descriptor structural_complement = structural | invert_mask;
 

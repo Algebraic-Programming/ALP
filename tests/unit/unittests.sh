@@ -491,6 +491,12 @@ for MODE in ${MODES}; do
 				grep "Test OK" ${TEST_OUT_DIR}/matrixSet_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
+				echo ">>>      [x]           [ ]       Testing grb::set (matrices), size 10 000"
+				$runner ${TEST_BIN_DIR}/matrixSet_${MODE}_${BACKEND} 10000 2> ${TEST_OUT_DIR}/matrixSet_large_${MODE}_${BACKEND}_${P}_${T}.err 1> ${TEST_OUT_DIR}/matrixSet_large_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/matrixSet_large_${MODE}_${BACKEND}_${P}_${T}.log
+				grep "Test OK" ${TEST_OUT_DIR}/matrixSet_large_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
+
 				echo ">>>      [x]           [ ]       Testing grb::set (matrix, value)"
 				$runner ${TEST_BIN_DIR}/setMatrixValue_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/setMatrixValue_${MODE}_${BACKEND}_${P}_${T}.err 1> ${TEST_OUT_DIR}/setMatrixValue_${MODE}_${BACKEND}_${P}_${T}.log
 				head -1 ${TEST_OUT_DIR}/setMatrixValue_${MODE}_${BACKEND}_${P}_${T}.log

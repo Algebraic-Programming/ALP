@@ -1283,7 +1283,9 @@ namespace grb {
 					"We hit here a configuration border case which the implementation does not "
 					"handle at present. Please submit a bug report."
 				);
-				// compute and return
+				// compute and return the maximum of
+				//  - row- and column-wise buffers. The added factor two is for padding
+				//  - minimal buffer requirement for parallel buildMatrixUnique
 				return std::max( (m + n + 2) * globalBufferUnitSize,
 #ifdef _H_GRB_REFERENCE_OMP_MATRIX
 					config::OMP::threads() * config::CACHE_LINE_SIZE::value() *
@@ -2364,7 +2366,434 @@ namespace grb {
 			);
 			return ret;
 		}
+
+		/**
+		 * Meta-data for global buffer management for use with #grb::mxm and the
+		 * matrix-matrix-matrix variant of #grb::set.
+		 *
+		 * This class contains all meta-data necessary to interpret the global buffer
+		 * as an array of sparse accumulators (SPAs). The length of the array is given
+		 * by a call to #threads(), minus one. It is called that since a call to
+		 * #threads() retrieves how many threads can be used to process the call to
+		 * #grb::mxm.
+		 *
+		 * Each SPA has the layout (bitarray, stack, valueArray). These are packed in a
+		 * padded byte array, such that each bit array, stack, and value array is
+		 * aligned on sizeof(int) bytes.
+		 *
+		 * @tparam NIT       The nonzero index type.
+		 * @tparam ValueType The output matrix value type.
+		 *
+		 * This meta-data class applies to both the sequential (reference) and shared-
+		 * memory parallel (reference_omp) backends.
+		 */
+		template< typename NIT, typename ValueType >
+		class SPA_BufferMetaData {
+
+			static_assert( sizeof(NIT) % sizeof(int) == 0, "Unsupported type for NIT; "
+				"please submit a bug report!" );
+
+			private:
+
+				/** The size of the offset array */
+				size_t m;
+
+				/** The size of the SPA */
+				size_t n;
+
+				/** The number of threads supported during a call to #grb::mxm */
+				size_t nthreads;
+
+				/** The initial buffer offset */
+				size_t bufferOffset;
+
+				/** The size of a single SPA, including bytes needed for padding */
+				size_t paddedSPASize;
+
+				/** The number of bytes to pad the SPA array with */
+				size_t arrayShift;
+
+				/** The number of bytes to pad the SPA stack with */
+				size_t stackShift;
+
+				/**
+				 * Given a number of used bytes of the buffer, calculate the available
+				 * remainder buffer and return it.
+				 *
+				 * @param[in]  osize     The size of the buffer (in bytes) that is already
+				 *                       in use.
+				 * @param[out] remainder Pointer to any remainder buffer.
+				 * @param[out] rsize     The size of the remainder buffer.
+				 *
+				 * If no buffer space is left, \a remainder will be set to <tt>nullptr</tt>
+				 * and \a size to <tt>0</tt>.
+				 */
+				void retrieveRemainderBuffer(
+					const size_t osize,
+					void * &remainder, size_t &rsize
+				) const noexcept {
+					const size_t size = internal::template getCurrentBufferSize< char >();
+					char * rem = internal::template getReferenceBuffer< char >( size );
+					size_t rsize_calc = size - osize;
+					rem += osize;
+					const size_t mod = reinterpret_cast< uintptr_t >(rem) % sizeof(int);
+					if( mod ) {
+						const size_t shift = sizeof(int) - mod;
+						if( rsize_calc >= shift ) {
+							rsize_calc -= shift;
+							rem += rsize;
+						} else {
+							rsize_calc = 0;
+							rem = nullptr;
+						}
+					}
+					assert( !(reinterpret_cast< uintptr_t >(rem) % sizeof(int)) );
+					// write out
+					remainder = rem;
+					rsize = rsize_calc;
+				}
+
+
+			public:
+
+				/**
+				 * Base constructor.
+				 *
+				 * @param[in] _m          The length of the offset array.
+				 * @param[in] _n          The length of the SPA.
+				 * @param[in] max_threads The maximum number of threads.
+				 *
+				 * \note \a max_threads is a separate input since there might be a need to
+				 *       cap the maximum number of threads used based on some analytic
+				 *       performance model. Rather than putting such a performance model
+				 *       within this class, we make it an obligatory input parameter
+				 *       instead.
+				 *
+				 * \note It is always valid to pass <tt>config::OMP::threads()</tt>.
+				 *
+				 * \note This class \em will, however, cap the number of threads returned
+				 *       to \a _n.
+				 */
+				SPA_BufferMetaData(
+					const size_t _m, const size_t _n,
+					const size_t max_threads
+				) : m( _m ), n( _n ), arrayShift( 0 ), stackShift( 0 ) {
+ #ifdef _DEBUG_REFERENCE_MATRIX
+					#pragma omp critical
+					std::cout << "\t\t\t computing padded buffer size for a SPA of length "
+						<< n << " while leaving space for an additional offset buffer of length "
+						<< std::max( m, n ) << "...\n";
+ #endif
+					// compute bufferOffset
+					bufferOffset = (std::max( m, n ) + 1) * sizeof( NIT );
+
+					// compute value buffer size
+					const size_t valBufSize = n * utils::SizeOf< ValueType >::value;
+
+ #ifdef _DEBUG_REFERENCE_MATRIX
+					std::cout << "\t\t\t\t bit-array size has byte-size " <<
+						internal::Coordinates< reference >::arraySize( n ) << "\n";
+					std::cout << "\t\t\t\t stack has byte-size " <<
+						internal::Coordinates< reference >::stackSize( n ) << "\n";
+					std::cout << "\t\t\t\t value buffer has byte-size " << valBufSize << "\n";
+ #endif
+
+					// compute paddedSPASize
+					paddedSPASize =
+						internal::Coordinates< reference >::arraySize( n ) +
+						internal::Coordinates< reference >::stackSize( n ) +
+						valBufSize;
+					size_t shift =
+						internal::Coordinates< reference >::arraySize( n ) % sizeof(int);
+					if( shift != 0 ) {
+						arrayShift = sizeof(int) - shift;
+						paddedSPASize += arrayShift;
+					}
+					shift = internal::Coordinates< reference >::stackSize( n ) % sizeof(int);
+					if( shift != 0 ) {
+						stackShift = sizeof(int) - shift;
+						paddedSPASize += stackShift;
+					}
+					shift = valBufSize % sizeof(int);
+					if( shift != 0 ) {
+						paddedSPASize += (sizeof(int) - shift);
+					}
+
+					// pad bufferOffset
+					shift = bufferOffset % sizeof(int);
+					if( shift != 0 ) {
+						bufferOffset += (sizeof(int) - shift);
+					}
+
+					// compute free buffer size
+					const size_t freeBufferSize = internal::getCurrentBufferSize< char >() -
+						bufferOffset;
+
+					// compute max number of threads
+					nthreads = 1 + freeBufferSize / paddedSPASize;
+ #ifdef _DEBUG_REFERENCE_MATRIX
+					#pragma omp critical
+					std::cout << "\t\t\t free buffer size: " << freeBufferSize
+						<< ", (padded) SPA size: " << paddedSPASize
+						<< ", bufferOffset: " << bufferOffset
+						<< " -> supported #threads: " << nthreads << ". "
+						<< " The shifts for the bit-array and the stack are " << arrayShift
+						<< ", respectively, " << stackShift << "."
+						<< "\n";
+ #endif
+					// cap the final number of selected threads
+					if( nthreads > max_threads ) {
+						nthreads = max_threads;
+					}
+					if( nthreads > n ) {
+						nthreads = n;
+					}
+				}
+
+				/** @returns The maximum number of supported threads during #grb::mxm */
+				size_t threads() const noexcept {
+					return nthreads;
+				}
+
+				/**
+				 * Requests and returns a global buffer required for a thread-local SPA.
+				 *
+				 * @param[in] t The thread ID. Must be larger than 0.
+				 *
+				 * \note Thread 0 employs the SPA allocated with the output matrix.
+				 *
+				 * @returns Pointer into the global buffer starting at the area reserved for
+				 *          the SPA of thread \a t.
+				 */
+				char * getSPABuffers( size_t t ) const noexcept {
+					assert( t > 0 );
+					assert( nthreads > 1 );
+					(void) --t;
+					char * raw = internal::template getReferenceBuffer< char >(
+						bufferOffset + (nthreads - 1) * paddedSPASize );
+					assert( reinterpret_cast< uintptr_t >(raw) % sizeof(int) == 0 );
+					raw += bufferOffset;
+					assert( reinterpret_cast< uintptr_t >(raw) % sizeof(int) == 0 );
+					raw += t * paddedSPASize;
+					return raw;
+				}
+
+				/**
+				 * Retrieves the column offset buffer.
+				 *
+				 * @param[out] remainder Returns any remainder buffer beyond that of the row
+				 *                       offset buffer.
+				 * @param[out] rsize     The remainder buffer size \a remainder points to.
+				 *
+				 * If \a remainder is not a <tt>nullptr</tt> then neither should \a rsize,
+				 * and vice versa.
+				 *
+				 * Retrieving any remainder buffer is optional. The default is to not ask
+				 * for them.
+				 *
+				 * \warning If all buffer memory is used for the column offsets, it may be
+				 *          that \a remainder equals <tt>nullptr</tt> and <tt>rsize</tt>
+				 *          zero.
+				 *
+				 * \warning This buffer is only guaranteed exclusive if only the retrieved
+				 *          column buffer is used. In particular, if also requesting (and
+				 *          using) SPA buffers, the remainder buffer area is shared with
+				 *          those SPA buffers, and data races are likely to occur. In other
+				 *          words: be very careful with any use of these remainder buffers.
+				 *
+				 * @returns The column offset buffer.
+				 *
+				 * \warning This buffer overlaps with the CRS offset buffer. The caller
+				 *          must ensure to only ever use one at a time.
+				 */
+				NIT * getColOffsetBuffer(
+					void * * const remainder = nullptr,
+					size_t * const rsize = nullptr
+				) const noexcept {
+					NIT * const ret = internal::template getReferenceBuffer< NIT >( n + 1 );
+					if( remainder != nullptr || rsize != nullptr ) {
+						assert( remainder != nullptr && rsize != nullptr );
+						retrieveRemainderBuffer( (m + 1) * sizeof(NIT), *remainder, *rsize );
+					}
+					return ret;
+				}
+
+				/**
+				 * Retrieves the row offset buffer.
+				 *
+				 * @param[out] remainder Returns any remainder buffer beyond that of the row
+				 *                       offset buffer.
+				 * @param[out] rsize     The remainder buffer size \a remainder points to.
+				 *
+				 * If \a remainder is not a <tt>nullptr</tt> then neither should \a rsize,
+				 * and vice versa.
+				 *
+				 * Retrieving any remainder buffer is optional. The default is to not ask
+				 * for them.
+				 *
+				 * \warning If all buffer memory is used for the row offsets, it may be that
+				 *          \a remainder equals <tt>nullptr</tt> and <tt>rsize</tt> zero.
+				 *
+				 * \warning This buffer is only guaranteed exclusive if only the retrieved
+				 *          row buffer is used. In particular, if also requesting (and
+				 *          using) SPA buffers, the remainder buffer area is shared with
+				 *          those SPA buffers, and data races are likely to occur. In other
+				 *          words: be very careful with any use of these remainder buffers.
+				 *
+				 * @returns The row offset buffer.
+				 *
+				 * \warning This buffer overlaps with the CCS offset buffer. The caller
+				 *          must ensure to only ever use one at a time.
+				 */
+				NIT * getRowOffsetBuffer(
+					void * * const remainder = nullptr,
+					size_t * const rsize = nullptr
+				) const noexcept {
+					NIT * const ret = internal::template getReferenceBuffer< NIT >( m + 1 );
+					if( remainder != nullptr || rsize != nullptr ) {
+						assert( remainder != nullptr && rsize != nullptr );
+						retrieveRemainderBuffer( (m + 1) * sizeof(NIT), *remainder, *rsize );
+					}
+					return ret;
+				}
+
+				/**
+				 * Shifts a pointer into the global buffer by the bit-array size and its
+				 * padding.
+				 *
+				 * @param[in,out] raw On input: an aligned pointer into the global buffer.
+				 *                    On output: an aligned pointer past the bit-array
+				 *                    position.
+				 */
+				void applyArrayShift( char * &raw ) const noexcept {
+					const size_t totalShift =
+						internal::Coordinates< reference >::arraySize( n ) +
+						arrayShift;
+ #ifdef _DEBUG_REFERENCE_MATRIX
+					std::cout << "\t\t\t shifting input pointer with "
+						<< internal::Coordinates< reference >::arraySize( n ) << " + "
+						<< arrayShift << " = " << totalShift << "bytes \n";
+ #endif
+					raw += totalShift;
+				}
+
+				/**
+				 * Shifts a pointer into the global buffer by the stack size and its
+				 * padding.
+				 *
+				 * @param[in,out] raw On input: an aligned pointer into the global buffer.
+				 *                    On output: an aligned pointer past the stack position.
+				 */
+				void applyStackShift( char * &raw ) const noexcept {
+					const size_t totalShift =
+						internal::Coordinates< reference >::stackSize( n ) +
+						stackShift;
+ #ifdef _DEBUG_REFERENCE_MATRIX
+					std::cout << "\t\t\t shifting input pointer with "
+						<< internal::Coordinates< reference >::arraySize( n ) << " + "
+						<< stackShift << " = " << totalShift << "bytes \n";
+ #endif
+					raw += totalShift;
+				}
+
+		};
 #endif
+
+		/**
+		 * Retrieves the SPA buffers for the calling thread.
+		 *
+		 * \warning This function must be called from within an OpenMP parallel
+		 *          section.
+		 *
+		 * @param[out]    arr Where the bit-array may be located.
+		 * @param[out]    buf Where the stack may be located.
+		 * @param[out] valbuf Where the value buffer may be located.
+		 *
+		 * All above pointers are aligned on sizeof(int) bytes.
+		 *
+		 * @param[in] md Meta-data for global buffer management.
+		 * @param[in]  C The output matrix.
+		 *
+		 * One thread uses the buffers pre-allocated with the matrix \a C, thus
+		 * ensuring at least one thread may perform the #grb::mxm. Any remainder
+		 * threads can only help process the #grb::mxm if there is enough global
+		 * buffer memory available.
+		 *
+		 *
+		 * \note The global memory has size \f$ \Omega( \mathit{nz} ) \f$, which may
+		 *       be several factors (or even asymptotically greater than)
+		 *       \f$ \max\{ m, n \} \f$.
+		 *
+		 * \note In case the application stores multiple matrices, the global buffer
+		 *       may additionally be greater than the above note indicates if at least
+		 *       one of the other matrices is significantly (or asymptotically) larger
+		 *       than the one involved with the #grb::mxm.
+		 */
+		template<
+			typename OutputType,
+			typename RIT, typename CIT, typename NIT
+		>
+		void spa_ompPar_getBuffers(
+			char * &arr, char * &buf, OutputType * &valbuf,
+			const struct SPA_BufferMetaData< NIT, OutputType > &md,
+			Matrix< OutputType, reference, RIT, CIT, NIT > &C
+		) {
+#ifdef _H_GRB_REFERENCE_OMP_MATRIX
+			// other threads use the global buffer to create additional SPAs
+			{
+				const size_t t = config::OMP::current_thread_ID();
+ #ifndef NDEBUG
+				const size_t T = config::OMP::current_threads();
+				assert( t < T );
+ #endif
+				if( t > 0 ) {
+ #ifdef _DEBUG_REFERENCE_MATRIX
+					#pragma omp critical
+					std::cout << "\t Thread " << t << " gets buffers from global buffer\n";
+ #endif
+					char * rawBuffer = md.getSPABuffers( t );
+					assert( reinterpret_cast< uintptr_t >(rawBuffer) % sizeof(int) == 0 );
+					arr = rawBuffer;
+ #ifdef _DEBUG_REFERENCE_MATRIX
+					#pragma omp critical
+ #endif
+					md.applyArrayShift( rawBuffer );
+					assert( reinterpret_cast< uintptr_t >(rawBuffer) % sizeof(int) == 0 );
+					buf = rawBuffer;
+ #ifdef _DEBUG_REFERENCE_MATRIX
+					#pragma omp critical
+ #endif
+					md.applyStackShift( rawBuffer );
+					assert( reinterpret_cast< uintptr_t >(rawBuffer) % sizeof(int) == 0 );
+					assert( buf != arr );
+					valbuf = reinterpret_cast< OutputType * >(rawBuffer);
+					assert( static_cast< void * >(valbuf) != static_cast< void * >(buf) );
+				} else {
+ #ifdef _DEBUG_REFERENCE_MATRIX
+					#pragma omp critical
+					std::cout << "\t Thread " << t << " gets buffers from matrix storage\n";
+ #endif
+					// one thread uses the standard matrix buffer
+					internal::getMatrixBuffers( arr, buf, valbuf, 1, C );
+				}
+ #ifdef _DEBUG_REFERENCE_MATRIX
+				#pragma omp critical
+				{
+					std::cout << "\t Thread " << t << " has SPA array @ "
+						<< static_cast< void * >( arr ) << " and SPA stack @ "
+						<< static_cast< void * >( buf ) << " and SPA values @ "
+						<< static_cast< void * >( valbuf ) << "\n";
+				}
+ #endif
+			}
+#else
+ #ifdef _DEBUG_REFERENCE_MATRIX
+			std::cout << "\t Reference backend gets buffers from global buffer\n";
+ #endif
+			internal::getMatrixBuffers( arr, buf, valbuf, 1, C );
+			(void) md;
+#endif
+		}
 
 	} // end namespace grb::internal
 

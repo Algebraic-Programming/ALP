@@ -384,9 +384,11 @@ namespace grb {
 				return ret;
 			}
 		}
-
-		/** Specialisation for void-valued matrice's masks */
-		template< Descriptor descriptor, typename MatrixDataType, typename ValuesType >
+		/** Specialisation for void-valued matrix masks */
+		template<
+			Descriptor descriptor,
+			typename MatrixDataType, typename ValuesType
+		>
 		static bool interpretMatrixMask(
 			const bool &assigned,
 			const ValuesType * const values,
@@ -398,8 +400,11 @@ namespace grb {
 			return interpretMask< descriptor, ValuesType >( assigned, values, k );
 		}
 
-		/** Specialisation for void-valued matrice's masks */
-		template< Descriptor descriptor, typename MatrixDataType, typename ValuesType >
+		/** Specialisation for void-valued matrix masks */
+		template<
+			Descriptor descriptor,
+			typename MatrixDataType, typename ValuesType
+		>
 		static bool interpretMatrixMask(
 			const bool &assigned,
 			const ValuesType * const,

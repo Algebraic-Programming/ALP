@@ -153,7 +153,7 @@ if [[ -z $DATASETTORUN && ( -z "$EXPTYPE" || "$EXPTYPE" == "KERNEL" ) ]]; then
 	${TEST_BIN_DIR}/fma-sequential 100000000 0 &> ${TEST_OUT_DIR}/fma-sequential
 	head -1 ${TEST_OUT_DIR}/fma-sequential
 	tail -2 ${TEST_OUT_DIR}/fma-sequential
-	egrep 'label|Overall timings|0,' ${TEST_OUT_DIR}/fma-sequential | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
+	grep -E 'label|Overall timings|0,' ${TEST_OUT_DIR}/fma-sequential | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
 
 	echo ">>>      [ ]           [x]       Testing monoid reduce versus hardcoded reduce over"
 	echo "                                 100 000 000 doubles"
@@ -161,7 +161,7 @@ if [[ -z $DATASETTORUN && ( -z "$EXPTYPE" || "$EXPTYPE" == "KERNEL" ) ]]; then
 	${TEST_BIN_DIR}/reduce-sequential 100000000 0 &> ${TEST_OUT_DIR}/reduce-sequential
 	head -1 ${TEST_OUT_DIR}/reduce-sequential
 	tail -2 ${TEST_OUT_DIR}/reduce-sequential
-	egrep 'label|Overall timings|0,' ${TEST_OUT_DIR}/reduce-sequential | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
+	grep -E 'label|Overall timings|0,' ${TEST_OUT_DIR}/reduce-sequential | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
 
 	echo ">>>      [ ]           [x]       Testing semiring dot product versus its hardcoded variant"
 	echo "                                 over 100 000 000 doubles"
@@ -169,7 +169,7 @@ if [[ -z $DATASETTORUN && ( -z "$EXPTYPE" || "$EXPTYPE" == "KERNEL" ) ]]; then
 	${TEST_BIN_DIR}/dot-sequential 100000000 0 &> ${TEST_OUT_DIR}/dot-sequential
 	head -1 ${TEST_OUT_DIR}/dot-sequential
 	tail -2 ${TEST_OUT_DIR}/dot-sequential
-	egrep 'label|Overall timings|0,' ${TEST_OUT_DIR}/dot-sequential | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
+	grep -E 'label|Overall timings|0,' ${TEST_OUT_DIR}/dot-sequential | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
 
 	echo ">>>      [ ]           [x]       Testing semiring axpy versus hardcoded axpy over"
 	echo "                                 100 000 000 doubles, using the OpenMP reference backend"
@@ -177,7 +177,7 @@ if [[ -z $DATASETTORUN && ( -z "$EXPTYPE" || "$EXPTYPE" == "KERNEL" ) ]]; then
 	${TEST_BIN_DIR}/fma-blocking 100000000 0 &> ${TEST_OUT_DIR}/fma-blocking
 	head -1 ${TEST_OUT_DIR}/fma-blocking
 	tail -2 ${TEST_OUT_DIR}/fma-blocking
-	egrep 'label|Overall timings|0,' ${TEST_OUT_DIR}/fma-blocking | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
+	grep -E 'label|Overall timings|0,' ${TEST_OUT_DIR}/fma-blocking | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
 
 	echo ">>>      [ ]           [x]       Testing semiring axpy versus hardcoded axpy over"
 	echo "                                 100 000 000 doubles, using the nonblocking backend"
@@ -185,7 +185,7 @@ if [[ -z $DATASETTORUN && ( -z "$EXPTYPE" || "$EXPTYPE" == "KERNEL" ) ]]; then
 	${TEST_BIN_DIR}/fma-nonblocking 100000000 0 &> ${TEST_OUT_DIR}/fma-nonblocking
 	head -1 ${TEST_OUT_DIR}/fma-nonblocking
 	tail -2 ${TEST_OUT_DIR}/fma-nonblocking
-	egrep 'label|Overall timings|0,' ${TEST_OUT_DIR}/fma-nonblocking | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
+	grep -E 'label|Overall timings|0,' ${TEST_OUT_DIR}/fma-nonblocking | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
 
 	echo ">>>      [ ]           [x]       Testing monoid reduce versus hardcoded reduce over"
 	echo "                                 100 000 000 doubles, using the OpenMP reference backend"
@@ -193,7 +193,7 @@ if [[ -z $DATASETTORUN && ( -z "$EXPTYPE" || "$EXPTYPE" == "KERNEL" ) ]]; then
 	${TEST_BIN_DIR}/reduce-openmp 100000000 0 &> ${TEST_OUT_DIR}/reduce-openmp
 	head -1 ${TEST_OUT_DIR}/reduce-openmp
 	tail -2 ${TEST_OUT_DIR}/reduce-openmp
-	egrep 'label|Overall timings|0,' ${TEST_OUT_DIR}/reduce-openmp | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
+	grep -E 'label|Overall timings|0,' ${TEST_OUT_DIR}/reduce-openmp | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
 
 	echo ">>>      [ ]           [x]       Testing semiring dot product versus its hardcoded variant"
 	echo "                                 over 100 000 000 doubles, using the OpenMP reference backend"
@@ -201,7 +201,7 @@ if [[ -z $DATASETTORUN && ( -z "$EXPTYPE" || "$EXPTYPE" == "KERNEL" ) ]]; then
 	${TEST_BIN_DIR}/dot-openmp 100000000 0 &> ${TEST_OUT_DIR}/dot-openmp
 	head -1 ${TEST_OUT_DIR}/dot-openmp
 	tail -2 ${TEST_OUT_DIR}/dot-openmp
-	egrep 'label|Overall timings|0,' ${TEST_OUT_DIR}/dot-openmp | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
+	grep -E 'label|Overall timings|0,' ${TEST_OUT_DIR}/dot-openmp | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
 
 	echo ">>>      [x]           [x]       Testing fuselets versus standard reference_omp using a"
 	echo "                                 problem size of 100 000 000."
@@ -210,7 +210,7 @@ if [[ -z $DATASETTORUN && ( -z "$EXPTYPE" || "$EXPTYPE" == "KERNEL" ) ]]; then
 	head -1 ${TEST_OUT_DIR}/fuselets_performance
 	grep "Test OK" ${TEST_OUT_DIR}/fuselets_performance || echo "Test FAILED"
 	echo " "
-	egrep 'label|Overall timings|0,' ${TEST_OUT_DIR}/fuselets_performance | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
+	grep -E 'label|Overall timings|0,' ${TEST_OUT_DIR}/fuselets_performance | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
 
 fi
 
@@ -265,7 +265,7 @@ function runKNNBenchMarkTests()
 	if grep -q "Neighbourhood size is ${nbhSize}" ${TEST_OUT_DIR}/driver_${kValue}nn_${backend}_${dataSet}.log; then
 		printf "Test OK\n\n"
 		echo "$backend k-hop computation for k=$kValue using the ${dataSet} dataset" >> ${TEST_OUT_DIR}/benchmarks
-		egrep 'Avg|Std' ${TEST_OUT_DIR}/driver_${kValue}nn_${backend}_${dataSet}.log >> ${TEST_OUT_DIR}/benchmarks
+		grep -E 'Avg|Std' ${TEST_OUT_DIR}/driver_${kValue}nn_${backend}_${dataSet}.log >> ${TEST_OUT_DIR}/benchmarks
 		echo >> ${TEST_OUT_DIR}/benchmarks
 	else
 		printf "Test FAILED\n\n"
@@ -292,7 +292,7 @@ runOtherBenchMarkTests()
 		printf "Test FAILED\n\n"
 	fi
 	echo "$backend $alg using the ${dataSet} dataset" >> ${TEST_OUT_DIR}/benchmarks
-	egrep 'Avg|Std' ${TEST_OUT_DIR}/driver_${alg}_${backend}_${dataSet} >> ${TEST_OUT_DIR}/benchmarks
+	grep -E 'Avg|Std' ${TEST_OUT_DIR}/driver_${alg}_${backend}_${dataSet} >> ${TEST_OUT_DIR}/benchmarks
 	echo >> ${TEST_OUT_DIR}/benchmarks
 }
 
@@ -320,7 +320,7 @@ runMultiplicationKernels()
 			printf "Test FAILED\n\n"
 		fi
 		echo "$backend spmv using the ${dataSet} dataset" >> ${TEST_OUT_DIR}/benchmarks
-		egrep 'Avg|Std' ${TEST_OUT_DIR}/driver_spmv_${backend}_${dataSet} >> ${TEST_OUT_DIR}/benchmarks
+		grep -E 'Avg|Std' ${TEST_OUT_DIR}/driver_spmv_${backend}_${dataSet} >> ${TEST_OUT_DIR}/benchmarks
 		echo >> ${TEST_OUT_DIR}/benchmarks
 
 	fi
@@ -339,7 +339,7 @@ runMultiplicationKernels()
 			printf "Test FAILED\n\n"
 		fi
 		echo "$backend spmspv using the ${dataSet} dataset" >> ${TEST_OUT_DIR}/benchmarks
-		egrep 'Avg|Std' ${TEST_OUT_DIR}/driver_spmspv_${backend}_${dataSet} >> ${TEST_OUT_DIR}/benchmarks
+		grep -E 'Avg|Std' ${TEST_OUT_DIR}/driver_spmspv_${backend}_${dataSet} >> ${TEST_OUT_DIR}/benchmarks
 		echo >> ${TEST_OUT_DIR}/benchmarks
 
 	fi
@@ -365,7 +365,7 @@ runMultiplicationKernels()
 				printf "Test FAILED\n\n"
 			fi
 			echo "$backend spmspm using the ${dataSet} dataset" >> ${TEST_OUT_DIR}/benchmarks
-			egrep 'Avg|Std' ${TEST_OUT_DIR}/driver_spmspm_${backend}_${dataSet} >> ${TEST_OUT_DIR}/benchmarks
+			grep -E 'Avg|Std' ${TEST_OUT_DIR}/driver_spmspm_${backend}_${dataSet} >> ${TEST_OUT_DIR}/benchmarks
 			echo >> ${TEST_OUT_DIR}/benchmarks
 		fi
 	fi
