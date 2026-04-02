@@ -31,6 +31,7 @@
 
 #include <graphblas.hpp>
 #include <graphblas/utils/iscomplex.hpp>
+#include <graphblas/algorithms/norm.hpp>
 
 
 namespace grb {
@@ -349,7 +350,7 @@ namespace grb {
 			residual = std::numeric_limits< double >::infinity();
 
 			// declare internal scalars
-			IOType sigma, bnorm, alpha, beta;
+			IOType sigma, alpha, beta;
 
 			// make x structurally dense (if not already) so that the remainder
 			// algorithm can safely use the dense descriptor for faster operations
@@ -380,33 +381,23 @@ namespace grb {
 			ret = ret ? ret : grb::foldl< descr_dense >( r, temp, minus );
 			assert( ret == grb::SUCCESS );
 
-			// bnorm = b' * b;
-			// Note that b can be structurally sparse (unless otherwise guaranteed by the
-			// user).
-			bnorm = zero;
-			ret = ret ? ret : grb::dot< descr >(
-					bnorm,
-					b, b,
-					ring.getAdditiveMonoid(),
-					grb::operators::conjugate_left_mul< IOType >()
-				);
-			assert( ret == grb::SUCCESS );
-
-			// get effective tolerance
-			if( ret == grb::SUCCESS ) {
-				tol *= std::sqrt( grb::utils::is_complex< IOType >::modulus( bnorm ) );
+			{
+				ResidualType bnorm = ring.template getZero< ResidualType >();
+				ret = ret ? ret : grb::algorithms::norm2< descr >( bnorm, b, ring );
+				assert( ret == grb::SUCCESS );
+				// get effective tolerance
+				if( ret == grb::SUCCESS ) {
+					tol *= bnorm;
+				}
 			}
 
-			// get residual
-			alpha = zero;
-			ret = ret ? ret : grb::dot< descr_dense >(
-					alpha,
-					r, r,
-					ring.getAdditiveMonoid(),
-					grb::operators::conjugate_left_mul< IOType >()
-				);
-			assert( ret == grb::SUCCESS );
-			residual = grb::utils::is_complex< IOType >::modulus( alpha );
+			{
+				ResidualType r_norm = ring.template getZero< ResidualType >();
+				ret = ret ? ret : grb::algorithms::norm2< descr_dense >( r_norm, r, ring );
+				assert( ret == grb::SUCCESS );
+				residual = r_norm * r_norm;
+				alpha = static_cast< IOType >( residual );
+			}
 
 			// check residual for early exit
 			if( ret == grb::SUCCESS ) {
@@ -433,13 +424,20 @@ namespace grb {
 			// loop of the CG (since it does not refer to b).
 
 			// sigma = r' * z;
+			// When not preconditioned, z equals r (by reference), so dot(r,z,...) would
+			// be an aliased call (dot(r,r,...)). Avoid it: r'*r = ||r||^2 = residual,
+			// which was already computed above.
 			sigma = zero;
-			ret = ret ? ret : grb::dot< descr_dense >(
-					sigma,
-					r, z,
-					ring.getAdditiveMonoid(),
-					grb::operators::conjugate_right_mul< IOType >()
-				);
+			if( preconditioned ) {
+				ret = ret ? ret : grb::dot< descr_dense >(
+						sigma,
+						r, z,
+						ring.getAdditiveMonoid(),
+						grb::operators::conjugate_right_mul< IOType >()
+					);
+			} else {
+				sigma = static_cast< IOType >( residual );
+			}
 
 			assert( ret == grb::SUCCESS );
 
@@ -487,18 +485,13 @@ namespace grb {
 				ret = ret ? ret : grb::foldl< descr_dense >( r, temp, minus );
 				assert( ret == grb::SUCCESS );
 
-				// get residual. In the preconditioned case, the resulting scalar is *not*
-				// used for subsequent operations. Therefore, we first compute the residual
-				// using alpha as a temporary scalar
-				alpha = zero;
-				ret = ret ? ret : grb::dot< descr_dense >(
-						alpha,
-						r, r,
-						ring.getAdditiveMonoid(),
-						grb::operators::conjugate_left_mul< IOType >()
-					);
-				assert( ret == grb::SUCCESS );
-				residual = grb::utils::is_complex< IOType >::modulus( alpha );
+				{
+					ResidualType r_norm = ring.template getZero< ResidualType >();
+					ret = ret ? ret : grb::algorithms::norm2< descr_dense >( r_norm, r, ring );
+					assert( ret == grb::SUCCESS );
+					residual = r_norm * r_norm;
+					alpha = static_cast< IOType >( residual );
+				}
 
 				// check residual
 				if( ret == grb::SUCCESS ) {

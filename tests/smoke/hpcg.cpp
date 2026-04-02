@@ -201,8 +201,10 @@ void print_norm(
 	const char * head,
 	const Ring &ring
 ) {
-	T norm;
-	RC ret = grb::dot( norm, r, r, ring ); // residual = r' * r;
+	// norm2 is used instead of dot(r,r,...) to avoid aliasing.
+	T norm( 0 );
+	RC ret = grb::algorithms::norm2( norm, r, ring );
+	norm = norm * norm; // convert ||r|| to ||r||^2 for display, matching original behaviour
 #ifdef NDEBUG
 	(void) ret;
 #endif
@@ -334,7 +336,12 @@ void grbProgram( const simulation_input &in, struct output &out ) {
 	rc = rc ? rc : set( b, 1.0 );
 	out.square_norm_diff = 0.0;
 	rc = rc ? rc : eWiseMul( b, -1.0, x, ring );
-	rc = rc ? rc : dot( out.square_norm_diff, b, b, ring );
+	// norm2 is used instead of dot(b,b,...) to avoid aliasing.
+	{
+		double b_norm = 0.0;
+		rc = rc ? rc : grb::algorithms::norm2( b_norm, b, ring );
+		out.square_norm_diff = b_norm * b_norm;
+	}
 	rc = rc ? rc : wait();
 
 	// set error code

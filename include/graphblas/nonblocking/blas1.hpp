@@ -10550,6 +10550,12 @@ namespace grb {
 
 			if( end > start ) {
 
+			// Check for vector aliasing (Issue #387)
+			assert( static_cast<const void*>(&x) != static_cast<const void*>(&y) &&
+				"Aliased input vectors detected in dot product. "
+				"Passing the same vector as both inputs (e.g., dot(z, x, x)) is not "
+				"permitted. Use a dedicated norm function instead." );
+
 				typename AddMonoid::D3 reduced =
 					addMonoid.template getIdentity< typename AddMonoid::D3 >();
 

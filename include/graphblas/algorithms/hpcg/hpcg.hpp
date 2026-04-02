@@ -27,6 +27,7 @@
 #define _H_GRB_ALGORITHMS_HPCG
 
 #include <graphblas.hpp>
+#include <graphblas/algorithms/norm.hpp>
 
 #include "hpcg_data.hpp"
 #include "multigrid_v_cycle.hpp"
@@ -128,11 +129,8 @@ namespace grb {
 			assert( ret == SUCCESS );
 
 			norm_residual = ring.template getZero< ResidualType >();
-			ret = ret ? ret : grb::dot( norm_residual, r, r, ring ); // norm_residual = r' * r;
+			ret = ret ? ret : grb::algorithms::norm2( norm_residual, r, ring ); // norm_residual = ||r||
 			assert( ret == SUCCESS );
-
-			// compute sqrt to avoid underflow
-			norm_residual = std::sqrt( norm_residual );
 
 			// initial norm of residual
 			const ResidualType norm_residual_initial { norm_residual };
@@ -210,10 +208,8 @@ namespace grb {
 #endif
 
 				norm_residual = static_cast< ResidualType >( 0.0 );
-				ret = ret ? ret : grb::dot( norm_residual, r, r, ring ); // residual = r' * r;
+				ret = ret ? ret : grb::algorithms::norm2( norm_residual, r, ring ); // norm_residual = ||r||
 				assert( ret == SUCCESS );
-
-				norm_residual = std::sqrt( norm_residual );
 
 				++iter;
 			} while( iter < max_iterations && norm_residual / norm_residual_initial > tolerance && ret == SUCCESS );

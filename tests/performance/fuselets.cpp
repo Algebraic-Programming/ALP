@@ -24,6 +24,7 @@
 #include <graphblas/utils/timer.hpp>
 
 #include <graphblas.hpp>
+#include <graphblas/algorithms/norm.hpp>
 
 #include <graphblas/algorithms/matrix_factory.hpp>
 
@@ -304,7 +305,12 @@ void test_spmv_dot_norm2(
 			grb::semirings::plusTimes< double >() );
 		beta = gamma = 0.0;
 		(void) grb::dot< grb::descriptors::dense >( beta, yv, zv, plusTimes_FP64 );
-		(void) grb::dot< grb::descriptors::dense >( gamma, zv, zv, plusTimes_FP64 );
+		// norm2 is used instead of dot(zv,zv,...) to avoid aliasing.
+		{
+			double zv_norm = 0.0;
+			(void) grb::algorithms::norm2< grb::descriptors::dense >( zv_norm, zv, plusTimes_FP64 );
+			gamma = zv_norm * zv_norm;
+		}
 		(void) grb::wait();
 	}
 	const double slow = timer.time();
@@ -585,7 +591,12 @@ void test_update_update_norm2(
 			(void) grb::eWiseMul< grb::descriptors::dense >( rv, beta, uv,
 				plusTimes_FP64 );
 			norm2 = 0.0;
-			(void) grb::dot< grb::descriptors::dense >( norm2, rv, rv, plusTimes_FP64 );
+			// norm2 is used instead of dot(rv,rv,...) to avoid aliasing.
+			{
+				double rv_norm = 0.0;
+				(void) grb::algorithms::norm2< grb::descriptors::dense >( rv_norm, rv, plusTimes_FP64 );
+				norm2 = rv_norm * rv_norm;
+			}
 			(void) grb::wait();
 		}
 
@@ -840,8 +851,12 @@ void test_doubleUpdate_update_norm2(
 			(void) grb::eWiseMul< grb::descriptors::dense >( rv, eta, tv,
 				plusTimes_FP64 );
 			theta = 3.17;
-			(void) grb::dot< grb::descriptors::dense >( theta, rv, rv,
-				plusTimes_FP64 );
+			// norm2 is used instead of dot(rv,rv,...) to avoid aliasing.
+			{
+				double rv_norm = 0.0;
+				(void) grb::algorithms::norm2< grb::descriptors::dense >( rv_norm, rv, plusTimes_FP64 );
+				theta = rv_norm * rv_norm;
+			}
 			(void) grb::wait();
 		}
 

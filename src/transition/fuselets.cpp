@@ -35,6 +35,7 @@
  */
 
 #include <graphblas.hpp>
+#include <graphblas/algorithms/norm.hpp>
 
 #include <exception>
 #include <iostream>
@@ -256,9 +257,13 @@ static int spmv_dot_norm2(
 
 	// perform operation 3
 	double &alp_gamma = *gamma;
-	alp_gamma = 0.0;
-	rc = rc ? rc : grb::dot< grb::descriptors::dense >(
-		alp_gamma, alp_v, alp_v, dblSemiring );
+	{
+		// norm2 used instead of dot(alp_v,alp_v,...) to avoid vector aliasing.
+		double v_norm = 0.0;
+		rc = rc ? rc : grb::algorithms::norm2< grb::descriptors::dense >(
+			v_norm, alp_v, dblSemiring );
+		alp_gamma = v_norm * v_norm;
+	}
 	if( rc != grb::SUCCESS ) {
 		std::cerr << "ALP/Fuselets spmv_dot_norm2 encountered error at operation 3: "
 			<< grb::toString( rc ) << "\n";
@@ -471,9 +476,13 @@ int update_update_norm2(
 	}
 
 	// perform operation 3
-	alp_norm2 = 0.0;
-	ret = grb::dot< grb::descriptors::dense >(
-		alp_norm2, alp_r, alp_r, dblSemiring );
+	{
+		// norm2 used instead of dot(alp_r,alp_r,...) to avoid vector aliasing.
+		double r_norm = 0.0;
+		ret = grb::algorithms::norm2< grb::descriptors::dense >(
+			r_norm, alp_r, dblSemiring );
+		alp_norm2 = r_norm * r_norm;
+	}
 	if( ret != grb::SUCCESS ) {
 		std::cerr << "ALP/Fuselets update_spmv_dot encountered error at operation 3: "
 			<< grb::toString( ret ) << "\n";
@@ -648,9 +657,13 @@ int doubleUpdate_update_norm2(
 	}
 
 	// perform last op:
-	alp_theta = 0.0;
-	rc = grb::dot< grb::descriptors::dense >(
-		alp_theta, alp_r, alp_r, dblSemiring );
+	{
+		// norm2 used instead of dot(alp_r,alp_r,...) to avoid vector aliasing.
+		double r_norm = 0.0;
+		rc = grb::algorithms::norm2< grb::descriptors::dense >(
+			r_norm, alp_r, dblSemiring );
+		alp_theta = r_norm * r_norm;
+	}
 	if( rc != grb::SUCCESS ) {
 		std::cerr << "ALP/Fuselets doubleUpdate_update_dot "
 			<< "encountered error at operation 3: " << grb::toString( rc ) << "\n";
